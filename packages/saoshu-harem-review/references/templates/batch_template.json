@@ -1,0 +1,49 @@
+{
+  "batch_id": "B01",
+  "range": "第1-40章",
+  "new_characters": [
+    {
+      "name": "角色名",
+      "role": "女主/准女主/配角",
+      "notes": "与后宫线关系"
+    }
+  ],
+  "events": [
+    "关键事件1",
+    "关键事件2"
+  ],
+  "thunder_hits": [
+    {
+      "rule": "绿帽/死女/送女/背叛/wrq/龟作",
+      "summary": "命中情节摘要",
+      "evidence_level": "已确认/高概率/未知待证",
+      "anchor": "第XX章或章节范围"
+    }
+  ],
+  "depression_hits": [
+    {
+      "rule": "郁闷点名称",
+      "summary": "命中情节摘要",
+      "severity": "严重/中上/中等/轻微/超轻微",
+      "min_defense": "神防之上/神防/重甲/布甲/轻甲/低防/负防/极限负防",
+      "evidence_level": "已确认/高概率/未知待证",
+      "anchor": "第XX章或章节范围"
+    }
+  ],
+  "risk_unconfirmed": [
+    {
+      "risk": "风险名称",
+      "current_evidence": "当前线索",
+      "missing_evidence": "缺失证据",
+      "impact": "对结论的潜在影响"
+    }
+  ],
+  "delta_relation": [
+    {
+      "character": "角色名",
+      "from": "上一批关系状态",
+      "to": "本批关系状态",
+      "reason": "变化原因"
+    }
+  ]
+}

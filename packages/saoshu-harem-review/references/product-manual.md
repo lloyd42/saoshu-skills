@@ -1,0 +1,215 @@
+# 扫书系统产品说明书
+
+## 1. 产品定位
+本工具用于对中文网文（重点是后宫题材）进行结构化“扫书/避雷”分析，输出可阅读决策报告。
+
+核心目标：
+- 降低读者踩雷概率。
+- 将主观讨论转为“证据 + 规则 + 结论”。
+- 支持超长小说分批处理，避免上下文超限。
+
+## 2. 适用范围与边界
+适用：
+- 男主后宫文的雷点/郁闷点筛查。
+- 新书快速初筛（节能模式）。
+- 深度完整审查（性能模式）。
+
+不适用：
+- 非后宫作品直接复用“后宫结论”。
+- 把“待补证”当成“已实锤”。
+- 将本工具当作法律、伦理、医学判断工具。
+
+## 3. 系统架构总览
+系统分三层：
+- 编排层：`scripts/run_pipeline.mjs`
+- 分析层：切批、增强、复核、回填、归并
+- 渲染层：`merged-report.json` -> `md/html`（HTML可打印PDF）
+
+统一契约：
+- 输入契约：`references/schemas/novel_manifest.schema.json`
+- 中间契约：`batch.schema.json`、`review_decision.schema.json`
+- 输出契约：`final_report.schema.json`
+
+架构图与流程图详版：
+- `references/architecture/system-blueprint.md`
+
+## 4. 核心能力
+### 4.1 长文本分批扫描
+- 自动按章节切分，支持重叠批次。
+- 支持 UTF-8/GB18030/GBK 自动解码回退。
+
+### 4.2 风险识别
+- 雷点候选：绿帽、wrq、送女、背叛、死女等。
+- 郁闷点：前世雷、擦边、虐心、接盘等。
+- 证据等级：已确认 / 高概率 / 待补证。
+
+### 4.3 双模式运行
+- `performance`：全量批次，完整结论。
+- `economy`：抽样批次，快速初判。
+
+### 4.4 动态抽样
+- 支持 `fixed` 与 `dynamic`。
+- dynamic 档位：`low/medium/high/auto`。
+- `auto` 按批次数自动推荐档位并记录到审计状态。
+
+### 4.5 报告多格式输出
+- `merged-report.json`：机器可读真源。
+- `merged-report.md`：文本可读。
+- `merged-report.html`：可视化展示，含抽样信息、审计面板。
+- `merged-report.pdf`：可选自动导出（本地浏览器 headless 打印）。
+
+### 4.6 术语百科（Wiki）
+- 通过 `saoshu-term-wiki` 提供黑话解释。
+- 报告可自动注入术语速查（term_wiki）。
+- HTML 支持术语悬浮释义，帮助新人理解黑话。
+
+### 4.7 扫书数据库
+- 通过 `saoshu-scan-db` 把每次扫书结果持久化。
+- 支持统计查询（结论分布、高频风险、高频标签）。
+- 支持生成数据库仪表盘 HTML，服务可视化复盘。
+
+### 4.8 角色关系图（跨平台本地）
+- merge 后可选生成 `relation-graph.html`。
+- 默认启发式图谱（角色 + 风险信号）；若外部增强提供结构化关系，会自动叠加。
+- 纯 Node + 原生 HTML/JS，不依赖特定系统图形库。
+- `P2-1` 已完成：角色名归一化、弱边过滤、边数上限控制、前端筛选开关（角色-角色/角色-信号/最小权重）。
+
+## 5. 标准工作流
+1. `chunk`：切章并产出 `batches-all/Bxx.json`
+2. `enrich`：外部优先增强（MCP），失败回退本地
+3. `review`：生成人工复核包
+4. `apply`：复核结果回填批次
+5. `merge`：归并并产出 JSON/MD/HTML
+
+一键执行：
+- `node scripts/run_pipeline.mjs --manifest <manifest.json>`
+
+阶段执行：
+- `--stage chunk|enrich|review|apply|merge`
+
+统一入口（推荐）：
+- `node scripts/saoshu_cli.mjs manifest --output <manifest.json>`
+- `node scripts/saoshu_cli.mjs scan --manifest <manifest.json>`
+- `node scripts/saoshu_cli.mjs batch --queue <queue.json>`
+- `node scripts/saoshu_cli.mjs wiki --term wrq`
+- `node scripts/saoshu_cli.mjs relation --report <merged-report.json> --output <relation-graph.html>`
+- `node scripts/saoshu_cli.mjs db overview --db ./scan-db`
+- `node scripts/saoshu_cli.mjs db trends --db ./scan-db --output-dir ./scan-db/trends`
+- `node scripts/saoshu_cli.mjs compare --db ./scan-db --output-dir ./scan-db/compare`
+
+Manifest 向导（新手推荐）：
+- 交互式：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie`
+- 非交互：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie --non-interactive --input-txt <txt> --output-dir <dir> --title <name>`
+
+## 6. Manifest 关键字段
+必填：
+- `input_txt`
+- `output_dir`
+
+高频可选：
+- `pipeline_mode`: `economy|performance`
+- `sample_mode`: `fixed|dynamic`
+- `sample_level`: `auto|low|medium|high`
+- `sample_count`（fixed 模式）
+- `sample_min_count/sample_max_count`（dynamic 边界）
+- `sample_strategy`: `risk-aware|uniform`
+- `wiki_dict`: 术语词典路径
+- `db_mode`: `none|local|external`
+- `db_path`: 本地数据库目录（local）
+- `db_ingest_cmd`: 外部入库命令（external）
+- `report_pdf`: 是否在 merge 后自动导出 PDF
+- `report_pdf_output`: PDF 输出路径
+- `report_pdf_engine_cmd`: 自定义导出引擎命令（可选）
+- `report_relation_graph`: 是否生成角色关系图
+- `report_relation_graph_output`: 关系图输出路径（html）
+- `report_relation_top_chars`: 关系图角色候选数（默认20）
+- `report_relation_top_signals`: 关系图信号候选数（默认16）
+- `report_relation_min_edge_weight`: 后端最小边权（默认2）
+- `report_relation_max_links`: 后端最大边数（默认220）
+- `report_relation_min_name_freq`: review 名字最小频次（默认2）
+- `enrich_mode`: `external|fallback`
+- `enricher_cmd`: 外部增强命令
+
+示例文件：
+- `references/architecture/manifest.example.json`
+
+## 7. 输出目录说明
+典型目录：
+- `workspace/<run>/batches-all`
+- `workspace/<run>/batches-sampled`（economy）
+- `workspace/<run>/review-pack`
+- `workspace/<run>/merged-report.json`
+- `workspace/<run>/merged-report.md`
+- `workspace/<run>/merged-report.html`
+- `workspace/<run>/pipeline-state.json`
+- `db/`（可选，数据库目录）
+
+## 8. 报告解读指南
+先看：
+- `newbie_card`（新手摘要卡：红黄绿风险灯 + 3条建议）
+- `overall.verdict`（可看/慎入/劝退）
+- `overall.rating`（推荐指数）
+- `scan.sampling`（模式、覆盖率、档位）
+
+再看：
+- `thunder.items`（雷点）
+- `depression.items`（郁闷点）
+- `risks_unconfirmed`（高风险未证实）
+- `term_wiki`（术语速查）
+
+最后看：
+- `audit.pipeline_state.steps`（过程审计）
+
+## 9. 新人快速上手
+### 9.1 最短路径
+1. 准备 `manifest`
+2. 跑一遍 pipeline
+3. 打开 HTML 报告
+4. 悬浮术语查看解释
+
+### 9.2 推荐默认
+- 新人默认 `economy + dynamic + auto + risk-aware`
+- 关键决策前切换 `performance` 复核
+
+## 10. 扩展能力（MCP/外部工具）
+建议外接能力：
+- 角色识别（实体抽取）
+- 关系图谱（主角/女主关系变化）
+- 标签归一化（题材、设定、风险标签）
+
+接入原则：
+- 外部优先，本地兜底
+- 失败必须可回退并记录错误
+- 不破坏 JSON 契约
+
+## 11. 常见问题与排查
+Q1：提示找不到章节头  
+A：优先检查编码与章节格式；系统已支持 UTF-8/GB18030/GBK。
+
+Q2：economy 与 performance 结论不同  
+A：先看 `mode-diff` 差异，再提高 `sample_level` 或改 `performance`。
+
+Q3：术语解释没出现  
+A：检查 `wiki_dict` 路径，或确认已安装 `saoshu-term-wiki`。
+
+Q4：报告里全是“待补证”  
+A：需要运行 `review + apply`，并补充人工复核证据。
+
+Q5：如何做跨书统计？  
+A：开启 `db_mode=local` 入库后，使用 `saoshu-scan-db/scripts/db_query.mjs` 或 `db_dashboard.mjs`。
+
+## 12. 版本治理建议
+- 任何新增字段先改 schema，再改脚本。
+- 改报告样式不应改变 JSON 语义。
+- 每次关键改动后，至少跑一个样本端到端验证。
+
+## 13. 配套技能清单
+- `saoshu-harem-review`：主扫书能力
+- `saoshu-term-wiki`：黑话/术语百科查询
+- `saoshu-orchestrator`：编排拆分
+- `saoshu-mcp-enricher-adapter`：外部增强适配
+- `saoshu-scan-db`：扫书数据库（入库/查询/可视化）
+
+## 14. 免责声明
+本工具输出是“阅读决策辅助”，不是绝对真相。  
+结论可靠性取决于覆盖率、证据质量与复核充分度。

@@ -1,0 +1,4 @@
+interface:
+  display_name: "扫书编排器"
+  short_description: "分阶段执行扫书流水线，支持节能抽查与性能全文模式"
+  default_prompt: "Use $saoshu-orchestrator to run the book-scanning pipeline in economy or performance mode."

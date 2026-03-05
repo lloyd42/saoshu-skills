@@ -1,0 +1,42 @@
+{
+  "batch_id": "B03",
+  "range": "第81-120章",
+  "new_characters": [
+    {
+      "name": "苏清璃",
+      "role": "准女主",
+      "notes": "与男主多次共同行动"
+    }
+  ],
+  "events": [
+    "男主救下苏清璃并建立信任",
+    "宗门线出现疑似背叛伏笔"
+  ],
+  "thunder_hits": [],
+  "depression_hits": [
+    {
+      "rule": "虐主",
+      "summary": "男主连续遭围攻并重伤",
+      "severity": "中等",
+      "min_defense": "布甲",
+      "evidence_level": "已确认",
+      "anchor": "第96-103章"
+    }
+  ],
+  "risk_unconfirmed": [
+    {
+      "risk": "背叛",
+      "current_evidence": "苏清璃受宗门约束且态度反复",
+      "missing_evidence": "终局是否站队男主",
+      "impact": "若实锤将从慎入变劝退"
+    }
+  ],
+  "delta_relation": [
+    {
+      "character": "苏清璃",
+      "from": "普通同盟",
+      "to": "高亲密准女主",
+      "reason": "救命恩情+长期并肩"
+    }
+  ]
+}

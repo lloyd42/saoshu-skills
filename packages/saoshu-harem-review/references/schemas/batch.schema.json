@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "saoshu/batch",
+  "title": "Batch",
+  "type": "object",
+  "required": ["batch_id", "range", "events", "thunder_hits", "depression_hits", "risk_unconfirmed"],
+  "properties": {
+    "batch_id": {"type": "string"},
+    "range": {"type": "string"},
+    "events": {"type": "array", "items": {"type": "string"}},
+    "new_characters": {"type": "array"},
+    "metadata": {"type": "object"},
+    "thunder_hits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule", "summary", "evidence_level"],
+        "properties": {
+          "rule": {"type": "string"},
+          "summary": {"type": "string"},
+          "evidence_level": {"type": "string"},
+          "anchor": {"type": "string"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "depression_hits": {"type": "array", "items": {"type": "object"}},
+    "risk_unconfirmed": {"type": "array", "items": {"type": "object"}},
+    "delta_relation": {"type": "array", "items": {"type": "object"}}
+  },
+  "additionalProperties": true
+}

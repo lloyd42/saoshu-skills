@@ -1,0 +1,15 @@
+{
+  "input_txt": "./assets/sample-2.txt",
+  "output_dir": "./workspace/sample2-economy",
+  "title": "花间留香",
+  "author": "苍穹双鹰",
+  "tags": "样本2",
+  "target_defense": "布甲",
+  "batch_size": 80,
+  "overlap": 2,
+  "enrich_mode": "fallback",
+  "enricher_cmd": "",
+  "pipeline_mode": "economy",
+  "sample_count": 7,
+  "sample_strategy": "risk-aware"
+}

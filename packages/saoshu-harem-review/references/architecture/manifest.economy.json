@@ -1,0 +1,15 @@
+{
+  "input_txt": "./assets/example-novel.txt",
+  "output_dir": "./workspace/example-run-economy",
+  "title": "傲世无双",
+  "author": "少年小蜗",
+  "tags": "玄幻/穿越/多女主",
+  "target_defense": "布甲",
+  "batch_size": 80,
+  "overlap": 2,
+  "enrich_mode": "fallback",
+  "enricher_cmd": "",
+  "pipeline_mode": "economy",
+  "sample_count": 7,
+  "sample_strategy": "risk-aware"
+}

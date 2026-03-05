@@ -1,0 +1,4 @@
+interface:
+  display_name: "扫书术语百科"
+  short_description: "查询扫书黑话/术语，解释含义、风险与边界"
+  default_prompt: "Use $saoshu-term-wiki to explain unfamiliar scan terms and slang with definition, risk impact, and related terms."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "后宫扫书专家"
+  short_description: "严格后宫文避雷扫书，按雷点与防御分级给结论"
+  default_prompt: "Use $saoshu-harem-review to review this harem novel for thunder points, depression points, and defense-level compatibility."

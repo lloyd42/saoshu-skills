@@ -1,0 +1,15 @@
+{
+  "input_txt": "./assets/sample-new.txt",
+  "output_dir": "./workspace/new-sample-economy",
+  "title": "女主们对反派的我满好感度？",
+  "author": "夕阳西下的史莱姆",
+  "tags": "新样本",
+  "target_defense": "布甲",
+  "batch_size": 80,
+  "overlap": 2,
+  "enrich_mode": "fallback",
+  "enricher_cmd": "",
+  "pipeline_mode": "economy",
+  "sample_count": 7,
+  "sample_strategy": "risk-aware"
+}

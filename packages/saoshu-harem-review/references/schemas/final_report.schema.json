@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "saoshu/final_report",
+  "title": "Final Report",
+  "type": "object",
+  "required": ["report_version", "novel", "scan", "thunder", "depression", "overall"],
+  "properties": {
+    "report_version": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "novel": {"type": "object"},
+    "scan": {
+      "type": "object",
+      "properties": {
+        "sampling": {
+          "type": "object",
+          "properties": {
+            "pipeline_mode": {"type": "string"},
+            "sample_mode": {"type": "string"},
+            "sample_strategy": {"type": "string"},
+            "sample_level": {"type": "string"},
+            "sample_level_effective": {"type": "string"},
+            "sample_level_recommended": {"type": "string"},
+            "total_batches": {"type": "integer"},
+            "selected_batches": {"type": "integer"},
+            "coverage_ratio": {"type": "number"},
+            "basis_lines": {"type": "array", "items": {"type": "string"}}
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "metadata_summary": {"type": "object"},
+    "thunder": {"type": "object"},
+    "depression": {"type": "object"},
+    "defense_recommendation": {"type": "object"},
+    "overall": {"type": "object"},
+    "newbie_card": {
+      "type": "object",
+      "properties": {
+        "level": {"type": "string"},
+        "label": {"type": "string"},
+        "confidence": {"type": "string"},
+        "headline": {"type": "string"},
+        "bullets": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "view_prefs": {
+      "type": "object",
+      "properties": {
+        "default_view": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "risks_unconfirmed": {"type": "array"},
+    "audit": {
+      "type": "object",
+      "properties": {
+        "pipeline_state": {
+          "type": "object",
+          "properties": {
+            "started_at": {"type": "string"},
+            "finished_at": {"type": "string"},
+            "steps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "step": {"type": "string"},
+                  "status": {"type": "string"},
+                  "detail": {"type": "string"},
+                  "at": {"type": "string"}
+                },
+                "additionalProperties": true
+              }
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "term_wiki": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "term": {"type": "string"},
+          "category": {"type": "string"},
+          "definition": {"type": "string"},
+          "risk_impact": {"type": "string"},
+          "boundary": {"type": "string"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "follow_up_questions": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": true
+}
