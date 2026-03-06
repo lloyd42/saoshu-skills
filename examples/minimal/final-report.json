@@ -1,0 +1,83 @@
+{
+  "report_version": "0.1",
+  "generated_at": "2026-03-06T12:00:00Z",
+  "novel": {
+    "title": "最小样例",
+    "author": "公开夹具"
+  },
+  "scan": {
+    "sampling": {
+      "pipeline_mode": "economy",
+      "sample_mode": "dynamic",
+      "sample_strategy": "risk-aware",
+      "sample_level": "auto",
+      "sample_level_effective": "low",
+      "sample_level_recommended": "low",
+      "total_batches": 1,
+      "selected_batches": 1,
+      "coverage_ratio": 1,
+      "basis_lines": [
+        "最小公开样例仅用于演示契约结构。"
+      ]
+    }
+  },
+  "metadata_summary": {
+    "tags": ["示例", "测试"]
+  },
+  "thunder": {
+    "hits": [],
+    "summary": "未命中明确雷点。"
+  },
+  "depression": {
+    "hits": [],
+    "summary": "未发现明显郁闷情节。"
+  },
+  "defense_recommendation": {
+    "target": "布甲",
+    "result": "可继续观察"
+  },
+  "overall": {
+    "verdict": "待补证",
+    "summary": "样例文本过短，仅能演示输出结构。"
+  },
+  "newbie_card": {
+    "level": "low",
+    "label": "样例",
+    "confidence": "低",
+    "headline": "该报告仅用于 schema 校验",
+    "bullets": [
+      "不是完整扫书结论",
+      "仅用于验证输出结构"
+    ]
+  },
+  "view_prefs": {
+    "default_view": "newbie"
+  },
+  "risks_unconfirmed": [],
+  "audit": {
+    "pipeline_state": {
+      "started_at": "2026-03-06T12:00:00Z",
+      "finished_at": "2026-03-06T12:00:01Z",
+      "steps": [
+        {
+          "step": "example",
+          "status": "done",
+          "detail": "schema fixture only",
+          "at": "2026-03-06T12:00:01Z"
+        }
+      ]
+    }
+  },
+  "term_wiki": [
+    {
+      "term": "布甲",
+      "category": "防御等级",
+      "definition": "最低防御档位示意。",
+      "risk_impact": "用于判断阅读门槛。",
+      "boundary": "仅作示例说明。"
+    }
+  ],
+  "follow_up_questions": [
+    "是否需要更长样例来验证完整流程？"
+  ]
+}
