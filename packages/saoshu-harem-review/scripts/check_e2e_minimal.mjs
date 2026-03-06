@@ -202,6 +202,8 @@ function runIntegratedOptionalScenario() {
   const report = readJson(reportJson);
   if (report?.novel?.title === "最小样例-E2E") ok("integrated report metadata looks correct");
   else fail("integrated report metadata title mismatch");
+  if (report?.novel?.harem_validity && report.novel.harem_validity !== "合法 / 不合法（原因）") ok("integrated report harem_validity is no longer a placeholder");
+  else fail("integrated report harem_validity should not be a placeholder");
   if (report?.audit?.pipeline_state?.finished_at && report.audit.pipeline_state.finished_at !== "-") ok("integrated report audit finished_at is finalized");
   else fail("integrated report audit finished_at should be finalized");
 
@@ -233,6 +235,8 @@ function runBomAndChineseChapterScenario() {
   const report = readJson(reportJson);
   if (report?.novel?.title === "BOM+中文章名") ok("BOM fixture report metadata looks correct");
   else fail("BOM fixture report metadata title mismatch");
+  if (report?.novel?.harem_validity && report.novel.harem_validity !== "合法 / 不合法（原因）") ok("BOM fixture harem_validity is no longer a placeholder");
+  else fail("BOM fixture harem_validity should not be a placeholder");
 }
 
 function buildIsolatedEnv(root) {

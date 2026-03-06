@@ -160,6 +160,24 @@ function resolveTermInfo(glossaryIndex, term) {
   return glossaryIndex.get(t) || null;
 }
 
+function inferHaremValidity(meta, merged) {
+  const rawTags = String(meta.tags || "");
+  const topTags = Array.isArray(merged?.metadata?.top_tags) ? merged.metadata.top_tags.map((item) => String(item.name || "")) : [];
+  const signalText = [rawTags, ...topTags].join(" ");
+
+  const invalidPatterns = ["单女主", "单女主文", "非后宫", "伪后宫", "纯爱", "1v1"];
+  if (invalidPatterns.some((pattern) => signalText.includes(pattern))) {
+    return "不适用（检测到非后宫/单线题材信号）";
+  }
+
+  const validPatterns = ["后宫", "多女主", "多女主文"];
+  if (validPatterns.some((pattern) => signalText.includes(pattern))) {
+    return "合法倾向（标签与元数据显示为后宫/多女主，仍建议人工复核）";
+  }
+
+  return "待人工确认（当前自动流程未发现足够的后宫边界信号）";
+}
+
 function mergeBatches(batches) {
   const thunderMap = new Map();
   const depMap = new Map();
@@ -429,7 +447,7 @@ function buildReportData(meta, merged, glossaryIndex) {
       author: lineOrDash(meta.author),
       tags: lineOrDash(meta.tags),
       target_defense: lineOrDash(meta.targetDefense),
-      harem_validity: "合法 / 不合法（原因）",
+      harem_validity: inferHaremValidity(meta, merged),
     },
     scan: {
       coverage,
