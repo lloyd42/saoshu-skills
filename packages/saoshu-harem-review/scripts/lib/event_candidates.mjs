@@ -117,7 +117,7 @@ function inferTarget(snippet, subject) {
       return { name: "男主/关系对象", role_hint: "mc_or_relation", confidence: 0.65 };
     }
   }
-  if (includesAny(snippet, ["男主", "林舟", "主角", "他"])) {
+  if (includesAny(snippet, ["男主", "主角", "他", "丈夫", "夫君"])) {
     return { name: "男主/关系对象", role_hint: "mc_or_relation", confidence: 0.6 };
   }
   return { name: "未识别对象", role_hint: "unknown", confidence: 0.2 };

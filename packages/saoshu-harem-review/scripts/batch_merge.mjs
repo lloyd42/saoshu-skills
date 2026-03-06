@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { readJsonFile } from "./lib/json_input.mjs";
+import { formatUiKeyValue, formatUiTerm } from "./lib/ui_terms.mjs";
 
 const DEFENSES = ["神防之上", "神防", "重甲", "布甲", "轻甲", "低防", "负防", "极限负防"];
 const DEF_RANK = new Map(DEFENSES.map((d, i) => [d, i]));
@@ -365,7 +366,7 @@ function buildNewbieCard(verdict, rating, thunderCount, depCount, riskCount, cov
   const bullets = [
     `结论：${verdict}（${label}）`,
     `评分：${rating}/10；雷点 ${thunderCount}，郁闷点 ${depCount}，未证实风险 ${riskCount}`,
-    `建议：先看“未证实高风险”和“术语速查”，再决定是否转 performance 全量复核`,
+    `建议：先看“未证实高风险”和“术语速查”，再决定是否转${formatUiTerm("performance", { bilingual: true })}复核`,
   ];
   return { level, label, confidence, headline, bullets };
 }
@@ -384,10 +385,10 @@ function buildReportData(meta, merged, glossaryIndex) {
     : (totalBatches > 0 ? selectedBatches / totalBatches : 1);
   const sampleBasis = [];
   if (String(meta.pipelineMode) === "economy") {
-    sampleBasis.push(`采样模式：${lineOrDash(meta.sampleMode)}`);
-    sampleBasis.push(`采样策略：${lineOrDash(meta.sampleStrategy)}`);
+    sampleBasis.push(formatUiKeyValue("sample_mode", lineOrDash(meta.sampleMode), { bilingual: true }));
+    sampleBasis.push(formatUiKeyValue("sample_strategy", lineOrDash(meta.sampleStrategy), { bilingual: true }));
     if (meta.sampleMode === "dynamic") {
-      sampleBasis.push(`档位：${lineOrDash(meta.sampleLevelEffective || meta.sampleLevel)}`);
+      sampleBasis.push(`抽样档位：${lineOrDash(meta.sampleLevelEffective || meta.sampleLevel)}`);
       if (meta.sampleLevel === "auto" && meta.sampleLevelRecommended) sampleBasis.push(`自动推荐：${meta.sampleLevelRecommended}`);
       if (Number(meta.sampleMinCount) > 0 || Number(meta.sampleMaxCount) > 0) sampleBasis.push(`边界：min=${Number(meta.sampleMinCount) || 0}, max=${Number(meta.sampleMaxCount) || 0}`);
     } else if (Number(meta.sampleCount) > 0) {
@@ -404,7 +405,7 @@ function buildReportData(meta, merged, glossaryIndex) {
       sampleBasis.push(`标题命中优先：${preview.join("、")}`);
     }
   } else {
-    sampleBasis.push("全量扫描（performance）");
+    sampleBasis.push(`扫描模式：${formatUiTerm("performance", { bilingual: true })}`);
     sampleBasis.push(`覆盖：${selectedBatches || merged.batchIds.length}/${totalBatches || merged.batchIds.length} (100%)`);
   }
 
@@ -688,7 +689,7 @@ body.view-newbie .expert-only{display:none}
       <div class="kv"><div class="k">目标防御</div><div class="v">${escapeHtml(data.novel.target_defense)}</div></div>
       <div class="kv"><div class="k">扫描批次</div><div class="v">${data.scan.batch_count}</div></div>
       <div class="kv"><div class="k">结论 / 评分</div><div class="v"><span class="badge">${escapeHtml(data.overall.verdict)} · ${data.overall.rating}/10</span></div></div>
-      <div class="kv"><div class="k">运行模式</div><div class="v">${escapeHtml(sampling.pipeline_mode || "-")}</div></div>
+      <div class="kv"><div class="k">运行模式</div><div class="v">${escapeHtml(formatUiTerm(sampling.pipeline_mode || "-", { bilingual: true }))}</div></div>
       <div class="kv"><div class="k">抽样覆盖率</div><div class="v">${Number.isFinite(Number(sampling.coverage_ratio)) ? `${(Number(sampling.coverage_ratio) * 100).toFixed(1)}%` : "-"}</div></div>
       <div class="kv"><div class="k">抽样档位</div><div class="v">${escapeHtml(sampling.sample_level_effective || "-")}</div></div>
     </div>
