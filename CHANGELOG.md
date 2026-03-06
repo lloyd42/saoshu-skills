@@ -4,9 +4,12 @@
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-03-07
+
 ### 修复
 - 修复 `run_pipeline.mjs` 对 `UTF-8 BOM` manifest 的兼容问题，避免 Windows 环境下 JSON 解析失败
 - 修复最终报告审计面板中的 `finished_at` 可能落为 `-` 的时序问题
+- 修复报告中的 `harem_validity` 模板占位问题，改为输出实际判定结果或待确认状态
 
 ### 改进
 - 新增共享输入模块，统一正文与 JSON 的读取、归一化与兼容逻辑
