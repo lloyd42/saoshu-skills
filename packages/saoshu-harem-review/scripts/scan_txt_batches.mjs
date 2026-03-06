@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { buildEventCandidates } from "./lib/event_candidates.mjs";
 import { getExitCode } from "./lib/exit_codes.mjs";
 import { parseChapters, readNovelText } from "./lib/novel_input.mjs";
 import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
@@ -279,10 +280,21 @@ function main() {
     const topTags = extractTopTags(batchText, 12);
     const topChars = extractTopCharacters(batchText, 16);
     const chapterTitleScan = analyzeChapterTitles(batch);
+    const eventCandidates = buildEventCandidates({
+      batchId,
+      batchRange: range,
+      batchText,
+      chapters: batch,
+      topCharacters: topChars,
+      thunderRules: THUNDER_STRICT,
+      riskRules: THUNDER_RISK,
+      depressionRules: DEPRESSION_RULES,
+    });
     const topSignals = [
       ...hits.thunder.map((x) => ({ name: `雷点:${x.rule}`, count: 1 })),
       ...hits.depression.map((x) => ({ name: `郁闷:${x.rule}`, count: 1 })),
       ...hits.risks.map((x) => ({ name: `风险:${x.risk}`, count: 1 })),
+      ...eventCandidates.slice(0, 8).map((x) => ({ name: `事件:${x.rule_candidate}:${x.status}`, count: 1 })),
     ];
 
     const obj = {
@@ -300,6 +312,7 @@ function main() {
       thunder_hits: uniqueBy(hits.thunder, (x) => `${x.rule}|${x.anchor}`),
       depression_hits: uniqueBy(hits.depression, (x) => `${x.rule}|${x.anchor}`),
       risk_unconfirmed: uniqueBy(hits.risks, (x) => `${x.risk}|${x.current_evidence}`),
+      event_candidates: eventCandidates,
       delta_relation: [],
     };
 

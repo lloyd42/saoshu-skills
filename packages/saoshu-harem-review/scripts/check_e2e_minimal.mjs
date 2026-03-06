@@ -239,6 +239,42 @@ function runBomAndChineseChapterScenario() {
   else fail("BOM fixture harem_validity should not be a placeholder");
 }
 
+function runEventCandidateScenario() {
+  const scenarioDir = path.join(tmpRoot, "event-candidates");
+  const fixture = prepareCustomFixture(
+    scenarioDir,
+    "./workspace/minimal-e2e-events",
+    [
+      "第一章 夜变",
+      "苏梨是林舟的未婚妻。她并未背叛林舟，只是假装投靠赵衡来套取消息。",
+      "第二章 传闻",
+      "有人传闻顾晚前世嫁过人，但主线中她仍与林舟同行。",
+      "第三章 误解",
+      "众人误会苏梨背叛，林舟也一度误以为她要离开。",
+      "第四章 复归",
+      "苏梨说明真相，表示自己从未背叛林舟。",
+      "",
+    ].join("\n"),
+    { title: "事件候选夹具" }
+  );
+  ok("prepared event candidate fixture");
+
+  const pipelineResult = runNode("packages/saoshu-harem-review/scripts/run_pipeline.mjs", ["--manifest", fixture.manifestPath, "--stage", "chunk"]);
+  expectSuccess(pipelineResult, "event candidate chunk run");
+
+  const batchPath = path.join(fixture.outputDir, "batches-all", "B01.json");
+  assertExists(batchPath, "event candidate batch json");
+  const batch = readJson(batchPath);
+  if (Array.isArray(batch.event_candidates) && batch.event_candidates.length > 0) ok("event candidate batch contains event_candidates");
+  else fail("event candidate batch should contain event_candidates");
+
+  const betrayal = Array.isArray(batch.event_candidates) ? batch.event_candidates.find((item) => item.rule_candidate === "背叛") : null;
+  if (betrayal) ok("event candidate batch includes betrayal candidate");
+  else fail("event candidate batch should include betrayal candidate");
+  if (betrayal?.polarity === "negated" || betrayal?.polarity === "uncertain") ok("betrayal candidate captures negation or uncertainty");
+  else fail("betrayal candidate should capture negation or uncertainty");
+}
+
 function buildIsolatedEnv(root) {
   const isolatedHome = path.join(root, "isolated-home");
   const isolatedCodexHome = path.join(root, "isolated-codex-home");
@@ -311,6 +347,7 @@ function main() {
   ensureCleanDir(tmpRoot);
   runIntegratedOptionalScenario();
   runBomAndChineseChapterScenario();
+  runEventCandidateScenario();
   runFallbackScenario();
   if (!hasFailure) console.log("Main-flow and fallback smoke check passed.");
   else process.exitCode = 1;
