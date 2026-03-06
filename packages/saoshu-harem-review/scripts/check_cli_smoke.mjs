@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
@@ -57,6 +58,18 @@ for (const scriptPath of scriptsToCheck) {
     continue;
   }
   ok(`help contract ${scriptPath}`);
+}
+
+try {
+  const cliHelp = execFileSync(process.execPath, [path.join(repoRoot, "packages/saoshu-harem-review/scripts/saoshu_cli.mjs"), "--help"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (cliHelp.includes("Usage:") && cliHelp.includes("saoshu_cli.mjs scan")) ok("runtime help saoshu_cli.mjs");
+  else fail("runtime help output unexpected in packages/saoshu-harem-review/scripts/saoshu_cli.mjs");
+} catch (err) {
+  fail(`runtime help failed for packages/saoshu-harem-review/scripts/saoshu_cli.mjs: ${err.stderr || err.message}`);
 }
 
 if (!hasFailure) {

@@ -6,6 +6,8 @@ import { createScanContext, handleBatch, handleManifest, handleScan } from "./cl
 import { handleRelation, handleWiki } from "./cli_command_info.mjs";
 import { handleCompare, handleDb } from "./cli_command_db.mjs";
 
+export { showCliHelp, parseCommon } from "./cli_help.mjs";
+
 const handlers = {
   scan: handleScan,
   batch: handleBatch,

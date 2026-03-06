@@ -1,0 +1,242 @@
+#!/usr/bin/env node
+import fs from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+const tmpRoot = path.join(repoRoot, ".tmp", "check-e2e-minimal");
+
+let hasFailure = false;
+
+function ok(message) {
+  console.log(`OK: ${message}`);
+}
+
+function fail(message) {
+  hasFailure = true;
+  console.error(`FAIL: ${message}`);
+}
+
+function ensureCleanDir(dir) {
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+}
+
+function runNode(scriptPath, args = [], options = {}) {
+  const absoluteScriptPath = path.isAbsolute(scriptPath) ? scriptPath : path.join(repoRoot, scriptPath);
+  const env = { ...process.env, ...(options.env || {}) };
+  try {
+    const stdout = execFileSync(process.execPath, [absoluteScriptPath, ...args], {
+      cwd: options.cwd || repoRoot,
+      env,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    return { status: 0, stdout, stderr: "" };
+  } catch (error) {
+    return {
+      status: typeof error.status === "number" ? error.status : 1,
+      stdout: error.stdout ? String(error.stdout) : "",
+      stderr: error.stderr ? String(error.stderr) : String(error.message || error),
+    };
+  }
+}
+
+function expectSuccess(result, label) {
+  if (result.status === 0) ok(label);
+  else fail(`${label} failed\nSTDOUT:\n${result.stdout}\nSTDERR:\n${result.stderr}`);
+}
+
+function assertExists(p, label) {
+  if (fs.existsSync(p)) ok(`${label} exists`);
+  else fail(`${label} missing: ${path.relative(repoRoot, p)}`);
+}
+
+function writeFixtureManifest(manifestPath, outputDirRelative, overrides = {}) {
+  const manifest = {
+    input_txt: "./novel.txt",
+    output_dir: outputDirRelative,
+    title: "最小样例-E2E",
+    author: "公开夹具",
+    tags: "示例/测试",
+    target_defense: "布甲",
+    batch_size: 80,
+    overlap: 2,
+    enrich_mode: "fallback",
+    enricher_cmd: "",
+    pipeline_mode: "economy",
+    sample_mode: "dynamic",
+    sample_count: 7,
+    sample_level: "auto",
+    sample_min_count: 0,
+    sample_max_count: 0,
+    sample_strategy: "risk-aware",
+    wiki_dict: "",
+    report_default_view: "newbie",
+    report_pdf: false,
+    report_pdf_output: `${outputDirRelative}/merged-report.pdf`,
+    report_pdf_engine_cmd: "",
+    report_relation_graph: false,
+    report_relation_graph_output: `${outputDirRelative}/relation-graph.html`,
+    report_relation_top_chars: 20,
+    report_relation_top_signals: 16,
+    report_relation_min_edge_weight: 2,
+    report_relation_max_links: 220,
+    report_relation_min_name_freq: 2,
+    db_mode: "none",
+    db_path: `${outputDirRelative}/scan-db`,
+    db_ingest_cmd: "",
+    ...overrides,
+  };
+  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+}
+
+function readJson(jsonPath) {
+  return JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+}
+
+function prepareFixture(baseDir, outputDirRelative, overrides = {}) {
+  ensureCleanDir(baseDir);
+  const inputPath = path.join(baseDir, "novel.txt");
+  const manifestPath = path.join(baseDir, "manifest.json");
+  fs.copyFileSync(path.join(repoRoot, "examples", "minimal", "novel.txt"), inputPath);
+  writeFixtureManifest(manifestPath, outputDirRelative, overrides);
+  return {
+    inputPath,
+    manifestPath,
+    outputDir: path.resolve(baseDir, outputDirRelative),
+  };
+}
+
+function assertStep(statePath, stepName, expectedStatus, detailIncludes = "") {
+  const state = readJson(statePath);
+  const step = Array.isArray(state.steps) ? state.steps.find((item) => item.step === stepName) : null;
+  if (!step) {
+    fail(`pipeline step missing: ${stepName}`);
+    return;
+  }
+  if (step.status === expectedStatus) ok(`pipeline step ${stepName}=${expectedStatus}`);
+  else fail(`pipeline step ${stepName} expected ${expectedStatus}, got ${step.status}`);
+  if (detailIncludes) {
+    if (String(step.detail || "").includes(detailIncludes)) ok(`pipeline step ${stepName} detail contains ${detailIncludes}`);
+    else fail(`pipeline step ${stepName} detail missing ${detailIncludes}`);
+  }
+}
+
+function runIntegratedOptionalScenario() {
+  const scenarioDir = path.join(tmpRoot, "integrated");
+  const fixture = prepareFixture(scenarioDir, "./workspace/minimal-e2e-integrated", { db_mode: "local" });
+  ok("prepared integrated fixture");
+
+  const pipelineResult = runNode("packages/saoshu-harem-review/scripts/run_pipeline.mjs", ["--manifest", fixture.manifestPath, "--stage", "all"]);
+  expectSuccess(pipelineResult, "integrated pipeline run");
+  if (pipelineResult.stdout.includes("Pipeline finished.")) ok("integrated pipeline completion marker");
+  else fail("integrated pipeline output missing completion marker");
+
+  const reportJson = path.join(fixture.outputDir, "merged-report.json");
+  const reportMd = path.join(fixture.outputDir, "merged-report.md");
+  const reportHtml = path.join(fixture.outputDir, "merged-report.html");
+  const statePath = path.join(fixture.outputDir, "pipeline-state.json");
+  const dbRuns = path.join(fixture.outputDir, "scan-db", "runs.jsonl");
+
+  assertExists(reportJson, "integrated merged-report.json");
+  assertExists(reportMd, "integrated merged-report.md");
+  assertExists(reportHtml, "integrated merged-report.html");
+  assertExists(statePath, "integrated pipeline-state.json");
+  assertExists(path.join(fixture.outputDir, "review-pack"), "integrated review-pack");
+  assertExists(dbRuns, "integrated scan-db runs.jsonl");
+  assertStep(statePath, "db_ingest", "done");
+
+  const report = readJson(reportJson);
+  if (report?.novel?.title === "最小样例-E2E") ok("integrated report metadata looks correct");
+  else fail("integrated report metadata title mismatch");
+
+  const dbOverview = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["--db", path.join(fixture.outputDir, "scan-db"), "--metric", "overview", "--format", "text"]);
+  expectSuccess(dbOverview, "integrated db overview query");
+  if (dbOverview.stdout.includes("Total runs: 1")) ok("integrated db overview reflects ingested run");
+  else fail("integrated db overview missing ingested run");
+}
+
+function buildIsolatedEnv(root) {
+  const isolatedHome = path.join(root, "isolated-home");
+  const isolatedCodexHome = path.join(root, "isolated-codex-home");
+  const isolatedSkillsDir = path.join(root, "isolated-skills");
+  fs.mkdirSync(isolatedHome, { recursive: true });
+  fs.mkdirSync(isolatedCodexHome, { recursive: true });
+  fs.mkdirSync(isolatedSkillsDir, { recursive: true });
+  return {
+    HOME: isolatedHome,
+    USERPROFILE: isolatedHome,
+    CODEX_HOME: isolatedCodexHome,
+    SAOSHU_SKILLS_DIR: isolatedSkillsDir,
+  };
+}
+
+function runFallbackScenario() {
+  const standaloneRoot = path.join(tmpRoot, "standalone");
+  ensureCleanDir(standaloneRoot);
+  const standalonePackageRoot = path.join(standaloneRoot, "packages", "saoshu-harem-review");
+  fs.mkdirSync(path.dirname(standalonePackageRoot), { recursive: true });
+  fs.cpSync(path.join(repoRoot, "packages", "saoshu-harem-review"), standalonePackageRoot, { recursive: true });
+  ok("prepared standalone harem-review package without sibling skills");
+
+  const fixtureDir = path.join(standaloneRoot, "fixture");
+  const fixture = prepareFixture(fixtureDir, "./workspace/minimal-e2e-fallback", { db_mode: "local" });
+  const isolatedEnv = buildIsolatedEnv(standaloneRoot);
+
+  const pipelineResult = runNode(path.join(standalonePackageRoot, "scripts", "run_pipeline.mjs"), ["--manifest", fixture.manifestPath, "--stage", "all"], {
+    cwd: standaloneRoot,
+    env: isolatedEnv,
+  });
+  expectSuccess(pipelineResult, "fallback pipeline run without sibling skills");
+  if (pipelineResult.stdout.includes("Pipeline finished.")) ok("fallback pipeline completion marker");
+  else fail("fallback pipeline output missing completion marker");
+
+  const reportJson = path.join(fixture.outputDir, "merged-report.json");
+  const statePath = path.join(fixture.outputDir, "pipeline-state.json");
+  const dbRuns = path.join(fixture.outputDir, "scan-db", "runs.jsonl");
+
+  assertExists(reportJson, "fallback merged-report.json");
+  assertExists(statePath, "fallback pipeline-state.json");
+  assertStep(statePath, "db_ingest", "skipped", "local ingest script not found");
+  if (!fs.existsSync(dbRuns)) ok("fallback leaves local scan-db absent when db skill missing");
+  else fail("fallback unexpectedly created local scan-db runs.jsonl");
+
+  const report = readJson(reportJson);
+  if (Array.isArray(report.term_wiki) && report.term_wiki.length === 0) ok("fallback report keeps empty term_wiki without glossary skill");
+  else fail("fallback report term_wiki should be an empty array when glossary is unavailable");
+
+  const wikiCli = runNode(path.join(standalonePackageRoot, "scripts", "saoshu_cli.mjs"), ["wiki", "--term", "ntr"], {
+    cwd: standaloneRoot,
+    env: isolatedEnv,
+  });
+  if (wikiCli.status !== 0) ok("explicit wiki command fails cleanly without term skill");
+  else fail("explicit wiki command should fail when term skill is unavailable");
+  if (`${wikiCli.stdout}\n${wikiCli.stderr}`.includes("saoshu-term-wiki")) ok("wiki fallback message points to missing term skill");
+  else fail("wiki fallback message should mention saoshu-term-wiki");
+
+  const dbCli = runNode(path.join(standalonePackageRoot, "scripts", "saoshu_cli.mjs"), ["db", "overview", "--db", "./scan-db"], {
+    cwd: standaloneRoot,
+    env: isolatedEnv,
+  });
+  if (dbCli.status !== 0) ok("explicit db command fails cleanly without db skill");
+  else fail("explicit db command should fail when db skill is unavailable");
+  if (`${dbCli.stdout}\n${dbCli.stderr}`.includes("saoshu-scan-db")) ok("db fallback message points to missing db skill");
+  else fail("db fallback message should mention saoshu-scan-db");
+}
+
+function main() {
+  ensureCleanDir(tmpRoot);
+  runIntegratedOptionalScenario();
+  runFallbackScenario();
+  if (!hasFailure) console.log("Main-flow and fallback smoke check passed.");
+  else process.exitCode = 1;
+}
+
+try {
+  main();
+} catch (err) {
+  fail(err.stderr || err.stdout || err.message || String(err));
+  process.exitCode = 1;
+}

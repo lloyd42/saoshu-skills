@@ -4,6 +4,19 @@
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-03-06
+
+### 新增
+- 增加最小样例端到端检查脚本 `check_e2e_minimal.mjs`，覆盖主流程、报告产物、本地 DB 入库与兜底行为
+
+### 修复
+- 修复 `saoshu_cli.mjs` 依赖的 `parseCommon` / `showCliHelp` 导出缺失问题，避免 CLI 启动时报错
+
+### 改进
+- 将统一检查链扩展为包含 `check:e2e`，提升发版前回归覆盖率
+- 增强 `check_cli_smoke.mjs`，从静态帮助契约检查升级为包含 `saoshu_cli.mjs --help` 的运行时冒烟验证
+- 明确 README 中关于子 skill 缺失时兜底/跳过行为的检查范围
+
 ## [0.2.0] - 2026-03-06
 
 ### 新增

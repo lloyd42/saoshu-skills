@@ -155,6 +155,7 @@ npm run check
 - 编码一致性
 - 版本元数据
 - CLI 帮助契约
+- 最小样例端到端主流程，以及子 skill 缺失时的兜底/跳过行为
 - schema 样例
 
 更多贡献约定见 `CONTRIBUTING.md`，版本发布规则见 `VERSIONING.md`。
