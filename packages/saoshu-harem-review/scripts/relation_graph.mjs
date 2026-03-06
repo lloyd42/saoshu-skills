@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { getExitCode } from "./lib/exit_codes.mjs";
+import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
 
 function usage() {
   console.log("Usage: node relation_graph.mjs --report <merged-report.json> --output <relation-graph.html> [--review-dir <review-pack-dir>] [--top-chars 20] [--top-signals 16] [--min-edge-weight 2] [--max-links 220] [--min-name-freq 2]");
@@ -29,9 +31,9 @@ function parseArgs(argv) {
     else if (k === "--max-links") out.maxLinks = Number(v), i++;
     else if (k === "--min-name-freq") out.minNameFreq = Number(v), i++;
     else if (k === "--help" || k === "-h") return null;
-    else throw new Error(`Unknown arg: ${k}`);
+    else scriptUsage(`未知参数：${k}`, "示例：node relation_graph.mjs --report ./merged-report.json --output ./relation-graph.html");
   }
-  if (!out.report || !out.output) throw new Error("--report and --output are required");
+  if (!out.report || !out.output) scriptUsage("缺少 `--report` 或 `--output`", "示例：node relation_graph.mjs --report ./merged-report.json --output ./relation-graph.html");
   return out;
 }
 
@@ -385,6 +387,8 @@ function main() {
 try {
   main();
 } catch (err) {
-  console.error(`Error: ${err.message}`);
-  process.exit(1);
+  const formatted = formatScriptError(err);
+  console.error(formatted.message);
+  if (formatted.hint) console.error(formatted.hint);
+  process.exit(getExitCode(err));
 }

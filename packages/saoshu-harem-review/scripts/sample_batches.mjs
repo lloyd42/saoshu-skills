@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { getExitCode } from "./lib/exit_codes.mjs";
+import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
 
 function usage() {
   console.log("Usage: node sample_batches.mjs --input <batch-dir> --output <sample-dir> [--mode fixed|dynamic] [--count 7] [--level low|medium|high] [--strategy risk-aware|uniform] [--min-count N] [--max-count N]");
@@ -29,16 +31,16 @@ function parseArgs(argv) {
     else if (k === "--min-count") out.minCount = Number(v), i++;
     else if (k === "--max-count") out.maxCount = Number(v), i++;
     else if (k === "--help" || k === "-h") return null;
-    else throw new Error(`Unknown arg: ${k}`);
+    else scriptUsage(`未知参数：${k}`, "示例：node sample_batches.mjs --input ./batches-all --output ./batches-sampled --mode dynamic");
   }
-  if (!out.input || !out.output) throw new Error("--input and --output are required");
-  if (!["fixed", "dynamic"].includes(out.mode)) throw new Error("--mode must be fixed|dynamic");
-  if (!Number.isFinite(out.count) || out.count < 3) throw new Error("--count must be >=3");
-  if (!["low", "medium", "high"].includes(out.level)) throw new Error("--level must be low|medium|high");
-  if (!["risk-aware", "uniform"].includes(out.strategy)) throw new Error("--strategy must be risk-aware|uniform");
-  if (!Number.isFinite(out.minCount) || out.minCount < 0) throw new Error("--min-count must be >=0");
-  if (!Number.isFinite(out.maxCount) || out.maxCount < 0) throw new Error("--max-count must be >=0");
-  if (out.minCount > 0 && out.maxCount > 0 && out.minCount > out.maxCount) throw new Error("--min-count cannot be greater than --max-count");
+  if (!out.input || !out.output) scriptUsage("缺少 `--input` 或 `--output`", "示例：node sample_batches.mjs --input ./batches-all --output ./batches-sampled");
+  if (!["fixed", "dynamic"].includes(out.mode)) scriptUsage("`--mode` 非法", "允许值：fixed|dynamic");
+  if (!Number.isFinite(out.count) || out.count < 3) scriptUsage("`--count` 非法", "要求：count >= 3");
+  if (!["low", "medium", "high"].includes(out.level)) scriptUsage("`--level` 非法", "允许值：low|medium|high");
+  if (!["risk-aware", "uniform"].includes(out.strategy)) scriptUsage("`--strategy` 非法", "允许值：risk-aware|uniform");
+  if (!Number.isFinite(out.minCount) || out.minCount < 0) scriptUsage("`--min-count` 非法", "要求：min-count >= 0");
+  if (!Number.isFinite(out.maxCount) || out.maxCount < 0) scriptUsage("`--max-count` 非法", "要求：max-count >= 0");
+  if (out.minCount > 0 && out.maxCount > 0 && out.minCount > out.maxCount) scriptUsage("`--min-count` 不能大于 `--max-count`");
   return out;
 }
 
@@ -229,4 +231,4 @@ function main() {
   console.log(`Files: ${selected.join(", ")}`);
 }
 
-try { main(); } catch (err) { console.error(`Error: ${err.message}`); process.exit(1); }
+try { main(); } catch (err) { const formatted = formatScriptError(err); console.error(formatted.message); if (formatted.hint) console.error(formatted.hint); process.exit(getExitCode(err)); }

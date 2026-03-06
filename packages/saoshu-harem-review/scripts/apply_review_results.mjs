@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { getExitCode } from "./lib/exit_codes.mjs";
+import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
 
 function usage() {
   console.log("Usage: node apply_review_results.mjs --batches <batch-dir> --reviews <review-dir> [--dry-run]");
@@ -14,9 +16,9 @@ function parseArgs(argv) {
     else if (k === "--reviews") out.reviews = argv[++i] || "";
     else if (k === "--dry-run") out.dryRun = true;
     else if (k === "--help" || k === "-h") return null;
-    else throw new Error(`Unknown argument: ${k}`);
+    else scriptUsage(`未知参数：${k}`, "示例：node apply_review_results.mjs --batches ./batches --reviews ./review-pack");
   }
-  if (!out.batches || !out.reviews) throw new Error("--batches and --reviews are required");
+  if (!out.batches || !out.reviews) scriptUsage("缺少 `--batches` 或 `--reviews`", "示例：node apply_review_results.mjs --batches ./batches --reviews ./review-pack");
   return out;
 }
 
@@ -212,6 +214,8 @@ function main() {
 try {
   main();
 } catch (err) {
-  console.error(`Error: ${err.message}`);
-  process.exit(1);
+  const formatted = formatScriptError(err);
+  console.error(formatted.message);
+  if (formatted.hint) console.error(formatted.hint);
+  process.exit(getExitCode(err));
 }

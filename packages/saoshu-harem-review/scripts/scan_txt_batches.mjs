@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { getExitCode } from "./lib/exit_codes.mjs";
+import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
 
 function decodeBuffer(buf, encoding) {
   return new TextDecoder(encoding, { fatal: false }).decode(buf);
@@ -107,11 +109,11 @@ function parseArgs(argv) {
     else if (k === "--batch-size") out.batchSize = Number(v), i++;
     else if (k === "--overlap") out.overlap = Number(v), i++;
     else if (k === "--help" || k === "-h") return null;
-    else throw new Error(`Unknown argument: ${k}`);
+    else scriptUsage(`未知参数：${k}`, "示例：node scan_txt_batches.mjs --input ./novel.txt --output ./batches");
   }
-  if (!out.input || !out.output) throw new Error("--input and --output are required");
-  if (out.batchSize < 10) throw new Error("--batch-size too small");
-  if (out.overlap < 0 || out.overlap >= out.batchSize) throw new Error("--overlap out of range");
+  if (!out.input || !out.output) scriptUsage("缺少 `--input` 或 `--output`", "示例：node scan_txt_batches.mjs --input ./novel.txt --output ./batches");
+  if (out.batchSize < 10) scriptUsage("`--batch-size` 过小", "建议值不小于 10");
+  if (out.overlap < 0 || out.overlap >= out.batchSize) scriptUsage("`--overlap` 超出范围", "要求：0 <= overlap < batch-size");
   return out;
 }
 
@@ -333,6 +335,8 @@ function main() {
 try {
   main();
 } catch (err) {
-  console.error(`Error: ${err.message}`);
-  process.exit(1);
+  const formatted = formatScriptError(err);
+  console.error(formatted.message);
+  if (formatted.hint) console.error(formatted.hint);
+  process.exit(getExitCode(err));
 }

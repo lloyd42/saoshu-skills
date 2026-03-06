@@ -2,6 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
+import { getExitCode } from "./lib/exit_codes.mjs";
+import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
 
 function usage() {
   console.log("Usage: node enrich_batches.mjs --batches <batch-dir> [--mode external|fallback] [--enricher-cmd \"your command with {batch_file}\"] [--dry-run]");
@@ -17,11 +19,11 @@ function parseArgs(argv) {
     else if (k === "--enricher-cmd") out.enricherCmd = v, i++;
     else if (k === "--dry-run") out.dryRun = true;
     else if (k === "--help" || k === "-h") return null;
-    else throw new Error(`Unknown argument: ${k}`);
+    else scriptUsage(`未知参数：${k}`, "示例：node enrich_batches.mjs --batches ./batches --mode fallback");
   }
-  if (!out.batches) throw new Error("--batches is required");
-  if (!["external", "fallback"].includes(out.mode)) throw new Error("--mode must be external|fallback");
-  if (out.mode === "external" && !out.enricherCmd) throw new Error("--enricher-cmd required in external mode");
+  if (!out.batches) scriptUsage("缺少 `--batches`", "示例：node enrich_batches.mjs --batches ./batches --mode fallback");
+  if (!["external", "fallback"].includes(out.mode)) scriptUsage("`--mode` 非法", "允许值：external|fallback");
+  if (out.mode === "external" && !out.enricherCmd) scriptUsage("external 模式缺少 `--enricher-cmd`");
   return out;
 }
 
@@ -128,6 +130,8 @@ function main() {
 try {
   main();
 } catch (err) {
-  console.error(`Error: ${err.message}`);
-  process.exit(1);
+  const formatted = formatScriptError(err);
+  console.error(formatted.message);
+  if (formatted.hint) console.error(formatted.hint);
+  process.exit(getExitCode(err));
 }
