@@ -10,8 +10,14 @@ function decodeBuffer(buf, encoding) {
 
 function maybeGarbled(text) {
   if (!text) return true;
-  const bad = (text.match(/�/g) || []).length;
+  const bad = (text.match(/\uFFFD/g) || []).length;
   return bad > 0 && bad / Math.max(text.length, 1) > 0.001;
+}
+
+function cjkRatio(text) {
+  if (!text) return 0;
+  const cjk = (text.match(/[\u3400-\u9fff]/g) || []).length;
+  return cjk / Math.max(text.length, 1);
 }
 
 function tryParseChapterCount(text) {
@@ -43,7 +49,10 @@ function readNovelText(inputPath) {
 
   const best = candidates[0];
   if (!best || best.chapters === 0) {
-    throw new Error("No chapter headers found in txt (all decoding candidates failed)");
+    throw new Error("输入文本无法识别章节，可能是编码异常或正文格式不符合预期。建议先转成 UTF-8 后重试。\n检测结果：未找到有效章节标题。");
+  }
+  if (best.garbled || cjkRatio(best.text) < 0.05) {
+    throw new Error(`输入文本疑似存在编码异常，建议先转成 UTF-8 后重试。\n检测结果：encoding=${best.encoding}, chapters=${best.chapters}, garbled=${best.garbled}, cjk_ratio=${cjkRatio(best.text).toFixed(3)}`);
   }
   return best;
 }

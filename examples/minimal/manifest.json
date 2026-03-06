@@ -1,5 +1,5 @@
 {
-  "input_txt": "./examples/minimal/novel.txt",
+  "input_txt": "./novel.txt",
   "output_dir": "./workspace/minimal-example",
   "title": "最小样例",
   "author": "公开夹具",
@@ -29,6 +29,6 @@
   "report_relation_max_links": 220,
   "report_relation_min_name_freq": 2,
   "db_mode": "none",
-  "db_path": "./scan-db",
+  "db_path": "./workspace/minimal-example/scan-db",
   "db_ingest_cmd": ""
 }

@@ -99,6 +99,9 @@ function keyOfThunder(t) {
 function keyOfDep(d) {
   return `${d.rule || ""}|${d.summary || ""}|${d.severity || ""}|${d.min_defense || ""}|${d.anchor || ""}|${d.batch_id || ""}`;
 }
+function keyOfRisk(r) {
+  return String(r.risk || "").trim() || "unknown_risk";
+}
 function lineOrDash(v) {
   return v && String(v).trim() ? String(v).trim() : "-";
 }
@@ -215,7 +218,16 @@ function mergeBatches(batches) {
         missing_evidence: r.missing_evidence || "",
         impact: r.impact || "",
       };
-      riskMap.set(`${item.risk}|${item.current_evidence}|${item.missing_evidence}`, item);
+      const riskKey = keyOfRisk(item);
+      const existing = riskMap.get(riskKey);
+      if (!existing) riskMap.set(riskKey, item);
+      else {
+        const evidenceSet = new Set([existing.current_evidence, item.current_evidence].filter(Boolean));
+        const missingSet = new Set([existing.missing_evidence, item.missing_evidence].filter(Boolean));
+        existing.current_evidence = [...evidenceSet].join("; ");
+        existing.missing_evidence = [...missingSet].join("; ");
+        if (!existing.impact && item.impact) existing.impact = item.impact;
+      }
       addCount(signalCounts, `风险:${item.risk}`);
     }
   }
@@ -234,7 +246,7 @@ function mergeBatches(batches) {
   return {
     thunders,
     depressions,
-    risks: [...riskMap.values()],
+    risks: [...riskMap.values()].sort((a, b) => keyOfRisk(a).localeCompare(keyOfRisk(b), "zh")),
     batchIds,
     ranges,
     metadata: {
