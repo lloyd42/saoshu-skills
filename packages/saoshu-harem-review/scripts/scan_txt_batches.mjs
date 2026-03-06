@@ -2,61 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getExitCode } from "./lib/exit_codes.mjs";
+import { parseChapters, readNovelText } from "./lib/novel_input.mjs";
 import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
-
-function decodeBuffer(buf, encoding) {
-  return new TextDecoder(encoding, { fatal: false }).decode(buf);
-}
-
-function maybeGarbled(text) {
-  if (!text) return true;
-  const bad = (text.match(/\uFFFD/g) || []).length;
-  return bad > 0 && bad / Math.max(text.length, 1) > 0.001;
-}
-
-function cjkRatio(text) {
-  if (!text) return 0;
-  const cjk = (text.match(/[\u3400-\u9fff]/g) || []).length;
-  return cjk / Math.max(text.length, 1);
-}
-
-function tryParseChapterCount(text) {
-  const re = /^(?:(?:第\s*\d+\s*[节回卷话]\s*)?第\s*(\d+)\s*章[^\n]*)$/gm;
-  return [...text.matchAll(re)].length;
-}
-
-function readNovelText(inputPath) {
-  const buf = fs.readFileSync(inputPath);
-  const candidates = [];
-
-  const utf8 = buf.toString("utf8");
-  candidates.push({ encoding: "utf8", text: utf8, chapters: tryParseChapterCount(utf8), garbled: maybeGarbled(utf8) });
-
-  for (const enc of ["gb18030", "gbk"]) {
-    try {
-      const t = decodeBuffer(buf, enc);
-      candidates.push({ encoding: enc, text: t, chapters: tryParseChapterCount(t), garbled: maybeGarbled(t) });
-    } catch {
-      // Ignore unsupported encoding in current Node runtime.
-    }
-  }
-
-  candidates.sort((a, b) => {
-    if (b.chapters !== a.chapters) return b.chapters - a.chapters;
-    if (a.garbled !== b.garbled) return a.garbled ? 1 : -1;
-    return 0;
-  });
-
-  const best = candidates[0];
-  if (!best || best.chapters === 0) {
-    throw new Error("输入文本无法识别章节，可能是编码异常或正文格式不符合预期。建议先转成 UTF-8 后重试。\n检测结果：未找到有效章节标题。");
-  }
-  if (best.garbled || cjkRatio(best.text) < 0.05) {
-    throw new Error(`输入文本疑似存在编码异常，建议先转成 UTF-8 后重试。\n检测结果：encoding=${best.encoding}, chapters=${best.chapters}, garbled=${best.garbled}, cjk_ratio=${cjkRatio(best.text).toFixed(3)}`);
-  }
-
-  return best;
-}
 
 // High-specificity words can enter thunder_hits directly; low-specificity words only enter risk_unconfirmed.
 const THUNDER_STRICT = [
@@ -137,30 +84,6 @@ function parseArgs(argv) {
   if (out.batchSize < 10) scriptUsage("`--batch-size` 过小", "建议值不小于 10");
   if (out.overlap < 0 || out.overlap >= out.batchSize) scriptUsage("`--overlap` 超出范围", "要求：0 <= overlap < batch-size");
   return out;
-}
-
-function parseChapters(text) {
-  // Support variants like:
-  // - 第0001章 标题
-  // - 第1章：标题
-  // - 第1节 第1章：标题
-  const re = /^(?:(?:第\s*\d+\s*[节回卷话]\s*)?第\s*(\d+)\s*章[^\n]*)$/gm;
-  const matches = [...text.matchAll(re)];
-  if (matches.length === 0) throw new Error("No chapter headers found");
-
-  const chapters = [];
-  for (let i = 0; i < matches.length; i++) {
-    const m = matches[i];
-    const num = Number(m[1]);
-    const start = m.index;
-    const end = i + 1 < matches.length ? matches[i + 1].index : text.length;
-    const titleLineEnd = text.indexOf("\n", start);
-    const title = text.slice(start, titleLineEnd === -1 ? end : titleLineEnd).trim();
-    const bodyStart = titleLineEnd === -1 ? start : titleLineEnd + 1;
-    const body = text.slice(bodyStart, end);
-    chapters.push({ num, title, body });
-  }
-  return chapters;
 }
 
 function countMatches(text, pattern) {

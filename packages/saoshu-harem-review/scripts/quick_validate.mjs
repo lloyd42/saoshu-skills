@@ -16,10 +16,11 @@ function validateName(name) {
 }
 
 function extractFrontmatter(text) {
-  if (!text.startsWith("---\n")) return null;
-  const end = text.indexOf("\n---\n", 4);
+  const normalized = String(text || "").replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+  if (!normalized.startsWith("---\n")) return null;
+  const end = normalized.indexOf("\n---\n", 4);
   if (end === -1) return null;
-  const yaml = text.slice(4, end);
+  const yaml = normalized.slice(4, end);
   return yaml;
 }
 

@@ -109,6 +109,57 @@ function prepareFixture(baseDir, outputDirRelative, overrides = {}) {
   };
 }
 
+function prepareCustomFixture(baseDir, outputDirRelative, novelContent, overrides = {}, options = {}) {
+  ensureCleanDir(baseDir);
+  const inputPath = path.join(baseDir, "novel.txt");
+  const manifestPath = path.join(baseDir, "manifest.json");
+  fs.writeFileSync(inputPath, novelContent, "utf8");
+
+  const manifest = {
+    input_txt: "./novel.txt",
+    output_dir: outputDirRelative,
+    title: "自定义夹具",
+    author: "公开夹具",
+    tags: "示例/测试",
+    target_defense: "布甲",
+    batch_size: 80,
+    overlap: 2,
+    enrich_mode: "fallback",
+    enricher_cmd: "",
+    pipeline_mode: "performance",
+    sample_mode: "fixed",
+    sample_count: 7,
+    sample_level: "auto",
+    sample_min_count: 0,
+    sample_max_count: 0,
+    sample_strategy: "risk-aware",
+    wiki_dict: "",
+    report_default_view: "newbie",
+    report_pdf: false,
+    report_pdf_output: `${outputDirRelative}/merged-report.pdf`,
+    report_pdf_engine_cmd: "",
+    report_relation_graph: false,
+    report_relation_graph_output: `${outputDirRelative}/relation-graph.html`,
+    report_relation_top_chars: 20,
+    report_relation_top_signals: 16,
+    report_relation_min_edge_weight: 2,
+    report_relation_max_links: 220,
+    report_relation_min_name_freq: 2,
+    db_mode: "none",
+    db_path: `${outputDirRelative}/scan-db`,
+    db_ingest_cmd: "",
+    ...overrides,
+  };
+  const prefix = options.withBom ? "\uFEFF" : "";
+  fs.writeFileSync(manifestPath, `${prefix}${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+  return {
+    inputPath,
+    manifestPath,
+    outputDir: path.resolve(baseDir, outputDirRelative),
+  };
+}
+
 function assertStep(statePath, stepName, expectedStatus, detailIncludes = "") {
   const state = readJson(statePath);
   const step = Array.isArray(state.steps) ? state.steps.find((item) => item.step === stepName) : null;
@@ -151,11 +202,37 @@ function runIntegratedOptionalScenario() {
   const report = readJson(reportJson);
   if (report?.novel?.title === "最小样例-E2E") ok("integrated report metadata looks correct");
   else fail("integrated report metadata title mismatch");
+  if (report?.audit?.pipeline_state?.finished_at && report.audit.pipeline_state.finished_at !== "-") ok("integrated report audit finished_at is finalized");
+  else fail("integrated report audit finished_at should be finalized");
 
   const dbOverview = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["--db", path.join(fixture.outputDir, "scan-db"), "--metric", "overview", "--format", "text"]);
   expectSuccess(dbOverview, "integrated db overview query");
   if (dbOverview.stdout.includes("Total runs: 1")) ok("integrated db overview reflects ingested run");
   else fail("integrated db overview missing ingested run");
+}
+
+function runBomAndChineseChapterScenario() {
+  const scenarioDir = path.join(tmpRoot, "bom-cn");
+  const fixture = prepareCustomFixture(
+    scenarioDir,
+    "./workspace/minimal-e2e-bom-cn",
+    "第一章 开头\n男主遇到女主。\n\n第二章 继续\n故事继续推进。\n",
+    { title: "BOM+中文章名" },
+    { withBom: true }
+  );
+  ok("prepared BOM manifest + Chinese chapter fixture");
+
+  const pipelineResult = runNode("packages/saoshu-harem-review/scripts/run_pipeline.mjs", ["--manifest", fixture.manifestPath, "--stage", "all"]);
+  expectSuccess(pipelineResult, "BOM manifest + Chinese chapter pipeline run");
+
+  const reportJson = path.join(fixture.outputDir, "merged-report.json");
+  const statePath = path.join(fixture.outputDir, "pipeline-state.json");
+  assertExists(reportJson, "BOM fixture merged-report.json");
+  assertExists(statePath, "BOM fixture pipeline-state.json");
+
+  const report = readJson(reportJson);
+  if (report?.novel?.title === "BOM+中文章名") ok("BOM fixture report metadata looks correct");
+  else fail("BOM fixture report metadata title mismatch");
 }
 
 function buildIsolatedEnv(root) {
@@ -229,6 +306,7 @@ function runFallbackScenario() {
 function main() {
   ensureCleanDir(tmpRoot);
   runIntegratedOptionalScenario();
+  runBomAndChineseChapterScenario();
   runFallbackScenario();
   if (!hasFailure) console.log("Main-flow and fallback smoke check passed.");
   else process.exitCode = 1;

@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { readJsonFile } from "../../saoshu-harem-review/scripts/lib/json_input.mjs";
 
 function usage() {
   console.log("Usage: node db_ingest.mjs --db <dir> --report <merged-report.json> [--state <pipeline-state.json>] [--manifest <manifest.json>] [--run-id <id>]");
@@ -28,7 +29,7 @@ function readJsonIfExists(p) {
   if (!p) return {};
   const abs = path.resolve(p);
   if (!fs.existsSync(abs)) return {};
-  return JSON.parse(fs.readFileSync(abs, "utf8"));
+  return readJsonFile(abs);
 }
 
 function ensureDir(p) {

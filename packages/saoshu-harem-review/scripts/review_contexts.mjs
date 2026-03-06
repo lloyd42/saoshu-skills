@@ -2,60 +2,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getExitCode } from "./lib/exit_codes.mjs";
+import { readJsonFile } from "./lib/json_input.mjs";
+import { parseChapters, readNovelText } from "./lib/novel_input.mjs";
 import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
-
-function decodeBuffer(buf, encoding) {
-  return new TextDecoder(encoding, { fatal: false }).decode(buf);
-}
-
-function maybeGarbled(text) {
-  if (!text) return true;
-  const bad = (text.match(/\uFFFD/g) || []).length;
-  return bad > 0 && bad / Math.max(text.length, 1) > 0.001;
-}
-
-function cjkRatio(text) {
-  if (!text) return 0;
-  const cjk = (text.match(/[\u3400-\u9fff]/g) || []).length;
-  return cjk / Math.max(text.length, 1);
-}
-
-function tryParseChapterCount(text) {
-  const re = /^(?:(?:第\s*\d+\s*[节回卷话]\s*)?第\s*(\d+)\s*章[^\n]*)$/gm;
-  return [...text.matchAll(re)].length;
-}
-
-function readNovelText(inputPath) {
-  const buf = fs.readFileSync(inputPath);
-  const candidates = [];
-
-  const utf8 = buf.toString("utf8");
-  candidates.push({ encoding: "utf8", text: utf8, chapters: tryParseChapterCount(utf8), garbled: maybeGarbled(utf8) });
-
-  for (const enc of ["gb18030", "gbk"]) {
-    try {
-      const t = decodeBuffer(buf, enc);
-      candidates.push({ encoding: enc, text: t, chapters: tryParseChapterCount(t), garbled: maybeGarbled(t) });
-    } catch {
-      // Ignore unsupported encoding in current Node runtime.
-    }
-  }
-
-  candidates.sort((a, b) => {
-    if (b.chapters !== a.chapters) return b.chapters - a.chapters;
-    if (a.garbled !== b.garbled) return a.garbled ? 1 : -1;
-    return 0;
-  });
-
-  const best = candidates[0];
-  if (!best || best.chapters === 0) {
-    throw new Error("输入文本无法识别章节，可能是编码异常或正文格式不符合预期。建议先转成 UTF-8 后重试。\n检测结果：未找到有效章节标题。");
-  }
-  if (best.garbled || cjkRatio(best.text) < 0.05) {
-    throw new Error(`输入文本疑似存在编码异常，建议先转成 UTF-8 后重试。\n检测结果：encoding=${best.encoding}, chapters=${best.chapters}, garbled=${best.garbled}, cjk_ratio=${cjkRatio(best.text).toFixed(3)}`);
-  }
-  return best;
-}
 
 function usage() {
   console.log("Usage: node review_contexts.mjs --input <novel.txt> --batches <batch-dir> --output <review-dir> [--max-snippets 3] [--window 70]");
@@ -76,23 +25,6 @@ function parseArgs(argv) {
   }
   if (!out.input || !out.batches || !out.output) scriptUsage("缺少 `--input`、`--batches` 或 `--output`", "示例：node review_contexts.mjs --input ./novel.txt --batches ./batches --output ./review-pack");
   return out;
-}
-
-function parseChapters(text) {
-  const re = /^(?:(?:第\s*\d+\s*[节回卷话]\s*)?第\s*(\d+)\s*章[^\n]*)$/gm;
-  const matches = [...text.matchAll(re)];
-  if (matches.length === 0) throw new Error("No chapter headers found in txt");
-  const chapters = [];
-  for (let i = 0; i < matches.length; i++) {
-    const m = matches[i];
-    const start = m.index;
-    const end = i + 1 < matches.length ? matches[i + 1].index : text.length;
-    const lineEnd = text.indexOf("\n", start);
-    const title = text.slice(start, lineEnd === -1 ? end : lineEnd).trim();
-    const num = Number(m[1]);
-    chapters.push({ num, title, start, end });
-  }
-  return chapters;
 }
 
 function parseBatchRange(rangeText) {
@@ -150,7 +82,7 @@ function readBatchFiles(dir) {
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   return files.map((f) => {
     const p = path.join(abs, f);
-    return { file: f, path: p, data: JSON.parse(fs.readFileSync(p, "utf8")) };
+    return { file: f, path: p, data: readJsonFile(p) };
   });
 }
 

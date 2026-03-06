@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
+import { readJsonFile } from "./lib/json_input.mjs";
 import { findFirstExisting, getScriptDir, quotePath, runCommand } from "./lib/script_helpers.mjs";
 import { resolvePipelineManifest } from "./lib/pipeline_manifest.mjs";
 import { runOptionalStage, runStageIfSelected } from "./lib/pipeline_stages.mjs";
@@ -34,7 +35,7 @@ function readJson(p) {
   if (!fs.existsSync(absolutePath)) {
     pipelineIo(`文件不存在：${absolutePath}`);
   }
-  return JSON.parse(fs.readFileSync(absolutePath, "utf8"));
+  return readJsonFile(absolutePath);
 }
 
 function writeJson(p, obj) {
@@ -199,7 +200,6 @@ function main() {
         mergeRecommendedLevel = recalculated;
       }
     }
-    let cmd = `node ${quotePath(path.join(scriptDir, 'batch_merge.mjs'))} --input ${quotePath(workBatchesDir)} --output ${quotePath(md)} --json-out ${quotePath(js)} --html-out ${quotePath(html)} --title ${quotePath(title)} --author ${quotePath(author)} --tags ${quotePath(tags)} --target-defense ${quotePath(target)} --pipeline-mode ${quotePath(pipelineMode)} --sample-mode ${quotePath(sampleMode)} --sample-strategy ${quotePath(sampleStrategy)} --sample-level ${quotePath(sampleLevel)} --sample-level-effective ${quotePath(mergeEffectiveLevel)} --sample-level-recommended ${quotePath(mergeRecommendedLevel)} --sample-count ${sampleCount} --sample-min-count ${sampleMinCount} --sample-max-count ${sampleMaxCount} --total-batches ${totalBatches} --selected-batches ${selectedBatches} --state-path ${quotePath(statePath)} --report-default-view ${quotePath(reportDefaultView)}`;
     const defaultWiki = findFirstExisting([
       process.env.SAOSHU_WIKI_DICT || "",
       path.join(projectRoot, "saoshu-term-wiki", "references", "glossary.json"),
@@ -207,14 +207,19 @@ function main() {
       home ? path.join(home, ".codex", "skills", "saoshu-term-wiki", "references", "glossary.json") : "",
     ]);
     const wikiPath = wikiDict || defaultWiki;
-    if (fs.existsSync(path.resolve(wikiPath))) {
-      cmd += ` --wiki-dict ${quotePath(wikiPath)}`;
+    function buildMergeCommand() {
+      let cmd = `node ${quotePath(path.join(scriptDir, 'batch_merge.mjs'))} --input ${quotePath(workBatchesDir)} --output ${quotePath(md)} --json-out ${quotePath(js)} --html-out ${quotePath(html)} --title ${quotePath(title)} --author ${quotePath(author)} --tags ${quotePath(tags)} --target-defense ${quotePath(target)} --pipeline-mode ${quotePath(pipelineMode)} --sample-mode ${quotePath(sampleMode)} --sample-strategy ${quotePath(sampleStrategy)} --sample-level ${quotePath(sampleLevel)} --sample-level-effective ${quotePath(mergeEffectiveLevel)} --sample-level-recommended ${quotePath(mergeRecommendedLevel)} --sample-count ${sampleCount} --sample-min-count ${sampleMinCount} --sample-max-count ${sampleMaxCount} --total-batches ${totalBatches} --selected-batches ${selectedBatches} --state-path ${quotePath(statePath)} --report-default-view ${quotePath(reportDefaultView)}`;
+      if (wikiPath && fs.existsSync(path.resolve(wikiPath))) {
+        cmd += ` --wiki-dict ${quotePath(wikiPath)}`;
+      }
+      if (totalBatches > 0) {
+        cmd += ` --sample-coverage-rate ${(selectedBatches / totalBatches).toFixed(6)}`;
+      }
+      return cmd;
     }
-    if (totalBatches > 0) {
-      cmd += ` --sample-coverage-rate ${(selectedBatches / totalBatches).toFixed(6)}`;
-    }
-    runCommand(cmd);
-    mark("merge", "done", cmd);
+
+    const mergeCommand = buildMergeCommand();
+    runCommand(mergeCommand);
 
     runOptionalStage({
       enabled: reportPdf,
@@ -278,6 +283,12 @@ function main() {
     } else {
       mark("db_ingest", "skipped", "db_mode=none");
     }
+
+    state.finished_at = now();
+    state.pipeline_mode = pipelineMode;
+    state.work_batches_dir = workBatchesDir;
+    writeJson(statePath, state);
+    runCommand(buildMergeCommand());
   }
 
   runStageIfSelected(args.stage, "chunk", stageChunk);
@@ -286,7 +297,7 @@ function main() {
   runStageIfSelected(args.stage, "apply", stageApply);
   runStageIfSelected(args.stage, "merge", stageMerge);
 
-  state.finished_at = now();
+  if (!state.finished_at) state.finished_at = now();
   state.pipeline_mode = pipelineMode;
   state.work_batches_dir = workBatchesDir;
   writeJson(statePath, state);

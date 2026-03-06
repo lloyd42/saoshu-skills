@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { readJsonFile } from "./lib/json_input.mjs";
 
 const DEFENSES = ["神防之上", "神防", "重甲", "布甲", "轻甲", "低防", "负防", "极限负防"];
 const DEF_RANK = new Map(DEFENSES.map((d, i) => [d, i]));
@@ -82,8 +83,7 @@ function readBatchFiles(inputDir) {
   if (files.length === 0) throw new Error("No batch json files found (Bxx.json)");
   return files.map((f) => {
     const p = path.join(abs, f);
-    const raw = fs.readFileSync(p, "utf8");
-    const obj = JSON.parse(raw);
+    const obj = readJsonFile(p);
     obj.__file = p;
     return obj;
   });
@@ -127,7 +127,7 @@ function loadGlossary(file) {
   const p = path.resolve(file);
   if (!fs.existsSync(p)) return [];
   try {
-    const arr = JSON.parse(fs.readFileSync(p, "utf8"));
+    const arr = readJsonFile(p);
     return Array.isArray(arr) ? arr : [];
   } catch {
     return [];
@@ -764,7 +764,7 @@ function main() {
     const sp = path.resolve(args.statePath);
     if (fs.existsSync(sp)) {
       try {
-        args.pipelineState = JSON.parse(fs.readFileSync(sp, "utf8"));
+        args.pipelineState = readJsonFile(sp);
       } catch {
         args.pipelineState = {};
       }
