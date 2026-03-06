@@ -158,7 +158,49 @@ function ensureDir(p) {
   fs.mkdirSync(p, { recursive: true });
 }
 
-function linesForItem(title, keyword, snippets) {
+function normalizeSnippetText(snippets) {
+  return snippets.map((s) => s.snippet || "").join("\n");
+}
+
+function containsAny(text, patterns) {
+  return patterns.some((pattern) => text.includes(pattern));
+}
+
+function suggestDecision(item, snippets) {
+  const text = normalizeSnippetText(snippets);
+  if (!text) return { decision: "待补证", reason: "缺少足够片段" };
+
+  const femaleHints = ["她", "妻", "妃", "圣女", "公主", "小姐", "姑娘", "夫人", "女王", "师姐", "仙子", "道侣"];
+  const maleHints = ["他", "皇子", "圣子", "少主", "公子", "老爷", "父亲", "师父", "师尊", "弟子"];
+
+  const name = item.risk || item.rule || "";
+  if (name === "死女") {
+    if (containsAny(text, ["四皇子", "圣子", "公子", "少主"])) {
+      return { decision: "排除", reason: "死亡对象更像男性角色，不像女主死亡" };
+    }
+    const hasDeath = containsAny(text, ["战死", "殒命", "陨落", "身亡", "死"]);
+    if (hasDeath && containsAny(text, maleHints) && !containsAny(text, femaleHints)) {
+      return { decision: "排除", reason: "死亡对象更像男性或非女主对象" };
+    }
+  }
+
+  if (name === "送女") {
+    if (containsAny(text, ["机会送给", "传承送给", "所得之物", "作为报酬", "送给各位", "送给他", "这个机会送给"])) {
+      return { decision: "排除", reason: "更像资源、机会或收益转让，不像送女" };
+    }
+  }
+
+  if (name === "背叛") {
+    const relationHints = ["道侣", "妻子", "未婚妻", "女友", "她"];
+    if (!containsAny(text, relationHints) && containsAny(text, ["遭人背叛", "背叛了我", "得意弟子"])) {
+      return { decision: "排除", reason: "更像一般关系冲突，不像核心女主背叛" };
+    }
+  }
+
+  return { decision: "待补证", reason: "暂无法高置信确认或排除" };
+}
+
+function linesForItem(title, keyword, snippets, suggestion) {
   const lines = [];
   lines.push(`### ${title}`);
   lines.push(`- 关键词：${keyword || "(未解析)"}`);
@@ -170,6 +212,7 @@ function linesForItem(title, keyword, snippets) {
       lines.push(`  ${s.snippet}`);
     });
   }
+  lines.push(`- 机器建议：${suggestion.decision}（${suggestion.reason}）`);
   lines.push("- 复核结论：待补证");
   lines.push("- 填写规则：把上面改成且仅改成 `已确认` / `排除` / `待补证` 之一。");
   lines.push("");
@@ -212,7 +255,8 @@ function buildBatchReview(batch, text, chapters, opts) {
     const keyword = inferKeyword(it);
     const snippets = collectSnippets(text, start, end, keyword, opts.window, opts.maxSnippets, chapters);
     const title = `[${it.kind}] ${it.risk || it.rule || "未命名项"}`;
-    lines.push(...linesForItem(title, keyword, snippets));
+    const suggestion = suggestDecision(it, snippets);
+    lines.push(...linesForItem(title, keyword, snippets, suggestion));
   }
 
   return lines;

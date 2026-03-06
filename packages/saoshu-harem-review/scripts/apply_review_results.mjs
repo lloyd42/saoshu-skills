@@ -5,16 +5,17 @@ import { getExitCode } from "./lib/exit_codes.mjs";
 import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
 
 function usage() {
-  console.log("Usage: node apply_review_results.mjs --batches <batch-dir> --reviews <review-dir> [--dry-run]");
+  console.log("Usage: node apply_review_results.mjs --batches <batch-dir> --reviews <review-dir> [--dry-run] [--accept-suggested]");
 }
 
 function parseArgs(argv) {
-  const out = { batches: "", reviews: "", dryRun: false };
+  const out = { batches: "", reviews: "", dryRun: false, acceptSuggested: false };
   for (let i = 2; i < argv.length; i++) {
     const k = argv[i];
     if (k === "--batches") out.batches = argv[++i] || "";
     else if (k === "--reviews") out.reviews = argv[++i] || "";
     else if (k === "--dry-run") out.dryRun = true;
+    else if (k === "--accept-suggested") out.acceptSuggested = true;
     else if (k === "--help" || k === "-h") return null;
     else scriptUsage(`未知参数：${k}`, "示例：node apply_review_results.mjs --batches ./batches --reviews ./review-pack");
   }
@@ -37,6 +38,12 @@ function findDecision(line) {
   return "";
 }
 
+function findSuggestedDecision(line) {
+  if (!line) return "";
+  const m = /机器建议[:：]\s*(已确认|排除|待补证)/.exec(line);
+  return m ? m[1] : "";
+}
+
 function parseReviewFile(content) {
   const sections = [];
   const re = /^### \[(高风险|雷点候选|郁闷候选)\]\s+(.+)$/gm;
@@ -54,7 +61,10 @@ function parseReviewFile(content) {
     if (km) keyword = km[1].trim();
 
     let decision = "";
+    let suggestedDecision = "";
     for (const line of block.split(/\r?\n/)) {
+      const s = findSuggestedDecision(line);
+      if (s && !suggestedDecision) suggestedDecision = s;
       const d = findDecision(line);
       if (d) {
         decision = d;
@@ -62,7 +72,7 @@ function parseReviewFile(content) {
       }
     }
 
-    sections.push({ kind, name, keyword, decision });
+    sections.push({ kind, name, keyword, decision, suggestedDecision });
   }
   return sections;
 }
@@ -79,7 +89,7 @@ function markConfirmed(item) {
   }
 }
 
-function applySections(batch, sections) {
+function applySections(batch, sections, acceptSuggested = false) {
   let changed = 0;
   let stats = { confirmed: 0, excluded: 0, pending: 0 };
 
@@ -88,15 +98,18 @@ function applySections(batch, sections) {
   batch.risk_unconfirmed = Array.isArray(batch.risk_unconfirmed) ? batch.risk_unconfirmed : [];
 
   for (const s of sections) {
-    if (!s.decision) continue;
+    const finalDecision = s.decision === "待补证" && acceptSuggested && s.suggestedDecision && s.suggestedDecision !== "待补证"
+      ? s.suggestedDecision
+      : s.decision;
+    if (!finalDecision) continue;
 
     if (s.kind === "郁闷候选") {
       const idx = batch.depression_hits.findIndex((x) => x.rule === s.name && (includesKeyword(x.summary, s.keyword) || !s.keyword));
       if (idx >= 0) {
-        if (s.decision === "已确认") {
+        if (finalDecision === "已确认") {
           markConfirmed(batch.depression_hits[idx]);
           changed++; stats.confirmed++;
-        } else if (s.decision === "排除") {
+        } else if (finalDecision === "排除") {
           batch.depression_hits.splice(idx, 1);
           changed++; stats.excluded++;
         } else {
@@ -110,12 +123,12 @@ function applySections(batch, sections) {
     if (s.kind === "雷点候选") {
       const idx = batch.thunder_hits.findIndex((x) => x.rule === s.name && (includesKeyword(x.summary, s.keyword) || !s.keyword));
       if (idx >= 0) {
-        if (s.decision === "已确认") {
+        if (finalDecision === "已确认") {
           markConfirmed(batch.thunder_hits[idx]);
           // confirmed thunder no longer unconfirmed risk
           batch.risk_unconfirmed = batch.risk_unconfirmed.filter((r) => !(r.risk === s.name && (includesKeyword(r.current_evidence, s.keyword) || !s.keyword)));
           changed++; stats.confirmed++;
-        } else if (s.decision === "排除") {
+        } else if (finalDecision === "排除") {
           batch.thunder_hits.splice(idx, 1);
           batch.risk_unconfirmed = batch.risk_unconfirmed.filter((r) => !(r.risk === s.name && (includesKeyword(r.current_evidence, s.keyword) || !s.keyword)));
           changed++; stats.excluded++;
@@ -131,7 +144,7 @@ function applySections(batch, sections) {
       const riskIdx = batch.risk_unconfirmed.findIndex((r) => r.risk === s.name && (includesKeyword(r.current_evidence, s.keyword) || !s.keyword));
       const thunderIdx = batch.thunder_hits.findIndex((x) => x.rule === s.name && (includesKeyword(x.summary, s.keyword) || !s.keyword));
 
-      if (s.decision === "已确认") {
+      if (finalDecision === "已确认") {
         if (thunderIdx >= 0) {
           markConfirmed(batch.thunder_hits[thunderIdx]);
         } else {
@@ -144,7 +157,7 @@ function applySections(batch, sections) {
         }
         if (riskIdx >= 0) batch.risk_unconfirmed.splice(riskIdx, 1);
         changed++; stats.confirmed++;
-      } else if (s.decision === "排除") {
+      } else if (finalDecision === "排除") {
         if (riskIdx >= 0) batch.risk_unconfirmed.splice(riskIdx, 1);
         if (thunderIdx >= 0 && (batch.thunder_hits[thunderIdx].evidence_level || "").includes("未知待证")) {
           batch.thunder_hits.splice(thunderIdx, 1);
@@ -190,7 +203,7 @@ function main() {
     const batch = JSON.parse(readText(batchPath));
 
     const before = JSON.stringify(batch);
-    const res = applySections(batch, review);
+    const res = applySections(batch, review, args.acceptSuggested);
     const after = JSON.stringify(batch);
 
     total.files++;
