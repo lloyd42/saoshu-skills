@@ -9,7 +9,39 @@
     "range": {"type": "string"},
     "events": {"type": "array", "items": {"type": "string"}},
     "new_characters": {"type": "array"},
-    "metadata": {"type": "object"},
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "chapter_title_scan": {
+          "type": "object",
+          "properties": {
+            "score": {"type": "number"},
+            "critical": {"type": "boolean"},
+            "hit_chapter_count": {"type": "integer"},
+            "risk_rules": {"type": "array", "items": {"type": "string"}},
+            "depression_rules": {"type": "array", "items": {"type": "string"}},
+            "hits": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "chapter_num": {"type": "integer"},
+                  "chapter_title": {"type": "string"},
+                  "type": {"type": "string"},
+                  "rule": {"type": "string"},
+                  "matched": {"type": "string"},
+                  "weight": {"type": "number"},
+                  "critical": {"type": "boolean"}
+                },
+                "additionalProperties": true
+              }
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
     "thunder_hits": {
       "type": "array",
       "items": {

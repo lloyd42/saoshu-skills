@@ -98,6 +98,19 @@ const DEPRESSION_RULES = [
   { rule: "擦边", severity: "超轻微", min_defense: "低防", minCount: 4, patterns: ["暧昧", "差点", "险些"] },
 ];
 
+const TITLE_SIGNAL_RULES = [
+  { type: "risk", rule: "绿帽", weight: 8, critical: true, patterns: ["绿帽", "ntr", "偷情", "出轨", "奸情"] },
+  { type: "risk", rule: "送女", weight: 8, critical: true, patterns: ["送女", "送给", "送人", "让给", "共享"] },
+  { type: "risk", rule: "背叛", weight: 8, critical: true, patterns: ["背叛", "叛变", "反目", "投靠"] },
+  { type: "risk", rule: "死女", weight: 8, critical: true, patterns: ["死别", "诀别", "香消玉殒", "陨落", "战死", "殒命"] },
+  { type: "risk", rule: "wrq", weight: 8, critical: true, patterns: ["万人骑", "人尽可夫", "交际花"] },
+  { type: "depression", rule: "前世雷", weight: 4, critical: false, patterns: ["前世", "原剧情", "前尘", "旧梦"] },
+  { type: "depression", rule: "px/fc/非初", weight: 4, critical: false, patterns: ["人妻", "前任", "嫁过", "破身", "非处"] },
+  { type: "depression", rule: "虐主", weight: 3, critical: false, patterns: ["重伤", "围杀", "羞辱", "追杀"] },
+  { type: "depression", rule: "百合", weight: 2, critical: false, patterns: ["百合", "女女"] },
+  { type: "depression", rule: "接盘", weight: 2, critical: false, patterns: ["接盘", "前夫", "前男友", "离异"] },
+];
+
 const TAG_PATTERNS = [
   "穿越", "重生", "系统", "学院", "宗门", "帝国", "皇宫", "朝堂", "战争", "后宫", "未婚妻", "妻子", "公主", "女王", "炼丹"
 ];
@@ -264,6 +277,43 @@ function detectHits(batchText, batchRangeText) {
   return { thunder, depression, risks };
 }
 
+function analyzeChapterTitles(batch) {
+  const hits = [];
+  for (const chapter of batch) {
+    const title = String(chapter.title || "").trim();
+    if (!title) continue;
+    for (const rule of TITLE_SIGNAL_RULES) {
+      for (const pattern of rule.patterns) {
+        if (!title.includes(pattern)) continue;
+        hits.push({
+          chapter_num: chapter.num,
+          chapter_title: title,
+          type: rule.type,
+          rule: rule.rule,
+          matched: pattern,
+          weight: rule.weight,
+          critical: rule.critical,
+        });
+        break;
+      }
+    }
+  }
+
+  hits.sort((a, b) => {
+    if (b.weight !== a.weight) return b.weight - a.weight;
+    return a.chapter_num - b.chapter_num;
+  });
+
+  return {
+    score: hits.reduce((sum, hit) => sum + hit.weight, 0),
+    critical: hits.some((hit) => hit.critical),
+    hit_chapter_count: new Set(hits.map((hit) => hit.chapter_num)).size,
+    risk_rules: [...new Set(hits.filter((hit) => hit.type === "risk").map((hit) => hit.rule))],
+    depression_rules: [...new Set(hits.filter((hit) => hit.type === "depression").map((hit) => hit.rule))],
+    hits: hits.slice(0, 8),
+  };
+}
+
 function uniqueBy(arr, keyFn) {
   const m = new Map();
   for (const it of arr) m.set(keyFn(it), it);
@@ -305,6 +355,7 @@ function main() {
     const events = batch.slice(0, 6).map((c) => c.title);
     const topTags = extractTopTags(batchText, 12);
     const topChars = extractTopCharacters(batchText, 16);
+    const chapterTitleScan = analyzeChapterTitles(batch);
     const topSignals = [
       ...hits.thunder.map((x) => ({ name: `雷点:${x.rule}`, count: 1 })),
       ...hits.depression.map((x) => ({ name: `郁闷:${x.rule}`, count: 1 })),
@@ -321,6 +372,7 @@ function main() {
         top_tags: topTags,
         top_characters: topChars,
         top_signals: topSignals,
+        chapter_title_scan: chapterTitleScan,
       },
       thunder_hits: uniqueBy(hits.thunder, (x) => `${x.rule}|${x.anchor}`),
       depression_hits: uniqueBy(hits.depression, (x) => `${x.rule}|${x.anchor}`),

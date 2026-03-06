@@ -76,6 +76,20 @@ function riskScore(batch) {
   return score;
 }
 
+function readTitleScan(batch) {
+  const scan = batch?.metadata?.chapter_title_scan;
+  if (!scan || typeof scan !== "object") {
+    return { score: 0, critical: false, hitChapterCount: 0, riskRules: [], depressionRules: [] };
+  }
+  return {
+    score: Number.isFinite(Number(scan.score)) ? Number(scan.score) : 0,
+    critical: Boolean(scan.critical),
+    hitChapterCount: Number.isFinite(Number(scan.hit_chapter_count)) ? Number(scan.hit_chapter_count) : 0,
+    riskRules: Array.isArray(scan.risk_rules) ? scan.risk_rules.map((x) => String(x)) : [],
+    depressionRules: Array.isArray(scan.depression_rules) ? scan.depression_rules.map((x) => String(x)) : [],
+  };
+}
+
 function hasCriticalSignal(batch) {
   const critical = new Set(["wrq", "死女", "送女", "背叛", "绿帽"]);
   const thunder = Array.isArray(batch.thunder_hits) ? batch.thunder_hits : [];
@@ -99,7 +113,17 @@ function pickRiskAware(files, inputDir, k, prebuiltMeta = null) {
   const anchors = [0, Math.floor((n - 1) * 0.5), n - 1];
   for (const a of anchors) chosen.add(a);
 
-  // Hard include: batches with critical risk signals.
+  // Hard include: title-based critical batches first.
+  const titleCriticalIdx = meta
+    .filter((x) => x.titleCritical)
+    .sort((a, b) => b.titleScore - a.titleScore || b.score - a.score)
+    .map((x) => x.i);
+  for (const idx of titleCriticalIdx) {
+    if (chosen.size >= k) break;
+    chosen.add(idx);
+  }
+
+  // Then include正文中的关键风险批次。
   const criticalIdx = meta.filter((x) => x.critical).sort((a, b) => b.score - a.score).map((x) => x.i);
   for (const idx of criticalIdx) {
     if (chosen.size >= k) break;
@@ -119,7 +143,7 @@ function pickRiskAware(files, inputDir, k, prebuiltMeta = null) {
   }
 
   // Risk-priority fill (global).
-  const scored = [...meta].sort((a, b) => b.score - a.score);
+  const scored = [...meta].sort((a, b) => b.combinedScore - a.combinedScore || b.titleScore - a.titleScore || b.score - a.score);
 
   for (const s of scored) {
     if (chosen.size >= k) break;
@@ -146,13 +170,20 @@ function buildMeta(files, inputDir) {
     const p = path.join(inputDir, f);
     try {
       const b = readJson(p);
+      const titleScan = readTitleScan(b);
+      const contentScore = riskScore(b);
+      const titleBonus = titleScan.score * 2 + titleScan.hitChapterCount;
       return {
         i,
-        score: riskScore(b),
+        score: contentScore,
         critical: hasCriticalSignal(b),
+        titleScore: titleScan.score,
+        titleCritical: titleScan.critical,
+        titleHitChapterCount: titleScan.hitChapterCount,
+        combinedScore: contentScore + titleBonus,
       };
     } catch {
-      return { i, score: 0, critical: false };
+      return { i, score: 0, critical: false, titleScore: 0, titleCritical: false, titleHitChapterCount: 0, combinedScore: 0 };
     }
   });
 }
@@ -166,9 +197,13 @@ function resolveDynamicCount(total, level, meta, minCountArg, maxCountArg) {
 
   const signalDensity = total ? meta.filter((x) => x.score > 0).length / total : 0;
   const criticalDensity = total ? meta.filter((x) => x.critical).length / total : 0;
+  const titleSignalDensity = total ? meta.filter((x) => x.titleScore > 0).length / total : 0;
+  const titleCriticalDensity = total ? meta.filter((x) => x.titleCritical).length / total : 0;
   const avgScore = total ? meta.reduce((s, x) => s + x.score, 0) / total : 0;
+  const avgCombinedScore = total ? meta.reduce((s, x) => s + x.combinedScore, 0) / total : 0;
   const avgScoreNorm = avgScore / (avgScore + 10);
-  const riskPressure = clamp((criticalDensity * 1.4) + (signalDensity * 0.6) + (avgScoreNorm * 0.5), 0, 1);
+  const avgCombinedScoreNorm = avgCombinedScore / (avgCombinedScore + 12);
+  const riskPressure = clamp((criticalDensity * 1.1) + (titleCriticalDensity * 1.0) + (signalDensity * 0.45) + (titleSignalDensity * 0.45) + (avgScoreNorm * 0.35) + (avgCombinedScoreNorm * 0.35), 0, 1);
   const targetRate = clamp(profile.baseRate + profile.riskBoostMax * riskPressure, 0.05, 1);
 
   const minCount = Math.max(3, minCountArg > 0 ? minCountArg : profile.minCount);
@@ -182,7 +217,10 @@ function resolveDynamicCount(total, level, meta, minCountArg, maxCountArg) {
     riskPressure,
     signalDensity,
     criticalDensity,
+    titleSignalDensity,
+    titleCriticalDensity,
     avgScore: Number(avgScore.toFixed(2)),
+    avgCombinedScore: Number(avgCombinedScore.toFixed(2)),
   };
 }
 
@@ -224,7 +262,7 @@ function main() {
   if (dynamicInfo) {
     console.log(`Level: ${args.level}`);
     console.log(`Target rate: ${(dynamicInfo.targetRate * 100).toFixed(1)}%`);
-    console.log(`Risk pressure: ${dynamicInfo.riskPressure.toFixed(3)} (signal=${dynamicInfo.signalDensity.toFixed(3)}, critical=${dynamicInfo.criticalDensity.toFixed(3)}, avgScore=${dynamicInfo.avgScore})`);
+    console.log(`Risk pressure: ${dynamicInfo.riskPressure.toFixed(3)} (signal=${dynamicInfo.signalDensity.toFixed(3)}, critical=${dynamicInfo.criticalDensity.toFixed(3)}, titleSignal=${dynamicInfo.titleSignalDensity.toFixed(3)}, titleCritical=${dynamicInfo.titleCriticalDensity.toFixed(3)}, avgScore=${dynamicInfo.avgScore}, avgCombined=${dynamicInfo.avgCombinedScore})`);
   }
   console.log(`Strategy: ${args.strategy}`);
   console.log(`Output: ${output}`);

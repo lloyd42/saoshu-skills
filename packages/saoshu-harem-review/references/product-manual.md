@@ -51,6 +51,7 @@
 - 支持 `fixed` 与 `dynamic`。
 - dynamic 档位：`low/medium/high/auto`。
 - `auto` 按批次数自动推荐档位并记录到审计状态。
+- `economy + risk-aware` 会先全量扫章节标题，再优先抽取标题带高风险/高郁闷信号的批次做全文扫描。
 
 ### 4.5 报告多格式输出
 - `merged-report.json`：机器可读真源。
@@ -170,6 +171,7 @@ Manifest 向导（新手推荐）：
 ### 9.2 推荐默认
 - 新人默认 `economy + dynamic + auto + risk-aware`
 - 关键决策前切换 `performance` 复核
+- 如果 `economy` 已命中标题高风险，建议直接查看对应批次复核包，必要时切到 `performance` 做全量确认
 
 ## 10. 扩展能力（MCP/外部工具）
 建议外接能力：
@@ -187,7 +189,7 @@ Q1：提示找不到章节头
 A：优先检查编码与章节格式；系统已支持 UTF-8/GB18030/GBK。
 
 Q2：economy 与 performance 结论不同  
-A：先看 `mode-diff` 差异，再提高 `sample_level` 或改 `performance`。
+A：先看 `mode-diff` 差异，再结合章节标题命中批次提高 `sample_level`，或直接切到 `performance`。
 
 Q3：术语解释没出现  
 A：检查 `wiki_dict` 路径，或确认已安装 `saoshu-term-wiki`。
