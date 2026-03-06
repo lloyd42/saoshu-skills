@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-06
+
 ### 新增
 - 增加章节标题先导扫描，并用于增强 `economy` 模式抽样优先级
 - 增加 `scan.sampling.selection_reasons`，在报告中解释节能模式为何抽中对应批次
