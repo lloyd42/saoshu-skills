@@ -56,7 +56,7 @@
 ### 4.5 报告多格式输出
 - `merged-report.json`：机器可读真源。
 - `merged-report.md`：文本可读。
-- `merged-report.html`：可视化展示，含抽样信息、审计面板。
+- `merged-report.html`：可视化展示，含抽样信息、抽样命中原因、审计面板。
 - `merged-report.pdf`：可选自动导出（本地浏览器 headless 打印）。
 
 ### 4.6 术语百科（Wiki）
@@ -150,7 +150,7 @@ Manifest 向导（新手推荐）：
 - `newbie_card`（新手摘要卡：红黄绿风险灯 + 3条建议）
 - `overall.verdict`（可看/慎入/劝退）
 - `overall.rating`（推荐指数）
-- `scan.sampling`（模式、覆盖率、档位）
+- `scan.sampling`（模式、覆盖率、档位、抽样命中原因）
 
 再看：
 - `thunder.items`（雷点）
@@ -215,3 +215,4 @@ A：开启 `db_mode=local` 入库后，使用 `saoshu-scan-db/scripts/db_query.m
 ## 14. 免责声明
 本工具输出是“阅读决策辅助”，不是绝对真相。  
 结论可靠性取决于覆盖率、证据质量与复核充分度。
+

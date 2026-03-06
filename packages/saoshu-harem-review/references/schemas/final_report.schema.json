@@ -23,7 +23,8 @@
             "total_batches": {"type": "integer"},
             "selected_batches": {"type": "integer"},
             "coverage_ratio": {"type": "number"},
-            "basis_lines": {"type": "array", "items": {"type": "string"}}
+            "basis_lines": {"type": "array", "items": {"type": "string"}},
+            "selection_reasons": {"type": "array", "items": {"type": "object"}}
           },
           "additionalProperties": true
         }
@@ -99,3 +100,4 @@
   },
   "additionalProperties": true
 }
+

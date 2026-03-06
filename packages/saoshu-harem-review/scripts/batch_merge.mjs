@@ -171,6 +171,7 @@ function mergeBatches(batches) {
   const charCounts = new Map();
   const signalCounts = new Map();
   const enrichmentSourceCounts = new Map();
+  const sampleReasonRows = [];
 
   for (const b of batches) {
     const batchId = b.batch_id || path.basename(b.__file, ".json");
@@ -181,9 +182,29 @@ function mergeBatches(batches) {
     const enriched = meta.enriched || null;
     const topTags = enriched?.top_tags || meta.top_tags || [];
     const topChars = enriched?.top_characters || meta.top_characters || [];
+    const titleScan = meta.chapter_title_scan || {};
     for (const x of normList(topTags)) addCount(tagCounts, x.name || "", Number(x.count || 1));
     for (const x of normList(topChars)) addCount(charCounts, x.name || "", Number(x.count || 1));
     addCount(enrichmentSourceCounts, enriched?.source || meta.source || "unknown");
+    const titleHits = normList(titleScan.hits).slice(0, 3).map((x) => ({
+      chapter_num: Number(x.chapter_num || 0),
+      chapter_title: String(x.chapter_title || ""),
+      type: String(x.type || ""),
+      rule: String(x.rule || ""),
+      matched: String(x.matched || ""),
+      weight: Number(x.weight || 0),
+      critical: Boolean(x.critical),
+    })).filter((x) => x.rule || x.chapter_title);
+    if (titleHits.length > 0 || Number(titleScan.score || 0) > 0) {
+      sampleReasonRows.push({
+        batch_id: batchId,
+        range: String(b.range || ""),
+        title_score: Number(titleScan.score || 0),
+        title_critical: Boolean(titleScan.critical),
+        hit_chapter_count: Number(titleScan.hit_chapter_count || 0),
+        title_hits: titleHits,
+      });
+    }
 
     for (const t of normList(b.thunder_hits)) {
       const item = {
@@ -254,6 +275,9 @@ function mergeBatches(batches) {
       top_characters: topN(charCounts, 16),
       top_signals: topN(signalCounts, 16),
       enrichment_sources: topN(enrichmentSourceCounts, 8),
+      sample_reasons: sampleReasonRows
+        .sort((a, b) => b.title_score - a.title_score || Number(b.title_critical) - Number(a.title_critical) || a.batch_id.localeCompare(b.batch_id, "zh"))
+        .slice(0, 8),
     },
   };
 }
@@ -352,6 +376,15 @@ function buildReportData(meta, merged, glossaryIndex) {
       sampleBasis.push(`固定批次数：${Number(meta.sampleCount)}`);
     }
     sampleBasis.push(`覆盖：${selectedBatches}/${totalBatches} (${(coverageRate * 100).toFixed(1)}%)`);
+    const sampleReasons = Array.isArray(merged.metadata.sample_reasons) ? merged.metadata.sample_reasons : [];
+    if (sampleReasons.length > 0) {
+      const preview = sampleReasons.slice(0, 3).map((x) => {
+        const firstHit = Array.isArray(x.title_hits) && x.title_hits.length > 0 ? x.title_hits[0] : null;
+        if (!firstHit) return `${x.batch_id}(标题分=${x.title_score})`;
+        return `${x.batch_id}(${firstHit.rule}:${firstHit.matched})`;
+      });
+      sampleBasis.push(`标题命中优先：${preview.join("、")}`);
+    }
   } else {
     sampleBasis.push("全量扫描（performance）");
     sampleBasis.push(`覆盖：${selectedBatches || merged.batchIds.length}/${totalBatches || merged.batchIds.length} (100%)`);
@@ -417,6 +450,7 @@ function buildReportData(meta, merged, glossaryIndex) {
         selected_batches: selectedBatches || merged.batchIds.length,
         coverage_ratio: Number(coverageRate.toFixed(6)),
         basis_lines: sampleBasis,
+        selection_reasons: merged.metadata.sample_reasons || [],
       },
     },
     metadata_summary: merged.metadata,
@@ -487,6 +521,14 @@ function renderMarkdown(data) {
   lines.push(`- 高频角色：${data.metadata_summary.top_characters.map((x) => `${x.name}(${x.count})`).join("、") || "-"}`);
   lines.push(`- 风险信号：${data.metadata_summary.top_signals.map((x) => `${x.name}(${x.count})`).join("、") || "-"}`);
   lines.push(`- 元数据来源：${(data.metadata_summary.enrichment_sources || []).map((x) => `${x.name}(${x.count})`).join("、") || "-"}`);
+  const selectionReasons = (data.scan.sampling && Array.isArray(data.scan.sampling.selection_reasons)) ? data.scan.sampling.selection_reasons : [];
+  if (selectionReasons.length > 0) {
+    lines.push(`- 抽样命中原因：${selectionReasons.map((x) => {
+      const firstHit = Array.isArray(x.title_hits) && x.title_hits.length > 0 ? x.title_hits[0] : null;
+      if (!firstHit) return `${x.batch_id}(标题分=${x.title_score})`;
+      return `${x.batch_id}[${firstHit.rule}:${firstHit.matched}]`;
+    }).join("、")}`);
+  }
   lines.push("");
 
   lines.push("## 🔴 雷点检测");
@@ -570,6 +612,12 @@ function renderHtml(data) {
   const sampling = data.scan.sampling || {};
   const sampleBasis = Array.isArray(sampling.basis_lines) ? sampling.basis_lines : [];
   const sampleBasisHtml = sampleBasis.map((x) => `<li>${escapeHtml(x)}</li>`).join("");
+  const selectionReasons = Array.isArray(sampling.selection_reasons) ? sampling.selection_reasons : [];
+  const selectionReasonsHtml = selectionReasons.map((x) => {
+    const hitRows = Array.isArray(x.title_hits) ? x.title_hits.map((hit) => `${escapeHtml(hit.rule)} / ${escapeHtml(hit.matched)} / 第${Number(hit.chapter_num) || '-'}章`).join("；") : "";
+    const reason = hitRows || `标题分 ${Number(x.title_score || 0)}`;
+    return `<tr><td>${escapeHtml(x.batch_id || '-')}</td><td>${escapeHtml(x.range || '-')}</td><td>${Number(x.title_score || 0)}</td><td>${x.title_critical ? '是' : '否'}</td><td>${reason}</td></tr>`;
+  }).join("");
   const audit = data.audit || {};
   const pipelineState = audit.pipeline_state || {};
   const stepRows = (Array.isArray(pipelineState.steps) ? pipelineState.steps : [])
@@ -642,6 +690,7 @@ body.view-newbie .expert-only{display:none}
   <div class="section">
     <h2>抽样信息</h2>
     <ul class="summary">${sampleBasisHtml || "<li>无</li>"}</ul>
+    ${selectionReasonsHtml ? `<table style="margin-top:10px"><thead><tr><th>批次</th><th>范围</th><th>标题分</th><th>关键命中</th><th>原因</th></tr></thead><tbody>${selectionReasonsHtml}</tbody></table>` : ""}
     <details class="audit-details">
       <summary>审计面板（参数与步骤）</summary>
       <div class="muted" style="margin-top:8px">started_at: ${escapeHtml(pipelineState.started_at || "-")} ｜ finished_at: ${escapeHtml(pipelineState.finished_at || "-")}</div>
@@ -748,3 +797,6 @@ try {
   console.error(`Error: ${err.message}`);
   process.exit(1);
 }
+
+
+
