@@ -21,6 +21,15 @@
 - 推荐使用 Conventional Commits
 - 常用前缀：`feat:`、`fix:`、`docs:`、`chore:`、`refactor:`、`test:`
 
+## 版本管理
+- 日常开发只维护 `CHANGELOG.md` 的 `Unreleased`
+- 正式发布前再统一提升 `package.json.version`
+- Git 标签统一使用 `vX.Y.Z`
+- 发布前必须完成：`npm run check`
+- 如改动影响公开契约、报告字段或 CLI 行为，必须在 changelog 中写明
+- 详细规则见 `VERSIONING.md`
+
 ## Pull Requests
 - 说明改动目标、影响范围与验证方式
 - 如涉及输出结构变化，请注明兼容性影响
+- 如涉及发版内容，请说明建议版本级别：`major` / `minor` / `patch`
