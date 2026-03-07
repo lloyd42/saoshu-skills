@@ -18,6 +18,11 @@ const forbiddenSnippets = [
   "D:\\codex\\test",
   "D:\\codex\\tmp",
 ];
+const forbiddenPatterns = [
+  { label: "windows user-profile absolute path", regex: /(?:^|[\s"'`=(])(?:[A-Za-z]:[\\/](?:Users|Documents and Settings)[\\/][^\s"'`]+[\\/][^\r\n"'`]+)/m },
+  { label: "unix home absolute path", regex: /(?:^|[\s"'`=(])(?:\/(?:Users|home)\/[^\s"'`]+\/[^\r\n"'`]+)/m },
+  { label: "temporary absolute path", regex: /(?:^|[\s"'`=(])(?:[A-Za-z]:[\\/](?:temp|tmp)[\\/][^\r\n"'`]+|\/(?:tmp|var\/tmp|private\/tmp)\/[^\r\n"'`]+)/m },
+];
 
 let hasFailure = false;
 
@@ -46,7 +51,7 @@ function walk(dir, output = []) {
 const files = walk(repoRoot).filter((filePath) => {
   const normalized = filePath.replaceAll("\\", "/");
   if (normalized.endsWith("/check_repo_boundaries.mjs")) return false;
-  return [".mjs", ".json", ".yaml", ".yml"].some((ext) => normalized.endsWith(ext));
+  return [".mjs", ".json", ".yaml", ".yml", ".md"].some((ext) => normalized.endsWith(ext));
 });
 
 for (const filePath of files) {
@@ -55,6 +60,11 @@ for (const filePath of files) {
   for (const snippet of forbiddenSnippets) {
     if (text.includes(snippet)) {
       fail(`external dev path found in ${normalized}: ${snippet}`);
+    }
+  }
+  for (const pattern of forbiddenPatterns) {
+    if (pattern.regex.test(text)) {
+      fail(`absolute local path pattern found in ${normalized}: ${pattern.label}`);
     }
   }
 }

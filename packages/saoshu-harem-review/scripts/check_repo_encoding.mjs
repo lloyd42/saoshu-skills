@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-const exts = new Set([".md", ".json", ".mjs", ".yml", ".yaml"]);
+const exts = new Set([".md", ".json", ".mjs", ".yml", ".yaml", ".txt"]);
 const skipDirs = new Set([".git", "node_modules", ".tmp"]);
 const skipFragments = ["/examples/minimal/workspace/"];
 let hasFailure = false;
@@ -45,6 +45,7 @@ for (const filePath of files) {
   const buf = fs.readFileSync(filePath);
   const text = buf.toString("utf8");
   if (hasUtf8Bom(buf)) fail(`BOM found in ${normalized}`);
+  if (buf.includes(0x00)) fail(`NUL byte found in ${normalized}`);
   if (text.includes(String.fromCharCode(0xfffd))) fail(`replacement character found in ${normalized}`);
 }
 
