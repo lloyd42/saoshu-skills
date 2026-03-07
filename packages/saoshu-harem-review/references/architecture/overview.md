@@ -89,6 +89,12 @@ dynamic 抽样策略：
 - 目标：在不同小说规模下维持相对一致的抽样率，同时对高风险样本自动增加覆盖
 - `auto` 推荐规则（按批次数）：`<=8 -> high`，`9~20 -> medium`，`>20 -> low`
 
+外部命令模板约定：
+- `enricher_cmd` 支持占位符 `{batch_file}`
+- `db_ingest_cmd` 支持占位符 `{report}`、`{state}`、`{manifest}`、`{db}`
+- `report_pdf_engine_cmd` 支持占位符 `{input}`、`{output}`、`{input_url}`
+- 仓库自有脚本优先走参数数组执行；仅显式外部模板命令保留 shell 字符串方式
+
 术语百科接入：
 - `merge` 阶段支持读取词典并生成 `term_wiki`。
 - HTML 报告对命中术语提供悬浮释义（title）与术语速查表。

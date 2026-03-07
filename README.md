@@ -197,6 +197,7 @@ npm run check
 - schema 样例
 
 更多贡献约定见 `CONTRIBUTING.md`，版本发布规则见 `VERSIONING.md`。
+如需配置外部增强、外部入库或自定义 PDF 引擎命令模板，可先看 `packages/saoshu-harem-review/references/product-manual.md` 中的“外部命令模板契约”。
 
 ## 退出码
 

@@ -138,6 +138,55 @@ Manifest 向导（新手推荐）：
 示例文件：
 - `references/architecture/manifest.example.json`
 
+## 6.1 外部命令模板契约
+
+以下字段支持“命令模板”形式，适合接入外部工具或企业内部脚本：
+
+- `enricher_cmd`
+- `db_ingest_cmd`
+- `report_pdf_engine_cmd`
+
+约定如下：
+
+- 仓库自有脚本优先使用参数数组执行；只有显式外部模板命令保留 shell 字符串模式
+- 模板中的占位符会在运行前替换成实际路径
+- 推荐把路径型参数都写成独立参数位，不要自己再手工拼引号嵌套
+
+占位符列表：
+
+- `enricher_cmd`
+  - `{batch_file}`：当前批次 `Bxx.json` 的绝对路径
+- `db_ingest_cmd`
+  - `{report}`：`merged-report.json` 的绝对路径
+  - `{state}`：`pipeline-state.json` 的绝对路径
+  - `{manifest}`：manifest 的绝对路径
+  - `{db}`：数据库目录的绝对路径
+- `report_pdf_engine_cmd`
+  - `{input}`：HTML 输入文件绝对路径
+  - `{output}`：PDF 输出文件绝对路径
+  - `{input_url}`：HTML 输入文件对应的 `file:///` URL
+
+推荐写法：
+
+```bash
+--enricher-cmd "your-enricher --input {batch_file}"
+--db-ingest-cmd "python ingest.py --report {report} --state {state} --manifest {manifest} --db {db}"
+--engine-cmd "chrome --headless --print-to-pdf={output} {input_url}"
+```
+
+不推荐写法：
+
+- 把多个占位符硬塞进一个需要再次解析的长字符串
+- 自己手工再包多层引号，导致 Windows / macOS / Linux shell 行为不一致
+- 依赖本地绝对路径而不通过占位符传入
+
+失败时的排查顺序：
+
+1. 先确认模板字段本身非空
+2. 再确认占位符是否拼写正确
+3. 再单独在终端里执行替换后的命令
+4. 最后再看仓库脚本是否真的需要改动
+
 ## 7. 输出目录说明
 典型目录：
 - `workspace/<run>/batches-all`
