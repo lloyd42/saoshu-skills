@@ -46,13 +46,46 @@ export function handleDb(rest, context) {
 
 export function handleCompare(rest, context) {
   const sub = rest[0] || "";
+  const reviewRoot = getInstalledSkillPath("saoshu-harem-review", context.importMetaUrl);
   if (sub === "ledger") {
     const ledger = requireArg(valueOf(rest, "--ledger"), "compare ledger 缺少 `--ledger`", "示例：node saoshu_cli.mjs compare ledger --ledger ./mode-diff-ledger.jsonl --output-dir ./workspace/mode-diff-summary");
     const outputDir = requireArg(valueOf(rest, "--output-dir"), "compare ledger 缺少 `--output-dir`", "示例：node saoshu_cli.mjs compare ledger --ledger ./mode-diff-ledger.jsonl --output-dir ./workspace/mode-diff-summary");
     const title = valueOf(rest, "--title", "mode-diff 台账汇总");
-    const ledgerScript = path.join(getInstalledSkillPath("saoshu-harem-review", context.importMetaUrl), "scripts/mode_diff_ledger.mjs");
+    const ledgerScript = path.join(reviewRoot, "scripts/mode_diff_ledger.mjs");
     if (!fs.existsSync(ledgerScript)) failUsage(`未找到台账汇总脚本：${ledgerScript}`);
     return runNodeScript(ledgerScript, ["--ledger", ledger, "--output-dir", outputDir, "--title", title]);
+  }
+  if (sub === "record") {
+    const perf = requireArg(valueOf(rest, "--perf"), "compare record 缺少 `--perf`", "示例：node saoshu_cli.mjs compare record --perf ./perf.json --econ ./econ.json --out-dir ./workspace/mode-diff/book-a --ledger ./workspace/mode-diff-ledger.jsonl");
+    const econ = requireArg(valueOf(rest, "--econ"), "compare record 缺少 `--econ`", "示例：node saoshu_cli.mjs compare record --perf ./perf.json --econ ./econ.json --out-dir ./workspace/mode-diff/book-a --ledger ./workspace/mode-diff-ledger.jsonl");
+    const outDir = requireArg(valueOf(rest, "--out-dir"), "compare record 缺少 `--out-dir`", "示例：node saoshu_cli.mjs compare record --perf ./perf.json --econ ./econ.json --out-dir ./workspace/mode-diff/book-a --ledger ./workspace/mode-diff-ledger.jsonl");
+    const ledger = requireArg(valueOf(rest, "--ledger"), "compare record 缺少 `--ledger`", "示例：node saoshu_cli.mjs compare record --perf ./perf.json --econ ./econ.json --out-dir ./workspace/mode-diff/book-a --ledger ./workspace/mode-diff-ledger.jsonl");
+    const workflowScript = path.join(reviewRoot, "scripts/mode_diff_workflow.mjs");
+    if (!fs.existsSync(workflowScript)) failUsage(`未找到 mode-diff 工作流脚本：${workflowScript}`);
+    const args = ["--perf", perf, "--econ", econ, "--out-dir", outDir, "--ledger", ledger];
+    pushArg(args, "--title", valueOf(rest, "--title", "模式对比"));
+    pushArg(args, "--summary-dir", valueOf(rest, "--summary-dir", ""));
+    pushArg(args, "--summary-title", valueOf(rest, "--summary-title", ""));
+    pushArg(args, "--db", valueOf(rest, "--db", ""));
+    pushArg(args, "--db-compare-dir", valueOf(rest, "--db-compare-dir", ""));
+    pushArg(args, "--db-compare-dimensions", valueOf(rest, "--db-compare-dimensions", ""));
+    pushArg(args, "--db-trends-dir", valueOf(rest, "--db-trends-dir", ""));
+    pushArg(args, "--db-dashboard", valueOf(rest, "--db-dashboard", ""));
+    return runNodeScript(workflowScript, args);
+  }
+  if (sub === "sync") {
+    const ledger = requireArg(valueOf(rest, "--ledger"), "compare sync 缺少 `--ledger`", "示例：node saoshu_cli.mjs compare sync --ledger ./workspace/mode-diff-ledger.jsonl --db ./scan-db");
+    const workflowScript = path.join(reviewRoot, "scripts/mode_diff_workflow.mjs");
+    if (!fs.existsSync(workflowScript)) failUsage(`未找到 mode-diff 工作流脚本：${workflowScript}`);
+    const args = ["--ledger", ledger];
+    pushArg(args, "--summary-dir", valueOf(rest, "--summary-dir", ""));
+    pushArg(args, "--summary-title", valueOf(rest, "--summary-title", ""));
+    pushArg(args, "--db", valueOf(rest, "--db", ""));
+    pushArg(args, "--db-compare-dir", valueOf(rest, "--db-compare-dir", ""));
+    pushArg(args, "--db-compare-dimensions", valueOf(rest, "--db-compare-dimensions", ""));
+    pushArg(args, "--db-trends-dir", valueOf(rest, "--db-trends-dir", ""));
+    pushArg(args, "--db-dashboard", valueOf(rest, "--db-dashboard", ""));
+    return runNodeScript(workflowScript, args);
   }
 
   const db = requireArg(valueOf(rest, "--db"), "compare 缺少 `--db`", "示例：node saoshu_cli.mjs compare --db ./scan-db");

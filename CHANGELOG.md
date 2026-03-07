@@ -10,6 +10,7 @@
 - `VERSIONING.md` 补充发版后本地安装 / 干净目录实测要求，避免只在当前工作区里自洽。
 - `saoshu-scan-db` 现支持 mode-diff 台账入库，`db overview` / `db dashboard` / `db trends` 会一起展示跨书收益区间数据，帮助判断何时该补强 economy、何时才值得评估中档模式。
 - `db_compare.mjs` 现可按作者 / 标签 / `mode_diff_gain_window` / `mode_diff_band` 聚合灰区率、差距过大率、可接受率与平均 gap 分数，减少靠人工翻台账判断模式差距。
+- 新增 `mode_diff_workflow.mjs` 与 `saoshu_cli.mjs compare record|sync`，把真实样本入账、台账汇总、DB 入库与 compare/trends/dashboard 刷新串成一条低成本工作流。
 
 ## [0.4.0] - 2026-03-07
 

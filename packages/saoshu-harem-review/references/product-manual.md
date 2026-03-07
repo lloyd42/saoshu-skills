@@ -157,6 +157,8 @@ node scripts/saoshu_cli.mjs db assets --db ./scan-db --output-dir ./workspace/fe
 - 如果要长期积累样本，可在 `compare_reports.mjs` 里加 `--ledger ./workspace/mode-diff-ledger.jsonl`，让每次对比自动入账
 - 之后可运行 `node scripts/mode_diff_ledger.mjs --ledger ./workspace/mode-diff-ledger.jsonl --output-dir ./workspace/mode-diff-summary`，或 `node scripts/saoshu_cli.mjs compare ledger --ledger ./workspace/mode-diff-ledger.jsonl --output-dir ./workspace/mode-diff-summary` 汇总跨书差异
 - 如果希望把这类差异长期沉淀到数据库与仪表盘，可继续执行 `node ../saoshu-scan-db/scripts/db_ingest_mode_diff.mjs --db ./scan-db --ledger ./workspace/mode-diff-ledger.jsonl`，之后 `db overview` / `db dashboard` / `db trends` 都会带上 mode-diff 视角
+- 如果希望“记一条真实样本 + 刷新台账/数据库汇总”一步完成，可直接运行：`node scripts/saoshu_cli.mjs compare record --perf ./workspace/performance/merged-report.json --econ ./workspace/economy/merged-report.json --out-dir ./workspace/mode-diff/book-a --ledger ./workspace/mode-diff-ledger.jsonl --db ./scan-db`
+- 如果只是想重建台账、compare、trends、dashboard，不追加新样本，可运行：`node scripts/saoshu_cli.mjs compare sync --ledger ./workspace/mode-diff-ledger.jsonl --db ./scan-db`
 
 Manifest 向导（新手推荐）：
 - 交互式：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie`
@@ -331,4 +333,4 @@ A：开启 `db_mode=local` 入库后，使用 `saoshu-scan-db/scripts/db_query.m
 
 
 - 如果要按作者/标签聚合看灰区率、差距过大率、平均 gap 分数，可运行：
-ode ../saoshu-scan-db/scripts/db_compare.mjs --db ./scan-db --dimensions author,tags,mode_diff_gain_window,mode_diff_band --output-dir ./scan-db/compare`n
+`node ../saoshu-scan-db/scripts/db_compare.mjs --db ./scan-db --dimensions author,tags,mode_diff_gain_window,mode_diff_band --output-dir ./scan-db/compare`
