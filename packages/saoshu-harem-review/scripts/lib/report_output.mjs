@@ -358,6 +358,12 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
   if (meta.coverageTemplate) {
     sampleBasis.push(formatUiKeyValue("coverage_template", lineOrDash(meta.coverageTemplate), { bilingual: true }));
   }
+  if (meta.coverageUnit) {
+    sampleBasis.push(formatUiKeyValue("coverage_unit", lineOrDash(meta.coverageUnit), { bilingual: true }));
+  }
+  if (meta.chapterDetectUsedMode) {
+    sampleBasis.push(formatUiKeyValue("chapter_detect_used_mode", lineOrDash(meta.chapterDetectUsedMode), { bilingual: true }));
+  }
   if (meta.serialStatus) {
     sampleBasis.push(formatUiKeyValue("serial_status", lineOrDash(meta.serialStatus), { bilingual: true }));
   }
@@ -389,6 +395,9 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
     if (coverageGap.riskTypes.length > 0) sampleBasis.push(`保守关注：${coverageGap.riskTypes.join("、")}`);
   } else {
     sampleBasis.push(`扫描模式：${formatUiTerm("performance", { bilingual: true })}`);
+    if (meta.coverageUnit) sampleBasis.push(formatUiKeyValue("coverage_unit", lineOrDash(meta.coverageUnit), { bilingual: true }));
+    if (meta.chapterDetectUsedMode) sampleBasis.push(formatUiKeyValue("chapter_detect_used_mode", lineOrDash(meta.chapterDetectUsedMode), { bilingual: true }));
+    if (meta.coverageMode === "chapter-full" && meta.coverageUnit === "segment") sampleBasis.push("执行说明：章节识别失败后，当前已退化为分段级全文扫描");
     sampleBasis.push(`覆盖：${selectedBatches || merged.batchIds.length}/${totalBatches || merged.batchIds.length} (100%)`);
   }
 
@@ -453,6 +462,8 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
         pipeline_mode: lineOrDash(meta.pipelineMode),
         coverage_mode: lineOrDash(meta.coverageMode),
         coverage_template: lineOrDash(meta.coverageTemplate),
+        coverage_unit: lineOrDash(meta.coverageUnit),
+        chapter_detect_used_mode: lineOrDash(meta.chapterDetectUsedMode),
         serial_status: lineOrDash(meta.serialStatus),
         sample_mode: lineOrDash(meta.sampleMode),
         sample_strategy: lineOrDash(meta.sampleStrategy),
@@ -753,6 +764,8 @@ body.view-newbie .expert-only{display:none}
       <div class="kv"><div class="k">结论 / 评分</div><div class="v"><span class="badge">${escapeHtml(data.overall.verdict)} · ${data.overall.rating}/10</span></div></div>
       <div class="kv"><div class="k">运行模式</div><div class="v">${escapeHtml(formatUiTerm(sampling.pipeline_mode || "-", { bilingual: true }))}</div></div>
       ${sampling.coverage_template && sampling.coverage_template !== "-" ? `<div class="kv"><div class="k">覆盖模板</div><div class="v">${escapeHtml(formatUiTerm(sampling.coverage_template || "-", { bilingual: true }))}</div></div>` : ""}
+      ${sampling.coverage_unit && sampling.coverage_unit !== "-" ? `<div class="kv"><div class="k">覆盖单元</div><div class="v">${escapeHtml(formatUiTerm(sampling.coverage_unit || "-", { bilingual: true }))}</div></div>` : ""}
+      ${sampling.chapter_detect_used_mode && sampling.chapter_detect_used_mode !== "-" ? `<div class="kv"><div class="k">章节识别路径</div><div class="v">${escapeHtml(formatUiTerm(sampling.chapter_detect_used_mode || "-", { bilingual: true }))}</div></div>` : ""}
       <div class="kv"><div class="k">抽样覆盖率</div><div class="v">${Number.isFinite(Number(sampling.coverage_ratio)) ? `${(Number(sampling.coverage_ratio) * 100).toFixed(1)}%` : "-"}</div></div>
       <div class="kv"><div class="k">抽样档位</div><div class="v">${escapeHtml(sampling.sample_level_effective || "-")}</div></div>
     </div>

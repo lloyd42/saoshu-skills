@@ -18,11 +18,11 @@ import {
 import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
 
 function usage() {
-  console.log("Usage: node scan_txt_batches.mjs --input <novel.txt> --output <batch-dir> [--batch-size 80] [--overlap 2] [--keyword-rules <json>] [--alias-map <json>] [--chapter-detect-mode script|assist|auto] [--chapter-assist-dir <dir>] [--chapter-assist-result <json>]");
+  console.log("Usage: node scan_txt_batches.mjs --input <novel.txt> --output <batch-dir> [--batch-size 80] [--overlap 2] [--keyword-rules <json>] [--alias-map <json>] [--coverage-mode sampled|chapter-full|full-book] [--chapter-detect-mode script|assist|auto] [--chapter-assist-dir <dir>] [--chapter-assist-result <json>]");
 }
 
 function parseArgs(argv) {
-  const out = { input: "", output: "", batchSize: 80, overlap: 2, keywordRules: "", aliasMap: "", chapterDetectMode: "script", chapterAssistDir: "", chapterAssistResult: "" };
+  const out = { input: "", output: "", batchSize: 80, overlap: 2, keywordRules: "", aliasMap: "", coverageMode: "", chapterDetectMode: "script", chapterAssistDir: "", chapterAssistResult: "" };
   for (let i = 2; i < argv.length; i++) {
     const k = argv[i];
     const v = argv[i + 1];
@@ -32,6 +32,7 @@ function parseArgs(argv) {
     else if (k === "--overlap") out.overlap = Number(v), i++;
     else if (k === "--keyword-rules") out.keywordRules = v, i++;
     else if (k === "--alias-map") out.aliasMap = v, i++;
+    else if (k === "--coverage-mode") out.coverageMode = v, i++;
     else if (k === "--chapter-detect-mode") out.chapterDetectMode = v, i++;
     else if (k === "--chapter-assist-dir") out.chapterAssistDir = v, i++;
     else if (k === "--chapter-assist-result") out.chapterAssistResult = v, i++;
@@ -209,9 +210,11 @@ function main() {
     detectMode: args.chapterDetectMode,
     assistDir: args.chapterAssistDir,
     assistResult: args.chapterAssistResult,
+    allowSegmentFallback: args.coverageMode === "chapter-full",
   });
   const text = loaded.text;
   const chapters = loaded.chapters;
+  const coverageUnit = String(loaded.chapterDetect?.unit_type || "chapter");
 
   fs.mkdirSync(output, { recursive: true });
   for (const fileName of fs.readdirSync(output)) {
@@ -228,14 +231,14 @@ function main() {
     const first = batch[0].num;
     const last = batch[batch.length - 1].num;
     const batchId = `B${String(batchIndex).padStart(2, "0")}`;
-    const range = `第${first}-${last}章`;
+    const range = coverageUnit === "segment" ? `分段${first}-${last}` : `第${first}-${last}章`;
     const batchText = batch.map((chapter) => `${chapter.title}\n${chapter.body}`).join("\n");
 
     const hits = detectHits(batchText, range, rules);
     const events = batch.slice(0, 6).map((chapter) => chapter.title);
     const topTags = extractTopTags(batchText, 12);
     const topChars = enrichTopCharactersWithAliasHits(normalizeTopCharacters(extractTopCharacters(batchText, 16), aliasContext), batchText, aliasContext).slice(0, 16);
-    const chapterTitleScan = analyzeChapterTitles(batch, rules.titleSignalRules);
+    const chapterTitleScan = coverageUnit === "chapter" ? analyzeChapterTitles(batch, rules.titleSignalRules) : { score: 0, critical: false, hit_chapter_count: 0, risk_rules: [], depression_rules: [], hits: [] };
     const eventCandidates = buildEventCandidates({
       batchId,
       batchRange: range,
@@ -280,7 +283,9 @@ function main() {
   }
 
   console.log(`Input encoding: ${loaded.encoding}`);
-  console.log(`Chapters: ${chapters.length}`);
+  if (coverageUnit === "chapter") console.log(`Chapters: ${chapters.length}`);
+  else console.log(`Units: ${chapters.length}`);
+  console.log(`Coverage unit: ${coverageUnit}`);
   console.log(`Chapter detect: ${loaded.chapterDetect?.used_mode || args.chapterDetectMode}`);
   console.log(`Generated batches: ${batchIndex - 1}`);
   console.log(`Output: ${output}`);

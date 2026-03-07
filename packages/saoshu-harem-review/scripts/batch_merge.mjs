@@ -34,7 +34,7 @@ import {
 } from "./lib/report_output.mjs";
 
 function usage() {
-  console.log("Usage: node batch_merge.mjs --input <batch-dir> [--output <report.md>] [--title <name>] [--author <name>] [--tags <text>] [--target-defense <defense>] [--covered <text>] [--json-out <report.json>] [--html-out <report.html>] [--pipeline-mode <performance|economy>] [--coverage-mode <sampled|chapter-full|full-book>] [--coverage-template <opening-100|head-tail|head-tail-risk|opening-latest>] [--state-path <pipeline-state.json>] [--wiki-dict <glossary.json>] [--risk-question-pool <json>] [--relationship-map <json>] [--report-default-view newbie|expert]");
+  console.log("Usage: node batch_merge.mjs --input <batch-dir> [--output <report.md>] [--title <name>] [--author <name>] [--tags <text>] [--target-defense <defense>] [--covered <text>] [--json-out <report.json>] [--html-out <report.html>] [--pipeline-mode <performance|economy>] [--coverage-mode <sampled|chapter-full|full-book>] [--coverage-template <opening-100|head-tail|head-tail-risk|opening-latest>] [--coverage-unit <chapter|segment>] [--chapter-detect-used-mode <script|assist|segment-fallback>] [--state-path <pipeline-state.json>] [--wiki-dict <glossary.json>] [--risk-question-pool <json>] [--relationship-map <json>] [--report-default-view newbie|expert]");
 }
 
 function parseArgs(argv) {
@@ -51,6 +51,8 @@ function parseArgs(argv) {
     pipelineMode: "performance",
     coverageMode: "",
     coverageTemplate: "",
+    coverageUnit: "",
+    chapterDetectUsedMode: "",
     sampleMode: "fixed",
     serialStatus: "unknown",
     sampleStrategy: "risk-aware",
@@ -84,6 +86,8 @@ function parseArgs(argv) {
     else if (key === "--pipeline-mode") out.pipelineMode = value, index++;
     else if (key === "--coverage-mode") out.coverageMode = value, index++;
     else if (key === "--coverage-template") out.coverageTemplate = value, index++;
+    else if (key === "--coverage-unit") out.coverageUnit = value, index++;
+    else if (key === "--chapter-detect-used-mode") out.chapterDetectUsedMode = value, index++;
     else if (key === "--sample-mode") out.sampleMode = value, index++;
     else if (key === "--serial-status") out.serialStatus = value, index++;
     else if (key === "--sample-strategy") out.sampleStrategy = value, index++;

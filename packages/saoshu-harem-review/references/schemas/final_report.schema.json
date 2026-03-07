@@ -17,6 +17,8 @@
             "pipeline_mode": {"type": "string"},
             "coverage_mode": {"type": "string"},
             "coverage_template": {"type": "string"},
+            "coverage_unit": {"type": "string"},
+            "chapter_detect_used_mode": {"type": "string"},
             "serial_status": {"type": "string"},
             "sample_mode": {"type": "string"},
             "sample_strategy": {"type": "string"},

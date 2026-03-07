@@ -52,6 +52,20 @@ function countBatchFiles(dir) {
   return fs.readdirSync(dir).filter((f) => /^B\d+\.json$/i.test(f)).length;
 }
 
+function readCoverageExecutionMeta(batchDir) {
+  if (!fs.existsSync(batchDir)) return { coverageUnit: "", chapterDetectUsedMode: "" };
+  const firstFile = fs.readdirSync(batchDir)
+    .filter((file) => /^B\d+\.json$/i.test(file))
+    .sort((left, right) => left.localeCompare(right, undefined, { numeric: true }))[0];
+  if (!firstFile) return { coverageUnit: "", chapterDetectUsedMode: "" };
+  const batch = readJson(path.join(batchDir, firstFile));
+  const detect = batch?.metadata?.chapter_detect || {};
+  return {
+    coverageUnit: String(detect.unit_type || "").trim(),
+    chapterDetectUsedMode: String(detect.used_mode || "").trim(),
+  };
+}
+
 function recommendSampleLevelByBatchCount(batchCount) {
   if (batchCount <= 8) return "high";
   if (batchCount <= 20) return "medium";
@@ -196,6 +210,7 @@ function main() {
     const cmd1Args = ["--input", inputTxt, "--output", allBatchesDir, "--batch-size", batchSize, "--overlap", overlap];
     if (aliasMap) cmd1Args.push("--alias-map", aliasMap);
     if (keywordRules) cmd1Args.push("--keyword-rules", keywordRules);
+    if (coverageMode) cmd1Args.push("--coverage-mode", coverageMode);
     pushArg(cmd1Args, "--chapter-detect-mode", chapterDetectMode);
     pushArg(cmd1Args, "--chapter-assist-dir", chapterAssistDir);
     pushArg(cmd1Args, "--chapter-assist-result", chapterAssistResult);
@@ -284,6 +299,9 @@ function main() {
         mergeRecommendedLevel = recalculated;
       }
     }
+    const coverageExecutionMeta = readCoverageExecutionMeta(workBatchesDir);
+    const coverageUnit = coverageExecutionMeta.coverageUnit;
+    const chapterDetectUsedMode = coverageExecutionMeta.chapterDetectUsedMode;
     const defaultWiki = findFirstExisting([
       process.env.SAOSHU_WIKI_DICT || "",
       path.join(projectRoot, "saoshu-term-wiki", "references", "glossary.json"),
@@ -309,6 +327,8 @@ function main() {
         "--sample-level-recommended", mergeRecommendedLevel,
         "--serial-status", serialStatus,
         "--sample-count", sampleCount,
+        "--coverage-unit", coverageUnit,
+        "--chapter-detect-used-mode", chapterDetectUsedMode,
         "--sample-min-count", sampleMinCount,
         "--sample-max-count", sampleMaxCount,
         "--total-batches", totalBatches,
@@ -412,6 +432,8 @@ function main() {
     if (coverageMode) state.coverage_mode = coverageMode;
     if (effectiveCoverageTemplate) state.coverage_template = effectiveCoverageTemplate;
     if (serialStatus) state.serial_status = serialStatus;
+    if (coverageUnit) state.coverage_unit = coverageUnit;
+    if (chapterDetectUsedMode) state.chapter_detect_used_mode = chapterDetectUsedMode;
     state.work_batches_dir = workBatchesDir;
     writeJson(statePath, state);
     runMerge();
@@ -428,6 +450,9 @@ function main() {
   if (coverageMode) state.coverage_mode = coverageMode;
   if (effectiveCoverageTemplate) state.coverage_template = effectiveCoverageTemplate;
   if (serialStatus) state.serial_status = serialStatus;
+  const finalCoverageExecutionMeta = readCoverageExecutionMeta(workBatchesDir);
+  if (finalCoverageExecutionMeta.coverageUnit) state.coverage_unit = finalCoverageExecutionMeta.coverageUnit;
+  if (finalCoverageExecutionMeta.chapterDetectUsedMode) state.chapter_detect_used_mode = finalCoverageExecutionMeta.chapterDetectUsedMode;
   state.work_batches_dir = workBatchesDir;
   writeJson(statePath, state);
   console.log(`Pipeline finished. State: ${statePath}`);

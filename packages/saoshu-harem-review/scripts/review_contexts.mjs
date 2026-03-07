@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { getExitCode } from "./lib/exit_codes.mjs";
 import { readJsonFile } from "./lib/json_input.mjs";
-import { parseChapters, readNovelText } from "./lib/novel_input.mjs";
+import { parseChapters, readNovelText, readNovelWithChapterDetection } from "./lib/novel_input.mjs";
 import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
 
 function usage() {
@@ -28,9 +28,11 @@ function parseArgs(argv) {
 }
 
 function parseBatchRange(rangeText) {
-  const m = /第(\d+)-(\d+)章/.exec(rangeText || "");
-  if (!m) return null;
-  return { from: Number(m[1]), to: Number(m[2]) };
+  const chapterRange = /第(\d+)-(\d+)章/.exec(rangeText || "");
+  if (chapterRange) return { from: Number(chapterRange[1]), to: Number(chapterRange[2]), unit: "chapter" };
+  const segmentRange = /分段(\d+)-(\d+)/.exec(rangeText || "");
+  if (segmentRange) return { from: Number(segmentRange[1]), to: Number(segmentRange[2]), unit: "segment" };
+  return null;
 }
 
 function findChapterByOffset(chapters, off) {
@@ -241,10 +243,16 @@ function main() {
   const args = parseArgs(process.argv);
   if (!args) return usage();
 
-  const loaded = readNovelText(path.resolve(args.input));
-  const text = loaded.text;
-  const chapters = parseChapters(text);
   const batches = readBatchFiles(args.batches);
+  const needsSegmentAwareLoad = batches.some((batch) => {
+    const detect = batch?.data?.metadata?.chapter_detect || {};
+    return String(detect.unit_type || "") === "segment" || String(detect.used_mode || "") === "segment-fallback";
+  });
+  const loaded = needsSegmentAwareLoad
+    ? readNovelWithChapterDetection(path.resolve(args.input), { detectMode: "auto", allowSegmentFallback: true })
+    : readNovelText(path.resolve(args.input));
+  const text = loaded.text;
+  const chapters = Array.isArray(loaded.chapters) ? loaded.chapters : parseChapters(text);
   const outDir = path.resolve(args.output);
   ensureDir(outDir);
 
@@ -260,6 +268,7 @@ function main() {
   const indexPath = path.join(outDir, "README-review-index.md");
   fs.writeFileSync(indexPath, indexLines.join("\n"), "utf8");
   console.log(`Input encoding: ${loaded.encoding}`);
+  if (loaded.chapterDetect?.unit_type) console.log(`Review unit: ${loaded.chapterDetect.unit_type}`);
   console.log(`Generated review pack for ${batches.length} batches: ${outDir}`);
 }
 
