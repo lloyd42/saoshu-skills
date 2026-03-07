@@ -105,5 +105,5 @@
 - coverage_mode（sampled / chapter-full / full-book）
 - coverage_template（如 opening-100 / head-tail / head-tail-risk / opening-latest）
 - coverage_unit（chapter / segment）
-- chapter_detect_used_mode（script / assist / segment-fallback）
+- chapter_detect_used_mode（script / assist / segment-fallback / segment-full-book）
 - serial_status（unknown / ongoing / completed）

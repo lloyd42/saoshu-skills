@@ -83,10 +83,10 @@
 当前代码仍以执行层为主，但运行时已接受产品语义层的兼容字段：
 
 - `sampled -> economy`
-- `chapter-full -> performance`
-- `full-book -> performance`
+- `chapter-full -> performance`（当前已增加“章节失败 -> 分段级全文扫描”的真实差异）
+- `full-book -> performance`（当前已增加“整书连续分段全文扫描”的真实差异）
 
-这意味着现在不能把 `sampled / chapter-full / full-book` 误讲成三套完全独立的覆盖引擎；它们目前是产品迁移语义，不是三套完全分叉实现。
+这意味着现在仍不能把 `sampled / chapter-full / full-book` 误讲成三套完全独立的覆盖引擎；它们仍共享 `economy / performance` 主链，但 `chapter-full` / `full-book` 已有各自清晰的切批边界。
 
 ## 抽样 + 升级的正确位置
 
@@ -107,8 +107,8 @@
 当前对应关系：
 
 - 先走 `economy` / `sampled`
-- 需要更强确认时切 `performance`
-- 未来优先演进到 `chapter-full`，再视需要走 `full-book`
+- 需要更强确认时优先走 `chapter-full`
+- 需要最终确认、争议复核或绕开章节前置时走 `full-book`
 
 因此：
 
@@ -185,6 +185,7 @@ manifest 向导
 - 当章节识别失败或低置信时，不应整条链路直接报废。
 - 系统应生成协作包，让当前 AI / 人工回填章节边界后继续运行。
 - 这不是降级体验，而是人机协同的关键救援口。
+- 这个介入点主要服务 `chapter-full`；如果你的目标只是最终确认，也可以直接走 `full-book`，让整书连续分段全文扫绕开章节前置。
 
 ### 人工 / AI 介入点 2：review -> apply
 

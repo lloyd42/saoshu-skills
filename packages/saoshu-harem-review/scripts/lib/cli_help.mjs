@@ -23,7 +23,7 @@ export function showCliHelp() {
   console.log("术语说明:");
   console.log("  economy = 节能模式，适合快速初筛");
   console.log("  performance = 全量模式，适合完整复核");
-  console.log("  coverage_mode 兼容口径：sampled=快速摸底；chapter-full=章节级尽量完整（无章节时自动退化为分段级全文扫描）；full-book=整书最终确认");
+  console.log("  coverage_mode 兼容口径：sampled=快速摸底；chapter-full=章节级尽量完整（无章节时自动退化为分段级全文扫描）；full-book=整书最终确认（当前默认整书连续分段全文扫描，不依赖章节识别）");
   console.log("  当前稳定 manifest 字段仍是 pipeline_mode；coverage_mode 已可作为兼容字段传入运行时");
   console.log("  coverage_template：opening-100 / head-tail / head-tail-risk / opening-latest（当前用于 sampled/economy 路径的抽查模板）");
   console.log("  serial_status：unknown / ongoing / completed；会影响 opening-latest 更像‘最新进度’还是‘完结尾部’");

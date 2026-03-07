@@ -17,7 +17,7 @@
 ## 当前能力
 
 - 中文网文文本切批、抽样、复核、归并与报告生成
-- 当前基线提供 `economy` / `performance` 双模式，下一阶段将向 coverage-first 设计演进
+- 当前执行层仍以 `economy` / `performance` 双模式为基线，但 coverage-first 用户口径 `sampled` / `chapter-full` / `full-book` 已进入可用迁移期
 - 本地术语词典查询与扫书黑话解释
 - 扫书结果入库、查询、趋势分析、维度对比与仪表板生成
 - MCP / 外部增强结果回填与失败时的本地回退
@@ -138,7 +138,7 @@ node packages/saoshu-harem-review/scripts/run_pipeline.mjs --manifest examples/m
 - `performance`：**已独立落地** 的执行模式，当前用于高覆盖复核
 - `sampled`：**已可对外使用** 的 coverage-first 用户口径，当前实现映射到 `economy`，并可继续细分 `coverage_template`
 - `chapter-full`：**已进入 chapter-full v1**，当前仍复用 `performance` 主链，但在无章节文本上会自动退化为分段级全文扫描
-- `full-book`：**已可作为迁移口径使用**，当前仍映射到 `performance`，还不是独立执行引擎
+- `full-book`：**已进入 full-book v1**，当前仍复用 `performance` 后链，但默认按整书连续分段做全文扫描，不依赖章节识别
 
 #### 用户概念 -> 当前实现
 
@@ -153,27 +153,34 @@ node packages/saoshu-harem-review/scripts/run_pipeline.mjs --manifest examples/m
   - 适用场景：希望比抽查更稳，但后续目标仍是“有章节按章扫、无章节按分段全文扫”
 - 整书最终确认
   - 用户选择：`coverage_mode=full-book`
-  - 当前执行：先映射到 `pipeline_mode=performance`
+  - 当前执行：先映射到 `pipeline_mode=performance`，再按整书连续分段做全文扫描
   - 适用场景：关键决策、争议文本、最终复核
 
 #### 当前迁移规则
 
 - `sampled -> economy`
 - `chapter-full -> performance`（当前已增加“章节失败 -> 分段级全文扫描”的实际执行差异）
-- `full-book -> performance`
-- 因此，当前不要把 `sampled / chapter-full / full-book` 误解成三套已经完全分叉的独立执行引擎；它们目前是**用户语义层 + 兼容迁移层**。
+- `full-book -> performance`（当前已增加“整书连续分段全文扫描”的实际执行差异）
+- 因此，当前不要把 `sampled / chapter-full / full-book` 误解成三套已经完全分叉的独立执行引擎；它们仍共享 `economy / performance` 主链，但 `chapter-full` / `full-book` 已具备各自的切批语义边界。
 
 规划中的统一口径是：
 
 - `sampled`：保留现有抽样能力，作为低成本摸底入口
 - `chapter-full`：优先按章节做全文扫描；若章节识别失败，会自动退化为分段级全文扫描，作为当前主推的高覆盖模式
-- `full-book`：整书全量扫描，用于最终确认或争议复核
+- `full-book`：默认按整书连续分段做全文扫描，用于最终确认或争议复核
 
 如果文本没有稳定章节，后续会退化为“按分段单元全文扫描”，而不是因为章节脚本失败就直接放弃全文覆盖。
 
 现有关键词、别名、补证问题、关系映射等闭环能力会继续保留，但定位会从“主扫描依据”下调为“热点提示、复核排序、人工协同辅助层”。
 
 当前 coverage-first 口径除了进入 manifest 与最终报告，也已经进入数据库运行记录；完整字段可参考 `packages/saoshu-scan-db/references/db-schema.md`。
+
+### 默认升级与介入路径
+
+- `sampled`：先做快速摸底，判断这本是否值得继续投入时间
+- `chapter-full`：当 `sampled` 命中高风险、结论偏灰区、或你需要更高覆盖确认时升级
+- `full-book`：当你要做最终确认、争议复核、或不想把章节识别当成前置条件时使用
+- 人工 / AI 介入主要发生在三处：章节 assist、`review -> apply` 复核回填、以及 `mode-diff` 提示你是否该升级覆盖层
 
 ## CLI 入口
 

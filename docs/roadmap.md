@@ -47,6 +47,7 @@
 - `chapter_detect_mode=script|assist|auto` 继续保留
 - assist 结果可作为章节边界输入继续跑全文
 - 如果章节识别仍失败，自动进入“分段级全文扫描”而不是整条链路失败（`chapter-full v1` 已落地这条基础退化路径，后续继续补强分段质量与模式边界）
+- `full-book v1` 也已落地最小真实差异：默认整书连续分段全文扫描，不再把章节识别当成硬前置
 - 对极少数特殊样本保持保守：先收集失败类型，再决定是否扩脚本规则
 
 ## Next
@@ -108,7 +109,7 @@
 
 ### 7. 评估是否保留旧命名，或正式切到 coverage-first 命名
 
-等 `chapter-full` / `full-book` 真正落地并验证后，再决定：
+等 coverage-first 三层经过更多真实样本验证后，再决定：
 
 - 是否保留 `economy` / `performance` 作为兼容 alias
 - 是否在对外文案里改用 coverage-first 命名
@@ -169,4 +170,5 @@
 - 接手开发与发布前检查文档
 - 全量 `npm run check` 绿灯基线
 - 章节识别 assist 协作路径
+- `full-book v1` 整书连续分段全文扫描路径
 - 第一轮真实样本 mode-diff 台账、批量对比、DB 趋势与仪表板基线

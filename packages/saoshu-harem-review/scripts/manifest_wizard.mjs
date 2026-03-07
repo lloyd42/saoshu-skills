@@ -24,6 +24,7 @@ function usage() {
   console.log("  - preset=full 默认生成“完整复核”配置：performance + local db");
   console.log("  - 当前稳定入口仍写 pipeline_mode；运行时也接受 coverage_mode=sampled|chapter-full|full-book 兼容字段");
   console.log("  - chapter-full 当前已具备基础执行差异：章节识别失败时会自动退化为分段级全文扫描");
+  console.log("  - full-book 当前默认按整书连续分段做全文扫描，不依赖章节识别");
   console.log("  - 如需指定快速摸底采用的抽查模板，可手动在 manifest 中补 coverage_template=opening-100|head-tail|head-tail-risk|opening-latest");
   console.log("  - 如需让 opening-latest 区分‘最新进度’与‘完结尾部’，可设置 serial_status=ongoing|completed|unknown");
   console.log("  - chapter_detect_mode 支持 auto|script|assist；auto 会在脚本识别失败或低置信时生成 AI 协作包");

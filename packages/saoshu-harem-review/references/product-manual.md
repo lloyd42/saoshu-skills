@@ -56,7 +56,7 @@
 - 规划中的覆盖模式为：`sampled`、`chapter-full`、`full-book`。
 - `sampled` 保留现有抽样优势，继续服务快速摸底。
 - `chapter-full` 作为后续主推模式：有章节按章节全文扫，无章节时自动退化为分段级全文扫。当前 `chapter-full v1` 已落地这条退化路径。
-- `full-book` 用于关键决策、争议文本、复核确认。
+- `full-book` 用于关键决策、争议文本、复核确认。当前 `full-book v1` 已落地最小真实差异：默认按整书连续分段做全文扫描，不依赖章节识别，但仍复用 `performance` 后链。
 - 关键词、别名、补证问题、关系图等能力继续保留，但更多承担热点提示、排序、人工协同辅助职责。
 
 ### 4.5 当前抽样机制（兼容保留）
@@ -118,6 +118,11 @@
 - `node scripts/saoshu_cli.mjs db trends --db ./scan-db --output-dir ./scan-db/trends`
 - `node scripts/saoshu_cli.mjs compare --db ./scan-db --output-dir ./scan-db/compare`
 
+需要人工 / AI 介入的典型场景：
+- `chapter-full` 下章节识别失败或低置信：走章节 assist，回填边界后继续跑；如果只是最终确认，也可直接升级到 `full-book`
+- `review -> apply`：系统只能先给待复核候选，最终 `已确认 / 排除 / 待补证` 仍要靠人工或 AI 复核回填
+- `mode-diff`：当快速摸底与高覆盖结果差距偏大时，系统会提示你升级覆盖层，而不是继续迷信抽样参数
+
 关键词闭环示例：
 
 ```bash
@@ -178,9 +183,9 @@ Manifest 向导（新手推荐）：
 - 非交互：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie --non-interactive --input-txt <txt> --output-dir <dir> --title <name>`
 
 ## 6. Manifest 关键字段
-当前代码基线仍以 `pipeline_mode=economy|performance` 为主。运行时现已接受 `coverage_mode=sampled|chapter-full|full-book` 作为兼容字段，并自动映射到当前双模式基线；后续再逐步把 CLI / skill / 批处理脚本切到 coverage-first 口径。
+当前代码基线仍以 `pipeline_mode=economy|performance` 为主。运行时现已接受 `coverage_mode=sampled|chapter-full|full-book` 作为兼容字段，并自动映射到当前双模式基线；其中 `chapter-full` 已具备“章节失败 -> 分段级全文扫描”的真实差异，`full-book` 已具备“整书连续分段全文扫描”的真实差异，后续再逐步把 CLI / skill / 批处理脚本切到 coverage-first 口径。
 
-如果当前想显式指定“这次快速摸底采用哪种抽查模板”，也可以额外写：`coverage_template=opening-100|head-tail|head-tail-risk|opening-latest`。当前这些模板会在 `sampled / economy` 路径中直接影响选批逻辑，并同时透传到 `pipeline-state.json`、`merged-report.scan.sampling` 与数据库 `runs.jsonl`。当前已落库的 coverage 相关字段至少包括 `coverage_mode`、`coverage_template`、`serial_status`、`total_batches`、`selected_batches`、`coverage_ratio`、`coverage_gap_summary`、`coverage_gap_risk_types`。
+如果当前想显式指定“这次快速摸底采用哪种抽查模板”，也可以额外写：`coverage_template=opening-100|head-tail|head-tail-risk|opening-latest`。当前这些模板会在 `sampled / economy` 路径中直接影响选批逻辑，并同时透传到 `pipeline-state.json`、`merged-report.scan.sampling` 与数据库 `runs.jsonl`。当前已落库的 coverage 相关字段至少包括 `coverage_mode`、`coverage_template`、`coverage_unit`、`chapter_detect_used_mode`、`serial_status`、`total_batches`、`selected_batches`、`coverage_ratio`、`coverage_gap_summary`、`coverage_gap_risk_types`。
 
 如果使用 `opening-latest`，还建议同时设置 `serial_status=ongoing|completed|unknown`：
 
@@ -196,6 +201,8 @@ Manifest 向导（新手推荐）：
 - `pipeline_mode`: `economy|performance`
 - `coverage_mode`: `sampled|chapter-full|full-book`（兼容字段）
 - `coverage_template`: `opening-100|head-tail|head-tail-risk|opening-latest`（当前用于 sampled / economy 路径的抽查模板）
+- `coverage_unit`: `chapter|segment`（报告和数据库会标记当前到底按章节还是按分段覆盖）
+- `chapter_detect_used_mode`: `script|assist|segment-fallback|segment-full-book`（标记章节识别/执行路径）
 - `serial_status`: `unknown|ongoing|completed`（当前主要用于区分 `opening-latest` 是看最新进度还是结尾窗口）
 - `sample_mode`: `fixed|dynamic`
 - `sample_level`: `auto|low|medium|high`

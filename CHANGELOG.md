@@ -6,6 +6,7 @@
 
 ### 改进
 - `chapter-full` 现在具备 `v1` 级别的真实执行差异：正文无法稳定识别章节时，会在保留章节协作包的同时自动退化为分段级全文扫描，并把 `coverage_unit` / `chapter_detect_used_mode` 透传到报告、状态文件与数据库运行记录。
+- `full-book` 现在具备 `v1` 级别的最小真实执行差异：默认按整书连续分段做全文扫描，不依赖章节识别，并把 `coverage_unit=segment` / `chapter_detect_used_mode=segment-full-book` 透传到报告、状态文件与数据库运行记录。
 
 ## [0.5.0] - 2026-03-08
 
