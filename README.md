@@ -137,7 +137,7 @@ node packages/saoshu-harem-review/scripts/run_pipeline.mjs --manifest examples/m
 - `economy`：**已独立落地** 的执行模式，当前用于快速摸底
 - `performance`：**已独立落地** 的执行模式，当前用于高覆盖复核
 - `sampled`：**已可对外使用** 的 coverage-first 用户口径，当前实现映射到 `economy`，并可继续细分 `coverage_template`
-- `chapter-full`：**已可作为迁移口径使用**，当前仍映射到 `performance`，还不是独立执行引擎
+- `chapter-full`：**已进入 chapter-full v1**，当前仍复用 `performance` 主链，但在无章节文本上会自动退化为分段级全文扫描
 - `full-book`：**已可作为迁移口径使用**，当前仍映射到 `performance`，还不是独立执行引擎
 
 #### 用户概念 -> 当前实现
@@ -159,14 +159,14 @@ node packages/saoshu-harem-review/scripts/run_pipeline.mjs --manifest examples/m
 #### 当前迁移规则
 
 - `sampled -> economy`
-- `chapter-full -> performance`
+- `chapter-full -> performance`（当前已增加“章节失败 -> 分段级全文扫描”的实际执行差异）
 - `full-book -> performance`
 - 因此，当前不要把 `sampled / chapter-full / full-book` 误解成三套已经完全分叉的独立执行引擎；它们目前是**用户语义层 + 兼容迁移层**。
 
 规划中的统一口径是：
 
 - `sampled`：保留现有抽样能力，作为低成本摸底入口
-- `chapter-full`：优先按章节做全文扫描，作为后续主推模式
+- `chapter-full`：优先按章节做全文扫描；若章节识别失败，会自动退化为分段级全文扫描，作为当前主推的高覆盖模式
 - `full-book`：整书全量扫描，用于最终确认或争议复核
 
 如果文本没有稳定章节，后续会退化为“按分段单元全文扫描”，而不是因为章节脚本失败就直接放弃全文覆盖。
