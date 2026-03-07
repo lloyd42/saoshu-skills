@@ -398,6 +398,7 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
     if (meta.coverageUnit) sampleBasis.push(formatUiKeyValue("coverage_unit", lineOrDash(meta.coverageUnit), { bilingual: true }));
     if (meta.chapterDetectUsedMode) sampleBasis.push(formatUiKeyValue("chapter_detect_used_mode", lineOrDash(meta.chapterDetectUsedMode), { bilingual: true }));
     if (meta.coverageMode === "chapter-full" && meta.coverageUnit === "segment") sampleBasis.push("执行说明：章节识别失败后，当前已退化为分段级全文扫描");
+    if (meta.coverageMode === "full-book" && meta.coverageUnit === "segment") sampleBasis.push("执行说明：当前按整书连续分段做全文扫描，不依赖章节识别");
     sampleBasis.push(`覆盖：${selectedBatches || merged.batchIds.length}/${totalBatches || merged.batchIds.length} (100%)`);
   }
 

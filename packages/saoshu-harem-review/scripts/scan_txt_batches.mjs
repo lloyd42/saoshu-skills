@@ -211,6 +211,7 @@ function main() {
     assistDir: args.chapterAssistDir,
     assistResult: args.chapterAssistResult,
     allowSegmentFallback: args.coverageMode === "chapter-full",
+    forceSegmentUnits: args.coverageMode === "full-book",
   });
   const text = loaded.text;
   const chapters = loaded.chapters;

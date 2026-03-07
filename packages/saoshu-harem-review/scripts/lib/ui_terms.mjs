@@ -13,6 +13,7 @@ const UI_TERM_LABELS = {
   script: "脚本识别",
   assist: "协作回填",
   "segment-fallback": "分段退化",
+  "segment-full-book": "整书分段直扫",
   unknown: "状态未知",
   ongoing: "连载中",
   completed: "已完结",

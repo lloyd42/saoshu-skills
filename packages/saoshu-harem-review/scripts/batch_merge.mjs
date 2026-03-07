@@ -34,7 +34,7 @@ import {
 } from "./lib/report_output.mjs";
 
 function usage() {
-  console.log("Usage: node batch_merge.mjs --input <batch-dir> [--output <report.md>] [--title <name>] [--author <name>] [--tags <text>] [--target-defense <defense>] [--covered <text>] [--json-out <report.json>] [--html-out <report.html>] [--pipeline-mode <performance|economy>] [--coverage-mode <sampled|chapter-full|full-book>] [--coverage-template <opening-100|head-tail|head-tail-risk|opening-latest>] [--coverage-unit <chapter|segment>] [--chapter-detect-used-mode <script|assist|segment-fallback>] [--state-path <pipeline-state.json>] [--wiki-dict <glossary.json>] [--risk-question-pool <json>] [--relationship-map <json>] [--report-default-view newbie|expert]");
+  console.log("Usage: node batch_merge.mjs --input <batch-dir> [--output <report.md>] [--title <name>] [--author <name>] [--tags <text>] [--target-defense <defense>] [--covered <text>] [--json-out <report.json>] [--html-out <report.html>] [--pipeline-mode <performance|economy>] [--coverage-mode <sampled|chapter-full|full-book>] [--coverage-template <opening-100|head-tail|head-tail-risk|opening-latest>] [--coverage-unit <chapter|segment>] [--chapter-detect-used-mode <script|assist|segment-fallback|segment-full-book>] [--state-path <pipeline-state.json>] [--wiki-dict <glossary.json>] [--risk-question-pool <json>] [--relationship-map <json>] [--report-default-view newbie|expert]");
 }
 
 function parseArgs(argv) {

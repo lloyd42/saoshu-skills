@@ -244,12 +244,18 @@ function main() {
   if (!args) return usage();
 
   const batches = readBatchFiles(args.batches);
+  const needsForcedSegments = batches.some((batch) => {
+    const detect = batch?.data?.metadata?.chapter_detect || {};
+    return String(detect.used_mode || "") === "segment-full-book";
+  });
   const needsSegmentAwareLoad = batches.some((batch) => {
     const detect = batch?.data?.metadata?.chapter_detect || {};
-    return String(detect.unit_type || "") === "segment" || String(detect.used_mode || "") === "segment-fallback";
+    return String(detect.unit_type || "") === "segment"
+      || String(detect.used_mode || "") === "segment-fallback"
+      || String(detect.used_mode || "") === "segment-full-book";
   });
   const loaded = needsSegmentAwareLoad
-    ? readNovelWithChapterDetection(path.resolve(args.input), { detectMode: "auto", allowSegmentFallback: true })
+    ? readNovelWithChapterDetection(path.resolve(args.input), { detectMode: "auto", allowSegmentFallback: true, forceSegmentUnits: needsForcedSegments })
     : readNovelText(path.resolve(args.input));
   const text = loaded.text;
   const chapters = Array.isArray(loaded.chapters) ? loaded.chapters : parseChapters(text);

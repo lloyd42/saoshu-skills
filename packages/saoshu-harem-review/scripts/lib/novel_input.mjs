@@ -274,10 +274,33 @@ export function readNovelWithChapterDetection(inputPath, options = {}) {
   const assistDir = options.assistDir ? String(options.assistDir) : "";
   const assistResult = options.assistResult ? String(options.assistResult) : "";
   const allowSegmentFallback = Boolean(options.allowSegmentFallback);
+  const forceSegmentUnits = Boolean(options.forceSegmentUnits);
   const best = chooseBestNovelCandidate(inputPath);
   if (!best) throw new Error("无法读取输入文本");
   if (best.garbled || best.cjkRatio < 0.05) {
     throw new Error(`输入文本疑似存在编码异常，建议先转成 UTF-8 后重试。\n检测结果：encoding=${best.encoding}, chapters=${best.chapters}, garbled=${best.garbled}, cjk_ratio=${best.cjkRatio.toFixed(3)}`);
+  }
+
+  if (forceSegmentUnits) {
+    const segments = buildSegmentUnits(best.text);
+    return {
+      encoding: best.encoding,
+      text: best.text,
+      chapters: segments,
+      chapterCount: segments.length,
+      normalized: true,
+      chapterDetect: {
+        requested_mode: detectMode,
+        used_mode: "segment-full-book",
+        unit_type: "segment",
+        diagnostics: {
+          chapter_count: best.chapters,
+          text_length: best.text.length,
+          confidence: "segment-full-book",
+          reasons: ["full-book 当前默认按整书连续分段做全文扫描，不依赖章节识别"],
+        },
+      },
+    };
   }
 
   if (assistResult) {
