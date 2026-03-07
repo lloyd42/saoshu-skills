@@ -11,8 +11,8 @@
 ## 2. 适用范围与边界
 适用：
 - 男主后宫文的雷点/郁闷点筛查。
-- 新书快速初筛（节能模式）。
-- 深度完整审查（性能模式）。
+- 新书快速初筛（当前基线仍支持抽样模式）。
+- 章节级或整书级的更高覆盖率审查（下一阶段主线）。
 
 不适用：
 - 非后宫作品直接复用“后宫结论”。
@@ -47,17 +47,25 @@
 - 郁闷点：前世雷、擦边、虐心、接盘等。
 - 证据等级：已确认 / 高概率 / 待补证。
 
-### 4.3 双模式运行
+### 4.3 当前运行基线
 - `performance`：全量批次，完整结论。
 - `economy`：抽样批次，快速初判。
 
-### 4.4 动态抽样
+### 4.4 下一阶段演进：coverage-first
+- 后续主线不再继续深挖“如何把抽样模式调得更像全量”，而是提升正文覆盖层级。
+- 规划中的覆盖模式为：`sampled`、`chapter-full`、`full-book`。
+- `sampled` 保留现有抽样优势，继续服务快速摸底。
+- `chapter-full` 作为后续主推模式：有章节按章节全文扫，无章节时自动退化为分段级全文扫。
+- `full-book` 用于关键决策、争议文本、复核确认。
+- 关键词、别名、补证问题、关系图等能力继续保留，但更多承担热点提示、排序、人工协同辅助职责。
+
+### 4.5 当前抽样机制（兼容保留）
 - 支持 `fixed` 与 `dynamic`。
 - dynamic 档位：`low/medium/high/auto`。
 - `auto` 按批次数自动推荐档位并记录到审计状态。
 - `economy + risk-aware` 会先全量扫章节标题，再优先抽取标题带高风险/高郁闷信号的批次做全文扫描。
 
-### 4.5 报告多格式输出
+### 4.6 报告多格式输出
 - `merged-report.json`：机器可读真源。
 - `merged-report.md`：文本可读。
 - `merged-report.html`：可视化展示，含抽样信息、抽样命中原因、审计面板。
@@ -66,21 +74,22 @@
 - `newbie` 视图优先展示结论、关键证据、补证问题；`expert` 视图再展开事件表、雷点表、术语速查与审计细节。
 - `newbie` 视图中的补证问题会压缩到最关键 3 条，并优先展示“可能改变结论”的未证实风险。
 
-### 4.6 术语百科（Wiki）
+### 4.7 术语百科（Wiki）
 - 通过 `saoshu-term-wiki` 提供黑话解释。
 - 报告可自动注入术语速查（term_wiki）。
 - HTML 支持术语悬浮释义，帮助新人理解黑话。
 
-### 4.7 扫书数据库
+### 4.8 扫书数据库
 - 通过 `saoshu-scan-db` 把每次扫书结果持久化。
 - 支持统计查询（结论分布、高频风险、高频标签）。
 - 支持生成数据库仪表盘 HTML，服务可视化复盘。
+- `runs.jsonl` 当前也会保留 `coverage_mode`、`coverage_template`、`serial_status`、`total_batches`、`selected_batches`、`coverage_ratio`、`coverage_gap_summary`、`coverage_gap_risk_types`，便于按覆盖策略与未覆盖风险复盘。
 - 支持记录 `keyword_candidates`，并允许人工把候选词晋升为下一轮可复用规则。
 - 支持记录 `alias_candidates`，并允许人工把角色别名晋升为下一轮可复用映射。
 - 支持记录 `risk_question_candidates`，并允许人工把补证问题整理成下一轮可复用问题池。
 - 支持记录 `relation_candidates`，并允许人工把关系边/关系标签整理成下一轮可复用映射。
 
-### 4.8 角色关系图（跨平台本地）
+### 4.9 角色关系图（跨平台本地）
 - merge 后可选生成 `relation-graph.html`。
 - 默认启发式图谱（角色 + 风险信号）；若外部增强提供结构化关系，会自动叠加。
 - 纯 Node + 原生 HTML/JS，不依赖特定系统图形库。
@@ -169,12 +178,25 @@ Manifest 向导（新手推荐）：
 - 非交互：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie --non-interactive --input-txt <txt> --output-dir <dir> --title <name>`
 
 ## 6. Manifest 关键字段
+当前代码基线仍以 `pipeline_mode=economy|performance` 为主。运行时现已接受 `coverage_mode=sampled|chapter-full|full-book` 作为兼容字段，并自动映射到当前双模式基线；后续再逐步把 CLI / skill / 批处理脚本切到 coverage-first 口径。
+
+如果当前想显式指定“这次快速摸底采用哪种抽查模板”，也可以额外写：`coverage_template=opening-100|head-tail|head-tail-risk|opening-latest`。当前这些模板会在 `sampled / economy` 路径中直接影响选批逻辑，并同时透传到 `pipeline-state.json`、`merged-report.scan.sampling` 与数据库 `runs.jsonl`。当前已落库的 coverage 相关字段至少包括 `coverage_mode`、`coverage_template`、`serial_status`、`total_batches`、`selected_batches`、`coverage_ratio`、`coverage_gap_summary`、`coverage_gap_risk_types`。
+
+如果使用 `opening-latest`，还建议同时设置 `serial_status=ongoing|completed|unknown`：
+
+- `ongoing`：更偏“开篇 + 最新进度”
+- `completed`：更偏“开篇 + 结尾窗口”
+- `unknown`：按“最新进度”处理，但报告会更保守
+
 必填：
 - `input_txt`
 - `output_dir`
 
 高频可选：
 - `pipeline_mode`: `economy|performance`
+- `coverage_mode`: `sampled|chapter-full|full-book`（兼容字段）
+- `coverage_template`: `opening-100|head-tail|head-tail-risk|opening-latest`（当前用于 sampled / economy 路径的抽查模板）
+- `serial_status`: `unknown|ongoing|completed`（当前主要用于区分 `opening-latest` 是看最新进度还是结尾窗口）
 - `sample_mode`: `fixed|dynamic`
 - `sample_level`: `auto|low|medium|high`
 - `sample_count`（fixed 模式）
@@ -308,7 +330,7 @@ Q1：提示找不到章节头
 A：优先检查编码与章节格式；系统已支持 UTF-8/GB18030/GBK。
 
 Q2：economy 与 performance 结论不同  
-A：先看 `mode-diff` 差异，再结合章节标题命中批次提高 `sample_level`，或直接切到 `performance`。
+A：先看 `mode-diff` 差异；如果只是临时摸底，可提高 `sample_level` 或直接切到 `performance`。如果这类差异反复出现，优先升级到后续的章节级全文扫描，而不是继续堆叠更多抽样启发式。
 
 Q3：术语解释没出现  
 A：检查 `wiki_dict` 路径，或确认已安装 `saoshu-term-wiki`。
@@ -334,11 +356,3 @@ A：开启 `db_mode=local` 入库后，使用 `saoshu-scan-db/scripts/db_query.m
 ## 14. 免责声明
 本工具输出是“阅读决策辅助”，不是绝对真相。  
 结论可靠性取决于覆盖率、证据质量与复核充分度。
-
-
-- 如果要按作者/标签聚合看灰区率、差距过大率、平均 gap 分数，可运行：
-`node ../saoshu-scan-db/scripts/db_compare.mjs --db ./scan-db --dimensions author,tags,mode_diff_gain_window,mode_diff_band --output-dir ./scan-db/compare`
-- chapter_detect_mode：script|assist|auto，推荐默认 uto`n- chapter_assist_dir：脚本识别失败时生成 AI 协作包的目录
-- chapter_assist_result：AI 回填后的章节 JSON 结果
-
-如果脚本识别不到章节，uto 会生成章节识别协作包；当前环境本来就是 AI 工作环境，所以不需要额外接模型服务，只要按协作包提示让 AI 回填章节边界即可。

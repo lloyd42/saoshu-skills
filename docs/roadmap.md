@@ -10,9 +10,50 @@
 
 ## Now
 
-### 0. 持续审计规则偏置与样本污染
+### 0. 从 sampling-first 转向 coverage-first
 
-目前规则命中、事件候选、economy 抽样都依赖同一批风险词与启发式。
+当前真实样本已经证明，继续围绕 `economy` 的关键词命中率、抽样档位和启发式置信度做细抠，边际收益正在下降。
+
+下一阶段主线改为：
+
+- 保留当前 `economy` / `performance` 兼容基线
+- 新增统一的 coverage 口径：`sampled` / `chapter-full` / `full-book`
+- 把“覆盖到哪里”放到“抽样调得多聪明”之前
+
+具体落地方向：
+
+- 有章节时，优先按章节做全文扫描
+- 无章节时，退化为按分段单元做全文扫描
+- 关键词、别名、补证问题、关系映射继续保留，但角色下调为热点提示、人工 review 排序、反馈闭环资产
+- 现有 `sample_*` 字段后续优先通过兼容层映射，而不是继续扩字段堆复杂度
+
+这条路线的目标不是再造一个“更聪明的 economy”，而是建立一个可从抽样平滑升级到章节级/整书级扫描的统一覆盖架构。
+
+### 1. 先把覆盖层重构方案文档化并与入口对齐
+
+在正式改代码前，先把以下内容同步清楚：
+
+- `README.md`：当前双模式基线 + 下一阶段 coverage-first 方向
+- 产品手册：当前实现、迁移口径、兼容约束
+- manifest 字段策略：旧字段兼容，新字段如何落地
+- CLI / wizard 文案：让用户按“快速摸底 / 章节级尽量完整 / 整书最终确认”理解模式，而不是只看到抽样参数
+
+### 2. 给章节失败场景准备稳定退化路径
+
+章节识别不应该继续被当作全文扫描的硬前置条件。
+
+后续重点：
+
+- `chapter_detect_mode=script|assist|auto` 继续保留
+- assist 结果可作为章节边界输入继续跑全文
+- 如果章节识别仍失败，自动进入“分段级全文扫描”而不是整条链路失败
+- 对极少数特殊样本保持保守：先收集失败类型，再决定是否扩脚本规则
+
+## Next
+
+### 3. 持续审计规则偏置与样本污染
+
+目前规则命中、事件候选、`economy` 抽样都依赖同一批风险词与启发式。
 
 这类能力如果只靠少数样本长期迭代，容易出现：
 
@@ -29,60 +70,19 @@
 
 后续如果继续扩充规则，优先补共享规则目录与 focused check，而不是只改单个样本直到通过。
 
-同时，关键能力后续优先走“人机协同闭环”而不是单向自动化：
+### 4. 继续走人机协同闭环，而不是把启发式写死
 
-- 运行时先记录候选信号/候选规则
-- 人工在关键节点做晋升、排除、合并决策
-- 通过导出物回流到下一轮运行
+当前已经落地：
 
-当前已经落地的第一条闭环是：
-
-- `keyword_candidates` 入库
-- `keyword_promotions` 人工晋升
-- `keyword_rules` 导出并参与下一次扫描
-
-当前已经落地的第二条闭环是：
-
-- `alias_candidates` 入库
-- `alias_promotions` 人工晋升
-- `alias_map` 导出并参与下一次角色归一化
-
-当前已经落地的第三条闭环是：
-
-- `risk_question_candidates` 入库
-- `risk_question_promotions` 人工整理
-- `risk_question_pool` 导出并参与下一次报告追问生成
-
-当前已经落地的第四条闭环是：
-
-- `relation_candidates` 入库
-- `relation_promotions` 人工晋升
-- `relationship_map` 导出并参与下一次关系图与报告复用
-
-同时，维护侧已经补上统一反馈资产台账：
-
-- `db_export_feedback_assets.mjs` 一次性导出关键词规则、别名映射、补证问题池、关系映射
-- 降低维护者在四套闭环之间来回切换的操作成本
-- 为后续 `compare`/收益分析接入统一资产基线
+- `keyword_candidates` -> `keyword_promotions` -> `keyword_rules`
+- `alias_candidates` -> `alias_promotions` -> `alias_map`
+- `risk_question_candidates` -> `risk_question_promotions` -> `risk_question_pool`
+- `relation_candidates` -> `relation_promotions` -> `relationship_map`
+- `db_export_feedback_assets.mjs` 统一导出反馈资产
 
 后续如关系别名、角色归一化、未证实风险补证问题池等能力，也优先考虑复用这类闭环，而不是直接把启发式写死进主流程。
 
-### 1. 增强文档链路检查
-
-目前 `check_repo_docs.mjs` 只检查关键文件是否存在。
-
-后续可以增强为：
-
-- `README.md` 是否链接到 `docs/development-workflow.md`
-- `README.md` 是否链接到 `docs/troubleshooting.md`
-- `README.md` 是否链接到 `docs/roadmap.md`
-- `CONTRIBUTING.md` / `VERSIONING.md` 是否仍存在关键章节
-
-这样能降低“文档还在，但入口断了”的维护风险。
-
-## Next
-
-### 2. 继续观察术语一致性的边角场景
+### 5. 继续观察术语一致性的边角场景
 
 当前已经完成一轮术语收敛，并新增 `check_terminology_consistency.mjs` 保护关键文档与输出文案。
 
@@ -92,18 +92,7 @@
 - `未证实风险` 与旧称 `高风险未证实` 是否仍在非关键文档中并存
 - CLI 帮助、产品手册、术语百科新增内容时是否继续沿用同一口径
 
-### 3. 视需要继续细拆 `mergeBatches()`
-
-当前 `packages/saoshu-harem-review/scripts/batch_merge.mjs` 同时承担：
-
-- 风险/雷点/郁闷点归并
-- 归并后的中间结构组织
-
-这会导致：
-
-- 单文件认知负担过高
-- 结论归并逻辑与最终中间结构组织仍有一定耦合
-- 后续再改事件候选链路时，回归成本持续升高
+### 6. 视需要继续细拆 `mergeBatches()`
 
 当前已经完成的拆分：
 
@@ -115,51 +104,17 @@
 
 - `lib/report_summary.mjs`：结论层（雷点 / 郁闷点 / 风险）归并
 
-
-### 4. 继续观察外部模板命令的真实使用反馈
-
-当前已补齐外部模板命令契约说明，文档中已经明确：
-
-- 支持的占位符列表
-- 推荐写法与不推荐写法
-- 失败时的排查顺序
-
-后续更值得观察的是：
-
-- 实际用户是否会把命令模板写得过于复杂
-- 是否需要把模板校验提升为脚本级 contract check
-- 是否要给 `manifest_wizard.mjs` 增加更明确的模板提示
-
-### 4.5 用收益区间而不是直觉决定是否新增模式
-
-当前已经有 `compare_reports.mjs` 的模式差异输出，但后续判断是否需要第三模式，不应只凭一次样本感觉。
-
-更稳妥的方向是：
-
-- 先看 `mode-diff` 里的“收益区间评估”是 `可接受 / 灰区 / 差距过大` 哪一档
-- 如果只是偶发灰区，优先增强现有 `economy`，而不是立刻新增模式
-- 如果连续 3-5 本不同题材作品都稳定落在灰区，再评估是否需要“中档模式”
-- 如果已经落到“差距过大”，说明先要修 economy 质量，而不是靠加模式掩盖问题
-
-后续优先补的不是模式数量，而是：
-
-- 更贴近用户决策成本的 gap 指标
-- 更明确的 economy 补强动作（高风险批次、关系批次、补证问题密集批次）
-- 多样题材样本下的 mode-diff 台账（已补 `--ledger` + 汇总脚本，并已接入 scan-db/dashboard/trends；后续重点是持续积累真实样本）
-### 5. 给事件候选链补更细颗粒的回归场景
-
-当前 `check_e2e_minimal.mjs` 已经覆盖了主流程，但仍偏“链路级”。
-同时 `check_batch_merge_focus.mjs` 已经保护了跨批次归并与输出层，但更细颗粒的事件决策回归仍值得补。
-
-下一步值得补的场景：
-
-- 同一 `event_id` 被多次人工改写时的最终状态
-- `排除` 与 `已确认` 冲突时的最终归并优先级
-- 别名、主体、对象在跨批次中一强一弱时的稳定归并
-
 ## Later
 
-### 7. 把维护脚本分层
+### 7. 评估是否保留旧命名，或正式切到 coverage-first 命名
+
+等 `chapter-full` / `full-book` 真正落地并验证后，再决定：
+
+- 是否保留 `economy` / `performance` 作为兼容 alias
+- 是否在对外文案里改用 coverage-first 命名
+- 是否把 `sample_level` / `sample_strategy` 降级为高级参数，而不是主入口概念
+
+### 8. 把维护脚本分层
 
 当前 `packages/saoshu-harem-review/scripts/` 同时放了：
 
@@ -175,7 +130,7 @@
 
 前提是不要破坏现有入口路径；可以先内部整理，再逐步兼容。
 
-### 8. 评估是否需要引入更细的自动化质量门
+### 9. 评估是否需要引入更细的自动化质量门
 
 目前仓库已有较强的 `npm run check`，短期其实够用。
 
@@ -191,10 +146,10 @@
 
 如果按价值 / 风险 / 回报比排序，推荐顺序是：
 
-1. 增强文档链路检查
-2. 视需要继续细拆 `mergeBatches()`
-3. 补事件候选细颗粒回归
-4. 继续观察外部模板命令的真实使用反馈
+1. 文档化 coverage-first 重构方案并同步入口口径
+2. 实现 `coverage_mode` 兼容层
+3. 打通 `chapter-full` 与分段级全文扫描退化路径
+4. 再决定是否弱化旧 `economy` / `performance` 命名
 
 ## 当前基线
 
@@ -213,3 +168,5 @@
 - PowerShell / 编码排障文档
 - 接手开发与发布前检查文档
 - 全量 `npm run check` 绿灯基线
+- 章节识别 assist 协作路径
+- 第一轮真实样本 mode-diff 台账、批量对比、DB 趋势与仪表板基线

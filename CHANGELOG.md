@@ -5,6 +5,9 @@
 ## [Unreleased]
 
 ### 改进
+- `saoshu-scan-db` 补齐 coverage-first 运行合同：`runs.jsonl` 现记录 `serial_status`、`total_batches`、`selected_batches`、`coverage_gap_summary`、`coverage_gap_risk_types`，`db_query.mjs`、`db_dashboard.mjs`、`db_compare.mjs` 也同步暴露 coverage 维度与未覆盖提示。
+- 修正 `product-manual.md` 尾部残留污染文本，并把 `coverage_mode -> merged-report.scan.sampling -> runs.jsonl` 的 DB 落库链说明写实，减少文档与实现脱节。
+- README.md 首页补充 coverage-first 状态卡、迁移矩阵与 DB 合同入口，降低新接手者把迁移口径误解为独立执行引擎的风险。
 - `compare_reports.mjs` 增加“收益区间评估”，用用户视角输出当前是“可接受 / 灰区 / 差距过大”，并明确优先“维持双模式 / 增强 economy / 回退 performance”，避免凭单次样本仓促新增第三模式。
 - `compare_reports.mjs` 现在支持 `--ledger` 直接把单本 `mode-diff` 记入 JSONL 台账，`mode_diff_ledger.mjs` / `saoshu_cli.mjs compare ledger` 可汇总跨书差异，帮助基于多样样本判断是否需要中档模式。
 - `VERSIONING.md` 补充发版后本地安装 / 干净目录实测要求，避免只在当前工作区里自洽。

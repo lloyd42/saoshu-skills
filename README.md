@@ -10,13 +10,14 @@
 - `CLI` 是自动化入口、高级用法入口，不是项目主角
 - 主流程必须支持本地兜底运行，外部增强能力应保持可插拔
 - 输出结构优先面向复核、解释和持续演进，而不仅是一次性脚本结果
+- 扫书结果应能作为推书、拆书、同人/续写等相邻项目的可信上游资产
 
 更多架构背景见 `docs/architecture.md`。
 
 ## 当前能力
 
 - 中文网文文本切批、抽样、复核、归并与报告生成
-- `economy` / `performance` 两种扫描模式
+- 当前基线提供 `economy` / `performance` 双模式，下一阶段将向 coverage-first 设计演进
 - 本地术语词典查询与扫书黑话解释
 - 扫书结果入库、查询、趋势分析、维度对比与仪表板生成
 - MCP / 外部增强结果回填与失败时的本地回退
@@ -68,7 +69,8 @@
   - `第01章 标题`
   - `第一卷 第一章 标题`
   - `第一部 …… 第01章 标题`
-- 若正文无法识别章节，仍会在 `chunk` 阶段直接失败，并提示先检查编码或章节格式
+- 若脚本识别章节失败，可切到 `chapter_detect_mode=auto|assist` 生成协作包，再把整理后的章节边界回填继续运行
+- 下一阶段会把“有章节按章扫、无章节按分段扫”作为 coverage-first 主线，而不再把章节识别成败视为全文扫描的唯一前提
 
 ### 冒烟运行
 
@@ -110,17 +112,68 @@ node packages/saoshu-harem-review/scripts/run_pipeline.mjs --manifest examples/m
 
 ## 扫描模式
 
-### `economy`
+### 当前基线：`economy` / `performance`
+
+#### `economy`
 
 - 面向快速初筛
 - 使用抽样批次生成结论
 - 适合成本敏感或大体量文本的快速判断
 
-### `performance`
+#### `performance`
 
 - 面向完整复核
 - 使用全批次生成结论
 - 适合关键决策、争议文本或需要更高覆盖率的场景
+
+### 下一阶段：转向 coverage-first
+
+项目下一阶段会把重点从“继续打磨抽样置信度”转到“提升正文覆盖层级”。
+
+当前 manifest 的稳定字段仍是 `pipeline_mode=economy|performance`；运行时已经接受 `coverage_mode=sampled|chapter-full|full-book` 作为兼容口径，便于后续逐步迁移入口文案与批处理配置。
+
+#### 当前状态卡
+
+- `economy`：**已独立落地** 的执行模式，当前用于快速摸底
+- `performance`：**已独立落地** 的执行模式，当前用于高覆盖复核
+- `sampled`：**已可对外使用** 的 coverage-first 用户口径，当前实现映射到 `economy`，并可继续细分 `coverage_template`
+- `chapter-full`：**已可作为迁移口径使用**，当前仍映射到 `performance`，还不是独立执行引擎
+- `full-book`：**已可作为迁移口径使用**，当前仍映射到 `performance`，还不是独立执行引擎
+
+#### 用户概念 -> 当前实现
+
+- 快速摸底
+  - 用户选择：`coverage_mode=sampled`
+  - 当前执行：`pipeline_mode=economy`
+  - 可选增强：`coverage_template`、`serial_status`
+  - 适用场景：先判断“这本能不能看”、先摸底再决定是否升级
+- 章节级尽量完整
+  - 用户选择：`coverage_mode=chapter-full`
+  - 当前执行：先映射到 `pipeline_mode=performance`
+  - 适用场景：希望比抽查更稳，但后续目标仍是“有章节按章扫、无章节按分段全文扫”
+- 整书最终确认
+  - 用户选择：`coverage_mode=full-book`
+  - 当前执行：先映射到 `pipeline_mode=performance`
+  - 适用场景：关键决策、争议文本、最终复核
+
+#### 当前迁移规则
+
+- `sampled -> economy`
+- `chapter-full -> performance`
+- `full-book -> performance`
+- 因此，当前不要把 `sampled / chapter-full / full-book` 误解成三套已经完全分叉的独立执行引擎；它们目前是**用户语义层 + 兼容迁移层**。
+
+规划中的统一口径是：
+
+- `sampled`：保留现有抽样能力，作为低成本摸底入口
+- `chapter-full`：优先按章节做全文扫描，作为后续主推模式
+- `full-book`：整书全量扫描，用于最终确认或争议复核
+
+如果文本没有稳定章节，后续会退化为“按分段单元全文扫描”，而不是因为章节脚本失败就直接放弃全文覆盖。
+
+现有关键词、别名、补证问题、关系映射等闭环能力会继续保留，但定位会从“主扫描依据”下调为“热点提示、复核排序、人工协同辅助层”。
+
+当前 coverage-first 口径除了进入 manifest 与最终报告，也已经进入数据库运行记录；完整字段可参考 `packages/saoshu-scan-db/references/db-schema.md`。
 
 ## CLI 入口
 
@@ -168,10 +221,12 @@ node packages/saoshu-harem-review/scripts/run_pipeline.mjs --manifest <manifest.
 如果你是第一次接手这个仓库，推荐按下面顺序阅读：
 
 1. `docs/architecture.md`：先理解项目为什么是 skill-first，而不是 CLI-first
-2. `docs/development-workflow.md`：再理解日常开发、验证与闭环流程
-3. `docs/troubleshooting.md`：最后补上 PowerShell / 编码 / BOM 排障基线
-4. `CONTRIBUTING.md`：查看提交流程、PR 说明与协作约定
-5. `VERSIONING.md`：准备发版时再看版本与发布规则
+2. `docs/community-alignment.md`：理解“扫书”社区语境、模式边界与生态联动思路
+3. `docs/sampling-design.md`：理解 `sampled` 后续如何从“抽样”演进成“决策导向抽查”
+4. `docs/development-workflow.md`：再理解日常开发、验证与闭环流程
+5. `docs/troubleshooting.md`：最后补上 PowerShell / 编码 / BOM 排障基线
+6. `CONTRIBUTING.md`：查看提交流程、PR 说明与协作约定
+7. `VERSIONING.md`：准备发版时再看版本与发布规则
 
 如果想直接看后续可推进项，优先看 `docs/roadmap.md`。
 

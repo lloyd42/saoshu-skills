@@ -13,6 +13,8 @@
 
 ## Recommended Reading Order
 - `docs/architecture.md`：理解项目定位与边界
+- `docs/community-alignment.md`：理解扫书社区语境、模式边界与生态联动方向
+- `docs/sampling-design.md`：理解采样 / 抽查模板的产品语义与后续实现方向
 - `docs/development-workflow.md`：理解主流程、验证阶梯与闭环要求
 - `docs/troubleshooting.md`：处理 PowerShell / 编码 / BOM 相关误判
 - `docs/roadmap.md`：查看当前最值得继续推进的技术债与演进项
