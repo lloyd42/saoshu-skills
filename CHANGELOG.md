@@ -9,6 +9,7 @@
 - `compare_reports.mjs` 现在支持 `--ledger` 直接把单本 `mode-diff` 记入 JSONL 台账，`mode_diff_ledger.mjs` / `saoshu_cli.mjs compare ledger` 可汇总跨书差异，帮助基于多样样本判断是否需要中档模式。
 - `VERSIONING.md` 补充发版后本地安装 / 干净目录实测要求，避免只在当前工作区里自洽。
 - `saoshu-scan-db` 现支持 mode-diff 台账入库，`db overview` / `db dashboard` / `db trends` 会一起展示跨书收益区间数据，帮助判断何时该补强 economy、何时才值得评估中档模式。
+- `db_compare.mjs` 现可按作者 / 标签 / `mode_diff_gain_window` / `mode_diff_band` 聚合灰区率、差距过大率、可接受率与平均 gap 分数，减少靠人工翻台账判断模式差距。
 
 ## [0.4.0] - 2026-03-07
 

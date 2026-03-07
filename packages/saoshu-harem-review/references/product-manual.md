@@ -329,3 +329,6 @@ A：开启 `db_mode=local` 入库后，使用 `saoshu-scan-db/scripts/db_query.m
 本工具输出是“阅读决策辅助”，不是绝对真相。  
 结论可靠性取决于覆盖率、证据质量与复核充分度。
 
+
+- 如果要按作者/标签聚合看灰区率、差距过大率、平均 gap 分数，可运行：
+ode ../saoshu-scan-db/scripts/db_compare.mjs --db ./scan-db --dimensions author,tags,mode_diff_gain_window,mode_diff_band --output-dir ./scan-db/compare`n

@@ -37,7 +37,12 @@ writeJsonl(path.join(dbDir, "runs.jsonl"), [
   { title: "B", author: "甲", tags: "后宫/都市", verdict: "可看", rating: 7, thunder_total: 0, depression_total: 1, risk_total: 1, coverage_ratio: 0.9, keyword_candidate_total: 6, alias_candidate_total: 4, risk_question_candidate_total: 2, relation_candidate_total: 5 },
 ]);
 
-const result = runNode("packages/saoshu-scan-db/scripts/db_compare.mjs", ["--db", dbDir, "--dimensions", "author", "--output-dir", outDir]);
+writeJsonl(path.join(dbDir, "mode_diff_entries.jsonl"), [
+  { title: "A", author: "甲", tags: ["后宫", "玄幻"], gain_window: "gray", band: "enhance_economy", score: 4.5, coverage_ratio: 0.75 },
+  { title: "B", author: "甲", tags: ["后宫", "都市"], gain_window: "too_wide", band: "fallback_to_performance", score: 8.2, coverage_ratio: 0.4 },
+]);
+
+const result = runNode("packages/saoshu-scan-db/scripts/db_compare.mjs", ["--db", dbDir, "--dimensions", "author,tags,mode_diff_gain_window", "--output-dir", outDir]);
 if (result.status === 0) ok("db_compare feedback metrics run");
 else fail(`db_compare feedback metrics run failed\nSTDERR:\n${result.stderr}`);
 
@@ -50,6 +55,14 @@ const authorGroup = Array.isArray(payload.groups) ? payload.groups.find((item) =
 const row = Array.isArray(authorGroup?.rows) ? authorGroup.rows.find((item) => item.key === "甲") : null;
 if (row?.avg_keyword_candidates === 5 && row?.avg_alias_candidates === 3 && row?.avg_risk_questions === 2.5 && row?.avg_relations === 3) ok("db_compare aggregates feedback asset metrics into averages");
 else fail(`db_compare should aggregate feedback asset metrics: ${JSON.stringify(row)}`);
+
+if (row?.mode_diff_entries === 2 && row?.gray_rate === 0.5 && row?.too_wide_rate === 0.5 && row?.avg_mode_diff_score === 6.35) ok("db_compare aggregates mode-diff metrics by author");
+else fail(`db_compare should aggregate mode-diff metrics: ${JSON.stringify(row)}`);
+
+const gainWindowGroup = Array.isArray(payload.groups) ? payload.groups.find((item) => item.dimension === "mode_diff_gain_window") : null;
+const tooWideRow = Array.isArray(gainWindowGroup?.rows) ? gainWindowGroup.rows.find((item) => item.key === "too_wide") : null;
+if (tooWideRow?.mode_diff_entries === 1 && tooWideRow?.too_wide_rate === 1) ok("db_compare supports mode_diff_gain_window dimension");
+else fail(`db_compare should expose mode_diff_gain_window dimension: ${JSON.stringify(tooWideRow)}`);
 
 if (!hasFailure) console.log("DB compare feedback metrics check passed.");
 else process.exitCode = 1;
