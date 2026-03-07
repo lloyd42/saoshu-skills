@@ -53,6 +53,12 @@
 - `risk_question_promotions` 人工整理
 - `risk_question_pool` 导出并参与下一次报告追问生成
 
+当前已经落地的第四条闭环是：
+
+- `relation_candidates` 入库
+- `relation_promotions` 人工晋升
+- `relationship_map` 导出并参与下一次关系图与报告复用
+
 后续如关系别名、角色归一化、未证实风险补证问题池等能力，也优先考虑复用这类闭环，而不是直接把启发式写死进主流程。
 
 ### 1. 增强文档链路检查

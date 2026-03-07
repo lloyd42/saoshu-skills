@@ -62,6 +62,15 @@ function uniqBy(items, keyFn) {
   return out;
 }
 
+function inferEventRelationLabel(event) {
+  const subjectLabel = String(event?.subject?.relation_label || "").trim();
+  const targetLabel = String(event?.target?.relation_label || "").trim();
+  const genericLabels = new Set(["未知", "关系对象", "女性角色", "女主候选", "男主候选", "感情线候选", "伴侣候选"]);
+  if (subjectLabel && !genericLabels.has(subjectLabel)) return subjectLabel;
+  if (targetLabel && !genericLabels.has(targetLabel)) return targetLabel;
+  return "";
+}
+
 function main() {
   const args = parseArgs(process.argv);
   if (!args) return usage();
@@ -83,6 +92,7 @@ function main() {
   const keywordFile = path.join(dbDir, "keyword_candidates.jsonl");
   const aliasFile = path.join(dbDir, "alias_candidates.jsonl");
   const riskQuestionFile = path.join(dbDir, "risk_question_candidates.jsonl");
+  const relationFile = path.join(dbDir, "relation_candidates.jsonl");
 
   const run = {
     run_id: runId,
@@ -281,9 +291,50 @@ function main() {
     appendJsonl(riskQuestionFile, row);
   }
 
+  const relationRows = [];
+  for (const relation of arr(report.metadata_summary?.relationships)) {
+    const from = String(relation.from || "").trim();
+    const to = String(relation.to || "").trim();
+    const type = String(relation.type || relation.label || "关系").trim();
+    if (!from || !to || !type) continue;
+    relationRows.push({
+      run_id: runId,
+      title: run.title,
+      source_kind: "metadata_relationship",
+      from,
+      to,
+      type,
+      weight: Number(relation.weight || 1),
+      evidence: String(relation.evidence || "metadata_summary.relationships"),
+    });
+  }
+
+  for (const event of arr(report.events?.items)) {
+    const from = String(event.subject?.name || "").trim();
+    const to = String(event.target?.name || "").trim();
+    const type = inferEventRelationLabel(event);
+    if (!from || !to || !type) continue;
+    relationRows.push({
+      run_id: runId,
+      title: run.title,
+      source_kind: "event_relation_label",
+      from,
+      to,
+      type,
+      weight: 1,
+      evidence: String(event.event_id || event.rule_candidate || "event_candidates"),
+      event_id: String(event.event_id || ""),
+      rule_candidate: String(event.rule_candidate || ""),
+    });
+  }
+
+  for (const row of uniqBy(relationRows, (item) => `${item.from}|${item.to}|${item.type}|${item.source_kind}|${item.event_id || ""}`)) {
+    appendJsonl(relationFile, row);
+  }
+
   console.log(`DB: ${dbDir}`);
   console.log(`Run ID: ${runId}`);
-  console.log(`Written: runs/thunder/depression/risk/tags/keywords/aliases/risk-questions`);
+  console.log(`Written: runs/thunder/depression/risk/tags/keywords/aliases/risk-questions/relations`);
 }
 
 try {

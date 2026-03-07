@@ -101,6 +101,7 @@ function main() {
   const aliasMap = config.aliasMap;
   const keywordRules = config.keywordRules;
   const riskQuestionPool = config.riskQuestionPool;
+  const relationshipMap = config.relationshipMap;
   const wikiDict = config.wikiDict;
   const dbMode = config.dbMode;
   const dbPath = config.dbPath;
@@ -240,6 +241,7 @@ function main() {
       ];
       if (wikiPath && fs.existsSync(path.resolve(wikiPath))) args.push("--wiki-dict", wikiPath);
       if (riskQuestionPool) args.push("--risk-question-pool", riskQuestionPool);
+      if (relationshipMap) args.push("--relationship-map", relationshipMap);
       if (totalBatches > 0) args.push("--sample-coverage-rate", (selectedBatches / totalBatches).toFixed(6));
       return args;
     }

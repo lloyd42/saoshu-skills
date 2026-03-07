@@ -25,6 +25,7 @@
     "alias_map": {"type": "string"},
     "keyword_rules": {"type": "string"},
     "risk_question_pool": {"type": "string"},
+    "relationship_map": {"type": "string"},
     "wiki_dict": {"type": "string"},
     "db_mode": {"type": "string", "enum": ["none", "local", "external"]},
     "db_path": {"type": "string"},

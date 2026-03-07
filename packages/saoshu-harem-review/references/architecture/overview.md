@@ -70,6 +70,7 @@ manifest 字段：
 - `alias_map`: 角色别名映射文件路径（可选；通常由 scan-db 导出）
 - `keyword_rules`: 额外关键词规则文件路径（可选；通常由 scan-db 导出）
 - `risk_question_pool`: 补证问题池文件路径（可选；通常由 scan-db 导出）
+- `relationship_map`: 关系映射文件路径（可选；通常由 scan-db 导出）
 - `wiki_dict`: 术语词典路径（可选，默认尝试 `saoshu-term-wiki`）
 - `db_mode`: `none|local|external`
 - `db_path`: 本地数据库目录（`db_mode=local`）
@@ -109,6 +110,7 @@ dynamic 抽样策略：
 - 可额外记录 `keyword_candidates.jsonl` 与 `keyword_promotions.jsonl`，用于“新关键词 -> 人工晋升 -> 导出规则 -> 下一次扫描复用”的闭环。
 - 可额外记录 `alias_candidates.jsonl` 与 `alias_promotions.jsonl`，用于“角色别名 -> 人工晋升 -> 导出映射 -> 下一次归一化复用”的闭环。
 - 可额外记录 `risk_question_candidates.jsonl` 与 `risk_question_promotions.jsonl`，用于“未证实风险追问 -> 人工整理 -> 导出问题池 -> 下一次报告复用”的闭环。
+- 可额外记录 `relation_candidates.jsonl` 与 `relation_promotions.jsonl`，用于“关系边/关系标签 -> 人工晋升 -> 导出关系映射 -> 下一次关系图与报告复用”的闭环。
 
 PDF 导出：
 - merge 后可执行 `export_pdf.mjs`。

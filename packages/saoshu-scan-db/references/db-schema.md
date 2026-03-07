@@ -71,6 +71,19 @@
 - risk / question
 - note
 
+## relation_candidates.jsonl
+- run_id / title
+- source_kind
+- from / to / type
+- weight / evidence
+- event_id / rule_candidate
+
+## relation_promotions.jsonl
+- promoted_at
+- from / to / type
+- weight / evidence / source
+- note
+
 ## 对比维度建议
 - author（作者）
 - tags（标签拆分后聚合）

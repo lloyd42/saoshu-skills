@@ -34,7 +34,7 @@ import {
 } from "./lib/report_output.mjs";
 
 function usage() {
-  console.log("Usage: node batch_merge.mjs --input <batch-dir> [--output <report.md>] [--title <name>] [--author <name>] [--tags <text>] [--target-defense <defense>] [--covered <text>] [--json-out <report.json>] [--html-out <report.html>] [--pipeline-mode <performance|economy>] [--state-path <pipeline-state.json>] [--wiki-dict <glossary.json>] [--risk-question-pool <json>] [--report-default-view newbie|expert]");
+  console.log("Usage: node batch_merge.mjs --input <batch-dir> [--output <report.md>] [--title <name>] [--author <name>] [--tags <text>] [--target-defense <defense>] [--covered <text>] [--json-out <report.json>] [--html-out <report.html>] [--pipeline-mode <performance|economy>] [--state-path <pipeline-state.json>] [--wiki-dict <glossary.json>] [--risk-question-pool <json>] [--relationship-map <json>] [--report-default-view newbie|expert]");
 }
 
 function parseArgs(argv) {
@@ -63,6 +63,7 @@ function parseArgs(argv) {
     statePath: "",
     wikiDict: "",
     riskQuestionPool: "",
+    relationshipMap: "",
     reportDefaultView: "newbie",
   };
   for (let index = 2; index < argv.length; index++) {
@@ -92,6 +93,7 @@ function parseArgs(argv) {
     else if (key === "--state-path") out.statePath = value, index++;
     else if (key === "--wiki-dict") out.wikiDict = value, index++;
     else if (key === "--risk-question-pool") out.riskQuestionPool = value, index++;
+    else if (key === "--relationship-map") out.relationshipMap = value, index++;
     else if (key === "--report-default-view") out.reportDefaultView = value, index++;
     else if (key === "--help" || key === "-h") return null;
     else throw new Error(`Unknown argument: ${key}`);
@@ -237,6 +239,38 @@ function writeFile(target, content) {
   return filePath;
 }
 
+function loadRelationshipMap(filePath) {
+  if (!filePath) return [];
+  const absolutePath = path.resolve(filePath);
+  if (!fs.existsSync(absolutePath)) return [];
+  try {
+    const payload = readJsonFile(absolutePath);
+    const rows = Array.isArray(payload) ? payload : (Array.isArray(payload.relationships) ? payload.relationships : []);
+    return rows
+      .map((item) => ({
+        from: String(item.from || "").trim(),
+        to: String(item.to || "").trim(),
+        type: String(item.type || item.label || "关系").trim(),
+        weight: Number(item.weight || 1),
+        evidence: String(item.evidence || "relationship_map").trim(),
+        source: String(item.source || "human_promoted").trim(),
+      }))
+      .filter((item) => item.from && item.to);
+  } catch {
+    return [];
+  }
+}
+
+function mergeRelationshipRows(baseRows, extraRows) {
+  const relationMap = new Map();
+  for (const row of [...normList(baseRows), ...normList(extraRows)]) {
+    const key = `${row.from}|${row.to}|${row.type}`;
+    if (!relationMap.has(key)) relationMap.set(key, { ...row });
+    else relationMap.get(key).weight = Number(relationMap.get(key).weight || 0) + Number(row.weight || 0);
+  }
+  return [...relationMap.values()].sort((left, right) => Number(right.weight || 0) - Number(left.weight || 0)).slice(0, 80);
+}
+
 function main() {
   const args = parseArgs(process.argv);
   if (!args) return usage();
@@ -255,8 +289,10 @@ function main() {
   args.glossaryRows = loadGlossary(args.wikiDict);
   args.glossaryIndex = buildGlossaryIndex(args.glossaryRows);
   args.riskQuestionRows = loadRiskQuestionPool(args.riskQuestionPool);
+  args.relationshipRows = loadRelationshipMap(args.relationshipMap);
 
   const merged = mergeBatches(batches);
+  merged.metadata.relationships = mergeRelationshipRows(merged.metadata.relationships, args.relationshipRows);
   const data = buildReportData(args, merged, args.glossaryIndex, args.riskQuestionRows);
 
   const inputPath = path.resolve(args.input);

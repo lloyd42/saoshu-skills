@@ -58,6 +58,7 @@ export function resolvePipelineManifest(manifestPath, manifest) {
     aliasMap: manifest.alias_map ? path.resolve(manifestDir, manifest.alias_map) : "",
     keywordRules: manifest.keyword_rules ? path.resolve(manifestDir, manifest.keyword_rules) : "",
     riskQuestionPool: manifest.risk_question_pool ? path.resolve(manifestDir, manifest.risk_question_pool) : "",
+    relationshipMap: manifest.relationship_map ? path.resolve(manifestDir, manifest.relationship_map) : "",
     wikiDict: manifest.wiki_dict || "",
     dbMode,
     dbPath: manifest.db_path ? path.resolve(manifestDir, manifest.db_path) : path.join(outputDir, "scan-db"),

@@ -74,6 +74,7 @@ function baseManifest() {
     alias_map: "",
     keyword_rules: "",
     risk_question_pool: "",
+    relationship_map: "",
     wiki_dict: "",
     report_default_view: "newbie",
     report_pdf: false,
