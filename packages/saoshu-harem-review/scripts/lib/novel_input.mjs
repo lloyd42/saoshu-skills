@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { createChapterDetectAssistPack, parseChaptersFromAssistResult } from "./chapter_detect_assist.mjs";
 
 const CHAPTER_MARKERS = "部卷节回话篇册集";
 const CHAPTER_NUMBER_RE = /[零〇○一二三四五六七八九十百千万两\d]+/;
@@ -129,7 +130,7 @@ export function tryParseChapterCount(text) {
   }
 }
 
-export function readNovelText(inputPath) {
+function chooseBestNovelCandidate(inputPath) {
   const buffer = fs.readFileSync(inputPath);
   const utf8Text = normalizeNovelText(buffer.toString("utf8"));
   const candidates = [{
@@ -144,7 +145,6 @@ export function readNovelText(inputPath) {
     try {
       candidates.push(readCandidateText(buffer, encoding));
     } catch {
-      // Ignore unsupported encodings in the current runtime.
     }
   }
 
@@ -154,7 +154,11 @@ export function readNovelText(inputPath) {
     return right.cjkRatio - left.cjkRatio;
   });
 
-  const best = candidates[0];
+  return candidates[0];
+}
+
+export function readNovelText(inputPath) {
+  const best = chooseBestNovelCandidate(inputPath);
   if (!best || best.chapters === 0) {
     throw new Error("输入文本无法识别章节，可能是编码异常或正文格式不符合预期。建议先转成 UTF-8 后重试。\n检测结果：未找到有效章节标题。");
   }
@@ -168,4 +172,151 @@ export function readNovelText(inputPath) {
     chapterCount: best.chapters,
     normalized: true,
   };
+}
+
+function assessChapterDetection(text, chapters) {
+  const diagnostics = {
+    chapter_count: Array.isArray(chapters) ? chapters.length : 0,
+    text_length: String(text || "").length,
+    confidence: "high",
+    reasons: [],
+  };
+  if (!Array.isArray(chapters) || !chapters.length) {
+    diagnostics.confidence = "low";
+    diagnostics.reasons.push("未识别到章节");
+    return diagnostics;
+  }
+  if (diagnostics.chapter_count < 3 && diagnostics.text_length > 120000) {
+    diagnostics.confidence = "low";
+    diagnostics.reasons.push("长文本但识别到的章节数过少");
+  }
+  const firstBodyLength = String(chapters[0]?.body || "").length;
+  if (diagnostics.chapter_count >= 2 && diagnostics.text_length > 50000 && firstBodyLength / Math.max(1, diagnostics.text_length) > 0.8) {
+    diagnostics.confidence = "low";
+    diagnostics.reasons.push("首章正文占比异常高，疑似章节边界不稳定");
+  }
+  const titleCounts = new Map();
+  for (const chapter of chapters) {
+    const title = String(chapter?.title || "").trim();
+    if (!title) continue;
+    titleCounts.set(title, (titleCounts.get(title) || 0) + 1);
+  }
+  const duplicateTitles = [...titleCounts.values()].filter((count) => count > 1).length;
+  if (diagnostics.chapter_count >= 6 && duplicateTitles / Math.max(1, diagnostics.chapter_count) > 0.3) {
+    diagnostics.confidence = diagnostics.confidence === "low" ? "low" : "medium";
+    diagnostics.reasons.push("章节标题重复比例偏高");
+  }
+  return diagnostics;
+}
+
+function buildAssistError(message, hint) {
+  const error = new Error(message);
+  error.hint = hint;
+  return error;
+}
+
+export function readNovelWithChapterDetection(inputPath, options = {}) {
+  const detectMode = String(options.detectMode || "script");
+  const assistDir = options.assistDir ? String(options.assistDir) : "";
+  const assistResult = options.assistResult ? String(options.assistResult) : "";
+  const best = chooseBestNovelCandidate(inputPath);
+  if (!best) throw new Error("无法读取输入文本");
+  if (best.garbled || best.cjkRatio < 0.05) {
+    throw new Error(`输入文本疑似存在编码异常，建议先转成 UTF-8 后重试。\n检测结果：encoding=${best.encoding}, chapters=${best.chapters}, garbled=${best.garbled}, cjk_ratio=${best.cjkRatio.toFixed(3)}`);
+  }
+
+  if (assistResult) {
+    const assistChapters = parseChaptersFromAssistResult(best.text, assistResult);
+    return {
+      encoding: best.encoding,
+      text: best.text,
+      chapters: assistChapters,
+      chapterCount: assistChapters.length,
+      normalized: true,
+      chapterDetect: {
+        requested_mode: detectMode,
+        used_mode: "assist",
+        diagnostics: { confidence: "assist", reasons: ["使用 assist 结果回填章节边界"] },
+      },
+    };
+  }
+
+  let parsedChapters = [];
+  let parseError = null;
+  if (detectMode !== "assist") {
+    try {
+      parsedChapters = parseChapters(best.text);
+    } catch (err) {
+      parseError = err;
+    }
+  }
+
+  if (detectMode === "script") {
+    if (parseError) {
+      throw new Error("输入文本无法识别章节，可能是编码异常或正文格式不符合预期。建议先转成 UTF-8 后重试。\n检测结果：未找到有效章节标题。");
+    }
+    return {
+      encoding: best.encoding,
+      text: best.text,
+      chapters: parsedChapters,
+      chapterCount: parsedChapters.length,
+      normalized: true,
+      chapterDetect: {
+        requested_mode: detectMode,
+        used_mode: "script",
+        diagnostics: assessChapterDetection(best.text, parsedChapters),
+      },
+    };
+  }
+
+  if (!parseError && parsedChapters.length) {
+    const diagnostics = assessChapterDetection(best.text, parsedChapters);
+    if (detectMode === "auto" && diagnostics.confidence !== "low") {
+      return {
+        encoding: best.encoding,
+        text: best.text,
+        chapters: parsedChapters,
+        chapterCount: parsedChapters.length,
+        normalized: true,
+        chapterDetect: {
+          requested_mode: detectMode,
+          used_mode: "script",
+          diagnostics,
+        },
+      };
+    }
+    if (detectMode === "auto" && diagnostics.confidence === "low" && assistDir) {
+      const pack = createChapterDetectAssistPack({
+        inputPath,
+        assistDir,
+        text: best.text,
+        encoding: best.encoding,
+        detectMode,
+        diagnostics,
+        errorMessage: diagnostics.reasons.join("；") || "脚本章节识别置信度低",
+      });
+      throw buildAssistError(`脚本章节识别置信度较低，已生成章节识别协作包：${pack.outputDir}`, `请让当前 AI/skill 处理 ${pack.requestPath}，回填 ${pack.resultPath} 后重跑。`);
+    }
+  }
+
+  const diagnostics = {
+    chapter_count: parsedChapters.length,
+    text_length: best.text.length,
+    confidence: "low",
+    reasons: [parseError ? String(parseError.message || parseError) : "assist 模式要求回填章节结果"],
+  };
+  if (assistDir) {
+    const pack = createChapterDetectAssistPack({
+      inputPath,
+      assistDir,
+      text: best.text,
+      encoding: best.encoding,
+      detectMode,
+      diagnostics,
+      errorMessage: diagnostics.reasons.join("；"),
+    });
+    throw buildAssistError(`章节识别需要 assist 处理，已生成章节识别协作包：${pack.outputDir}`, `请让当前 AI/skill 处理 ${pack.requestPath}，回填 ${pack.resultPath} 后重跑。`);
+  }
+
+  throw new Error(`章节识别失败，且未配置协作包输出目录。检测结果：${diagnostics.reasons.join("；")}`);
 }

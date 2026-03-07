@@ -338,3 +338,7 @@ A：开启 `db_mode=local` 入库后，使用 `saoshu-scan-db/scripts/db_query.m
 
 - 如果要按作者/标签聚合看灰区率、差距过大率、平均 gap 分数，可运行：
 `node ../saoshu-scan-db/scripts/db_compare.mjs --db ./scan-db --dimensions author,tags,mode_diff_gain_window,mode_diff_band --output-dir ./scan-db/compare`
+- chapter_detect_mode：script|assist|auto，推荐默认 uto`n- chapter_assist_dir：脚本识别失败时生成 AI 协作包的目录
+- chapter_assist_result：AI 回填后的章节 JSON 结果
+
+如果脚本识别不到章节，uto 会生成章节识别协作包；当前环境本来就是 AI 工作环境，所以不需要额外接模型服务，只要按协作包提示让 AI 回填章节边界即可。

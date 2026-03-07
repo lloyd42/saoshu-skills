@@ -9,6 +9,7 @@ const SAMPLE_LEVELS = ["auto", "low", "medium", "high"];
 const SAMPLE_STRATEGIES = ["risk-aware", "uniform"];
 const ENRICH_MODES = ["fallback", "external"];
 const DB_MODES = ["none", "local", "external"];
+const CHAPTER_DETECT_MODES = ["auto", "script", "assist"];
 const DEFENSES = ["神防之上", "神防", "重甲", "布甲", "轻甲", "低防", "负防", "极限负防"];
 const VIEWS = ["newbie", "expert"];
 
@@ -19,21 +20,14 @@ function usage() {
   console.log("");
   console.log("Notes:");
   console.log("  - preset=newbie 默认生成 economy + dynamic + auto + local db");
+  console.log("  - chapter_detect_mode 支持 auto|script|assist；auto 会在脚本识别失败或低置信时生成 AI 协作包");
   console.log("  - db_mode=external 时，db_ingest_cmd 支持 {report} {state} {manifest} {db}");
   console.log("  - enrich_mode=external 时，enricher_cmd 支持 {batch_file}");
   console.log("  - report_pdf_engine_cmd 支持 {input} {output} {input_url}");
 }
 
 function parseArgs(argv) {
-  const out = {
-    output: "",
-    preset: "newbie",
-    nonInteractive: false,
-    inputTxt: "",
-    outputDir: "",
-    title: "",
-    author: "",
-  };
+  const out = { output: "", preset: "newbie", nonInteractive: false, inputTxt: "", outputDir: "", title: "", author: "" };
   for (let i = 2; i < argv.length; i++) {
     const key = argv[i];
     const value = argv[i + 1];
@@ -71,6 +65,9 @@ function baseManifest() {
     sample_min_count: 0,
     sample_max_count: 0,
     sample_strategy: "risk-aware",
+    chapter_detect_mode: "auto",
+    chapter_assist_dir: "",
+    chapter_assist_result: "",
     alias_map: "",
     keyword_rules: "",
     risk_question_pool: "",
@@ -102,13 +99,15 @@ function applyPreset(manifest, preset) {
     manifest.db_mode = "local";
     manifest.enrich_mode = "fallback";
     manifest.report_default_view = "newbie";
+    manifest.chapter_detect_mode = "auto";
   } else {
     manifest.pipeline_mode = "performance";
     manifest.sample_mode = "fixed";
     manifest.sample_count = 7;
     manifest.db_mode = "local";
-    manifest.enrich_mode = "fallback";
+    manifest.enrichMode = "fallback";
     manifest.report_default_view = "expert";
+    manifest.chapter_detect_mode = "auto";
   }
 }
 
@@ -146,12 +145,9 @@ async function askBoolean(rl, question, fallback) {
 }
 
 function applyDerivedDefaults(manifest) {
-  if (!manifest.report_relation_graph_output && manifest.output_dir) {
-    manifest.report_relation_graph_output = `${manifest.output_dir.replace(/\\/g, "/")}/relation-graph.html`;
-  }
-  if (manifest.report_pdf && !manifest.report_pdf_output && manifest.output_dir) {
-    manifest.report_pdf_output = `${manifest.output_dir.replace(/\\/g, "/")}/merged-report.pdf`;
-  }
+  if (!manifest.report_relation_graph_output && manifest.output_dir) manifest.report_relation_graph_output = `${manifest.output_dir.replace(/\\/g, "/")}/relation-graph.html`;
+  if (manifest.report_pdf && !manifest.report_pdf_output && manifest.output_dir) manifest.report_pdf_output = `${manifest.output_dir.replace(/\\/g, "/")}/merged-report.pdf`;
+  if (!manifest.chapter_assist_dir && manifest.output_dir) manifest.chapter_assist_dir = `${manifest.output_dir.replace(/\\/g, "/")}/chapter-detect-assist`;
 }
 
 function validateManifest(manifest, options = {}) {
@@ -162,6 +158,7 @@ function validateManifest(manifest, options = {}) {
   assertChoice(manifest.enrich_mode, ENRICH_MODES, "enrich_mode");
   assertChoice(manifest.db_mode, DB_MODES, "db_mode");
   assertChoice(manifest.report_default_view, VIEWS, "report_default_view");
+  assertChoice(manifest.chapter_detect_mode, CHAPTER_DETECT_MODES, "chapter_detect_mode");
   if (!DEFENSES.includes(manifest.target_defense)) throw new Error(`target_defense 必须是 ${DEFENSES.join("/")}`);
   if (manifest.pipeline_mode === "economy") {
     assertChoice(manifest.sample_mode, SAMPLE_MODES, "sample_mode");
@@ -169,9 +166,7 @@ function validateManifest(manifest, options = {}) {
     if (manifest.sample_mode === "dynamic") assertChoice(manifest.sample_level, SAMPLE_LEVELS, "sample_level");
     if (manifest.sample_mode === "fixed" && !(Number(manifest.sample_count) > 0)) throw new Error("fixed 模式下 sample_count 必须大于 0");
   }
-  if (manifest.enrich_mode === "external" && !String(manifest.enricher_cmd || "").includes("{batch_file}")) {
-    throw new Error("enrich_mode=external 时，enricher_cmd 必须包含 {batch_file}");
-  }
+  if (manifest.enrich_mode === "external" && !String(manifest.enricher_cmd || "").includes("{batch_file}")) throw new Error("enrich_mode=external 时，enricher_cmd 必须包含 {batch_file}");
   if (manifest.db_mode === "external") {
     const cmd = String(manifest.db_ingest_cmd || "");
     for (const placeholder of ["{report}", "{state}", "{manifest}", "{db}"]) {
@@ -181,9 +176,7 @@ function validateManifest(manifest, options = {}) {
   if (manifest.report_pdf) {
     if (!manifest.report_pdf_output) throw new Error("report_pdf=true 时，report_pdf_output 不能为空");
     const cmd = String(manifest.report_pdf_engine_cmd || "").trim();
-    if (cmd && !["{input}", "{output}", "{input_url}"].some((placeholder) => cmd.includes(placeholder))) {
-      throw new Error("report_pdf_engine_cmd 如果非空，至少应包含 {input} / {output} / {input_url} 之一");
-    }
+    if (cmd && !["{input}", "{output}", "{input_url}"].some((placeholder) => cmd.includes(placeholder))) throw new Error("report_pdf_engine_cmd 如果非空，至少应包含 {input} / {output} / {input_url} 之一");
   }
   if (options.requireExistingInput) {
     const inputPath = path.resolve(manifest.input_txt);
@@ -201,19 +194,14 @@ async function interactiveFill(manifest) {
     manifest.tags = await ask(rl, "标签（用 / 分隔）", manifest.tags);
     manifest.target_defense = await askChoice(rl, "目标防御", DEFENSES, manifest.target_defense);
     manifest.pipeline_mode = await askChoice(rl, "模式", PIPELINE_MODES, manifest.pipeline_mode);
+    manifest.chapter_detect_mode = await askChoice(rl, "章节识别模式", CHAPTER_DETECT_MODES, manifest.chapter_detect_mode);
     manifest.enrich_mode = await askChoice(rl, "增强模式", ENRICH_MODES, manifest.enrich_mode);
-    if (manifest.enrich_mode === "external") {
-      manifest.enricher_cmd = await ask(rl, "外部增强命令模板（支持 {batch_file}）", manifest.enricher_cmd);
-    }
+    if (manifest.enrich_mode === "external") manifest.enricher_cmd = await ask(rl, "外部增强命令模板（支持 {batch_file}）", manifest.enricher_cmd);
     if (manifest.pipeline_mode === "economy") {
       manifest.sample_mode = await askChoice(rl, "抽样模式", SAMPLE_MODES, manifest.sample_mode);
       manifest.sample_strategy = await askChoice(rl, "抽样策略", SAMPLE_STRATEGIES, manifest.sample_strategy);
-      if (manifest.sample_mode === "dynamic") {
-        manifest.sample_level = await askChoice(rl, "抽样档位", SAMPLE_LEVELS, manifest.sample_level);
-      } else {
-        const count = await ask(rl, "固定抽样批次数", String(manifest.sample_count));
-        manifest.sample_count = Number(count || manifest.sample_count);
-      }
+      if (manifest.sample_mode === "dynamic") manifest.sample_level = await askChoice(rl, "抽样档位", SAMPLE_LEVELS, manifest.sample_level);
+      else manifest.sample_count = Number(await ask(rl, "固定抽样批次数", String(manifest.sample_count)));
     }
     manifest.report_default_view = await askChoice(rl, "默认报告视图", VIEWS, manifest.report_default_view);
     manifest.report_pdf = await askBoolean(rl, "是否启用 PDF 导出", Boolean(manifest.report_pdf));
@@ -222,11 +210,8 @@ async function interactiveFill(manifest) {
       manifest.report_pdf_engine_cmd = await ask(rl, "自定义 PDF 引擎命令模板（可空；支持 {input} {output} {input_url}）", manifest.report_pdf_engine_cmd);
     }
     manifest.db_mode = await askChoice(rl, "数据库模式", DB_MODES, manifest.db_mode);
-    if (manifest.db_mode === "local") {
-      manifest.db_path = await ask(rl, "数据库目录", manifest.db_path);
-    } else if (manifest.db_mode === "external") {
-      manifest.db_ingest_cmd = await ask(rl, "外部入库命令模板（支持 {report} {state} {manifest} {db}）", manifest.db_ingest_cmd);
-    }
+    if (manifest.db_mode === "local") manifest.db_path = await ask(rl, "数据库目录", manifest.db_path);
+    else if (manifest.db_mode === "external") manifest.db_ingest_cmd = await ask(rl, "外部入库命令模板（支持 {report} {state} {manifest} {db}）", manifest.db_ingest_cmd);
   } finally {
     rl.close();
   }
@@ -235,7 +220,6 @@ async function interactiveFill(manifest) {
 function main() {
   const args = parseArgs(process.argv);
   if (!args) return usage();
-
   const manifest = baseManifest();
   applyPreset(manifest, args.preset);
   manifest.input_txt = args.inputTxt || manifest.input_txt;

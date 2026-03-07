@@ -117,6 +117,9 @@ function main() {
   const reportRelationMinEdgeWeight = config.reportRelationMinEdgeWeight;
   const reportRelationMaxLinks = config.reportRelationMaxLinks;
   const reportRelationMinNameFreq = config.reportRelationMinNameFreq;
+  const chapterDetectMode = config.chapterDetectMode;
+  const chapterAssistDir = config.chapterAssistDir;
+  const chapterAssistResult = config.chapterAssistResult;
   let effectiveSampleLevel = sampleLevel;
   let sampleLevelRecommended = "";
 
@@ -138,6 +141,9 @@ function main() {
     const cmd1Args = ["--input", inputTxt, "--output", allBatchesDir, "--batch-size", batchSize, "--overlap", overlap];
     if (aliasMap) cmd1Args.push("--alias-map", aliasMap);
     if (keywordRules) cmd1Args.push("--keyword-rules", keywordRules);
+    pushArg(cmd1Args, "--chapter-detect-mode", chapterDetectMode);
+    pushArg(cmd1Args, "--chapter-assist-dir", chapterAssistDir);
+    pushArg(cmd1Args, "--chapter-assist-result", chapterAssistResult);
     const cmd1 = executeNodeScript("scan_txt_batches.mjs", cmd1Args);
 
     if (pipelineMode === "economy") {

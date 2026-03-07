@@ -26,6 +26,7 @@ export function resolvePipelineManifest(manifestPath, manifest) {
   const dbMode = manifest.db_mode || "none";
   const reportDefaultView = manifest.report_default_view || "newbie";
   const enrichMode = manifest.enrich_mode || "fallback";
+  const chapterDetectMode = manifest.chapter_detect_mode || "auto";
 
   assertEnum(pipelineMode, ["performance", "economy"], "pipeline_mode");
   assertEnum(sampleMode, ["fixed", "dynamic"], "sample_mode");
@@ -34,6 +35,7 @@ export function resolvePipelineManifest(manifestPath, manifest) {
   assertEnum(dbMode, ["none", "local", "external"], "db_mode");
   assertEnum(reportDefaultView, ["newbie", "expert"], "report_default_view");
   assertEnum(enrichMode, ["external", "fallback"], "enrich_mode");
+  assertEnum(chapterDetectMode, ["script", "assist", "auto"], "chapter_detect_mode");
 
   return {
     manifestPath: path.resolve(manifestPath),
@@ -78,5 +80,8 @@ export function resolvePipelineManifest(manifestPath, manifest) {
     reportRelationMinEdgeWeight: toNumber(manifest.report_relation_min_edge_weight, 2),
     reportRelationMaxLinks: toNumber(manifest.report_relation_max_links, 220),
     reportRelationMinNameFreq: toNumber(manifest.report_relation_min_name_freq, 2),
+    chapterDetectMode,
+    chapterAssistDir: manifest.chapter_assist_dir ? path.resolve(manifestDir, manifest.chapter_assist_dir) : path.join(outputDir, "chapter-detect-assist"),
+    chapterAssistResult: manifest.chapter_assist_result ? path.resolve(manifestDir, manifest.chapter_assist_result) : "",
   };
 }

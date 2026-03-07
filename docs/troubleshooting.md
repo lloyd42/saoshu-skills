@@ -70,3 +70,15 @@ npm run check
 ```
 
 如果这三步都通过，就优先继续功能排查，不要卡在“是不是全仓都乱码了”。
+
+## 7. 脚本识别不到章节时怎么办
+
+如果报错提示已生成“章节识别协作包”，说明当前文本格式超出了脚本稳妥覆盖范围。
+
+优先做法：
+
+1. 打开协作包目录里的 `chapter-detect-request.md`
+2. 让当前 AI/skill 根据 `chapter-detect-input.txt` 回填 `chapter-detect-result.json`
+3. 在 manifest 中设置 `chapter_detect_mode=assist` 与 `chapter_assist_result`，或直接重跑对应命令并传入 `--chapter-assist-result`
+
+这一步的目标不是让 AI 改正文，而是只输出标准化章节边界，让后续扫描链继续使用现有脚本主流程。
