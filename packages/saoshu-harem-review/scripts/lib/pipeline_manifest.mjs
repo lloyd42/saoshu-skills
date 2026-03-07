@@ -55,6 +55,7 @@ export function resolvePipelineManifest(manifestPath, manifest) {
     sampleStrategy,
     sampleMinCount: toNumber(manifest.sample_min_count, 0),
     sampleMaxCount: toNumber(manifest.sample_max_count, 0),
+    keywordRules: manifest.keyword_rules ? path.resolve(manifestDir, manifest.keyword_rules) : "",
     wikiDict: manifest.wiki_dict || "",
     dbMode,
     dbPath: manifest.db_path ? path.resolve(manifestDir, manifest.db_path) : path.join(outputDir, "scan-db"),

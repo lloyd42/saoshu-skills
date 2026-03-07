@@ -17,11 +17,11 @@ import {
 import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
 
 function usage() {
-  console.log("Usage: node scan_txt_batches.mjs --input <novel.txt> --output <batch-dir> [--batch-size 80] [--overlap 2]");
+  console.log("Usage: node scan_txt_batches.mjs --input <novel.txt> --output <batch-dir> [--batch-size 80] [--overlap 2] [--keyword-rules <json>]");
 }
 
 function parseArgs(argv) {
-  const out = { input: "", output: "", batchSize: 80, overlap: 2 };
+  const out = { input: "", output: "", batchSize: 80, overlap: 2, keywordRules: "" };
   for (let i = 2; i < argv.length; i++) {
     const k = argv[i];
     const v = argv[i + 1];
@@ -29,6 +29,7 @@ function parseArgs(argv) {
     else if (k === "--output") out.output = v, i++;
     else if (k === "--batch-size") out.batchSize = Number(v), i++;
     else if (k === "--overlap") out.overlap = Number(v), i++;
+    else if (k === "--keyword-rules") out.keywordRules = v, i++;
     else if (k === "--help" || k === "-h") return null;
     else scriptUsage(`未知参数：${k}`, "示例：node scan_txt_batches.mjs --input ./novel.txt --output ./batches");
   }
@@ -80,12 +81,12 @@ function extractTopCharacters(text, topN = 16) {
     .map(([name, count]) => ({ name, count }));
 }
 
-function detectHits(batchText, batchRangeText) {
+function detectHits(batchText, batchRangeText, rules) {
   const thunder = [];
   const depression = [];
   const risks = [];
 
-  for (const r of THUNDER_STRICT) {
+  for (const r of rules.thunderStrict) {
     let matched = "";
     for (const p of r.patterns) {
       if (batchText.includes(p)) {
@@ -103,7 +104,7 @@ function detectHits(batchText, batchRangeText) {
     }
   }
 
-  for (const r of THUNDER_RISK) {
+  for (const r of rules.thunderRisk) {
     let matched = "";
     for (const p of r.patterns) {
       if (batchText.includes(p)) {
@@ -124,7 +125,7 @@ function detectHits(batchText, batchRangeText) {
     }
   }
 
-  for (const r of DEPRESSION_RULES) {
+  for (const r of rules.depressionRules) {
     const counts = r.patterns.map((p) => ({ p, c: countMatches(batchText, p) }));
     const total = counts.reduce((s, x) => s + x.c, 0);
     const top = counts.sort((a, b) => b.c - a.c)[0];
@@ -143,12 +144,12 @@ function detectHits(batchText, batchRangeText) {
   return { thunder, depression, risks };
 }
 
-function analyzeChapterTitles(batch) {
+function analyzeChapterTitles(batch, titleSignalRules = TITLE_SIGNAL_RULES) {
   const hits = [];
   for (const chapter of batch) {
     const title = String(chapter.title || "").trim();
     if (!title) continue;
-    for (const rule of TITLE_SIGNAL_RULES) {
+    for (const rule of titleSignalRules) {
       for (const pattern of rule.patterns) {
         if (!title.includes(pattern)) continue;
         hits.push({
@@ -186,6 +187,44 @@ function uniqueBy(arr, keyFn) {
   return [...m.values()];
 }
 
+function mergeRuleRows(baseRows, extraRows, keyFields = ["rule"]) {
+  const grouped = new Map();
+  for (const row of [...baseRows, ...extraRows]) {
+    const key = keyFields.map((field) => String(row?.[field] || "")).join("|");
+    if (!key) continue;
+    if (!grouped.has(key)) grouped.set(key, { ...row, patterns: [] });
+    const current = grouped.get(key);
+    current.patterns.push(...(Array.isArray(row?.patterns) ? row.patterns : []));
+    for (const [field, value] of Object.entries(row || {})) {
+      if (field === "patterns") continue;
+      if (current[field] === undefined || current[field] === "" || current[field] === 0) current[field] = value;
+    }
+  }
+  return [...grouped.values()].map((row) => ({
+    ...row,
+    patterns: [...new Set((Array.isArray(row.patterns) ? row.patterns : []).map((item) => String(item || "").trim()).filter(Boolean))],
+  }));
+}
+
+function loadRuleCatalog(extraRulePath) {
+  const catalog = {
+    thunderStrict: THUNDER_STRICT,
+    thunderRisk: THUNDER_RISK,
+    depressionRules: DEPRESSION_RULES,
+    titleSignalRules: TITLE_SIGNAL_RULES,
+  };
+  if (!extraRulePath) return catalog;
+  const absolutePath = path.resolve(extraRulePath);
+  if (!fs.existsSync(absolutePath)) scriptUsage("`--keyword-rules` 文件不存在", `收到：${absolutePath}`);
+  const payload = JSON.parse(fs.readFileSync(absolutePath, "utf8"));
+  return {
+    thunderStrict: mergeRuleRows(THUNDER_STRICT, Array.isArray(payload.thunder_strict) ? payload.thunder_strict : []),
+    thunderRisk: mergeRuleRows(THUNDER_RISK, Array.isArray(payload.thunder_risk) ? payload.thunder_risk : []),
+    depressionRules: mergeRuleRows(DEPRESSION_RULES, Array.isArray(payload.depression_rules) ? payload.depression_rules : []),
+    titleSignalRules: mergeRuleRows(TITLE_SIGNAL_RULES, Array.isArray(payload.title_signal_rules) ? payload.title_signal_rules : [], ["type", "rule"]),
+  };
+}
+
 function main() {
   const args = parseArgs(process.argv);
   if (!args) {
@@ -195,6 +234,7 @@ function main() {
 
   const input = path.resolve(args.input);
   const output = path.resolve(args.output);
+  const rules = loadRuleCatalog(args.keywordRules);
   const loaded = readNovelText(input);
   const text = loaded.text;
   const chapters = parseChapters(text);
@@ -217,20 +257,20 @@ function main() {
     const range = `第${first}-${last}章`;
     const batchText = batch.map((c) => `${c.title}\n${c.body}`).join("\n");
 
-    const hits = detectHits(batchText, range);
+    const hits = detectHits(batchText, range, rules);
     const events = batch.slice(0, 6).map((c) => c.title);
     const topTags = extractTopTags(batchText, 12);
     const topChars = extractTopCharacters(batchText, 16);
-    const chapterTitleScan = analyzeChapterTitles(batch);
+    const chapterTitleScan = analyzeChapterTitles(batch, rules.titleSignalRules);
     const eventCandidates = buildEventCandidates({
       batchId,
       batchRange: range,
       batchText,
       chapters: batch,
       topCharacters: topChars,
-      thunderRules: THUNDER_STRICT,
-      riskRules: THUNDER_RISK,
-      depressionRules: DEPRESSION_RULES,
+      thunderRules: rules.thunderStrict,
+      riskRules: rules.thunderRisk,
+      depressionRules: rules.depressionRules,
     });
     const topSignals = [
       ...hits.thunder.map((x) => ({ name: `雷点:${x.rule}`, count: 1 })),

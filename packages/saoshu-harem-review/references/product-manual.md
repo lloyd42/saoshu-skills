@@ -72,6 +72,7 @@
 - 通过 `saoshu-scan-db` 把每次扫书结果持久化。
 - 支持统计查询（结论分布、高频风险、高频标签）。
 - 支持生成数据库仪表盘 HTML，服务可视化复盘。
+- 支持记录 `keyword_candidates`，并允许人工把候选词晋升为下一轮可复用规则。
 
 ### 4.8 角色关系图（跨平台本地）
 - merge 后可选生成 `relation-graph.html`。
@@ -102,6 +103,14 @@
 - `node scripts/saoshu_cli.mjs db trends --db ./scan-db --output-dir ./scan-db/trends`
 - `node scripts/saoshu_cli.mjs compare --db ./scan-db --output-dir ./scan-db/compare`
 
+关键词闭环示例：
+
+```bash
+node packages/saoshu-scan-db/scripts/db_query.mjs --db ./scan-db --metric keyword-candidates
+node packages/saoshu-scan-db/scripts/db_promote_keyword.mjs --db ./scan-db --keyword 献妻令 --rule 送女 --bucket thunder-risk --patterns 献妻令,献妻
+node packages/saoshu-scan-db/scripts/db_export_keyword_rules.mjs --db ./scan-db --output ./workspace/keyword-rules.json
+```
+
 Manifest 向导（新手推荐）：
 - 交互式：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie`
 - 非交互：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie --non-interactive --input-txt <txt> --output-dir <dir> --title <name>`
@@ -118,6 +127,7 @@ Manifest 向导（新手推荐）：
 - `sample_count`（fixed 模式）
 - `sample_min_count/sample_max_count`（dynamic 边界）
 - `sample_strategy`: `risk-aware|uniform`
+- `keyword_rules`: 额外关键词规则文件
 - `wiki_dict`: 术语词典路径
 - `db_mode`: `none|local|external`
 - `db_path`: 本地数据库目录（local）

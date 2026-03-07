@@ -22,6 +22,7 @@
     "sample_min_count": {"type": "integer", "minimum": 0},
     "sample_max_count": {"type": "integer", "minimum": 0},
     "sample_strategy": {"type": "string", "enum": ["risk-aware", "uniform"]},
+    "keyword_rules": {"type": "string"},
     "wiki_dict": {"type": "string"},
     "db_mode": {"type": "string", "enum": ["none", "local", "external"]},
     "db_path": {"type": "string"},

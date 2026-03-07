@@ -50,6 +50,18 @@ function arr(v) {
   return Array.isArray(v) ? v : [];
 }
 
+function uniqBy(items, keyFn) {
+  const seen = new Set();
+  const out = [];
+  for (const item of arr(items)) {
+    const key = keyFn(item);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
 function main() {
   const args = parseArgs(process.argv);
   if (!args) return usage();
@@ -68,6 +80,7 @@ function main() {
   const depFile = path.join(dbDir, "depression_items.jsonl");
   const riskFile = path.join(dbDir, "risk_items.jsonl");
   const tagFile = path.join(dbDir, "tag_items.jsonl");
+  const keywordFile = path.join(dbDir, "keyword_candidates.jsonl");
 
   const run = {
     run_id: runId,
@@ -137,9 +150,51 @@ function main() {
     });
   }
 
+  const keywordRows = [];
+  for (const event of arr(report.events?.items)) {
+    const shared = {
+      run_id: runId,
+      title: run.title,
+      event_id: String(event.event_id || ""),
+      rule_candidate: String(event.rule_candidate || ""),
+      category: String(event.category || ""),
+      review_decision: String(event.review_decision || ""),
+      status: String(event.status || ""),
+      subject_name: String(event.subject?.name || ""),
+      target_name: String(event.target?.name || ""),
+      chapter_range: String(event.chapter_range || ""),
+    };
+    for (const signal of arr(event.signals)) {
+      const keyword = String(signal || "").trim();
+      if (!keyword) continue;
+      keywordRows.push({
+        ...shared,
+        keyword,
+        source_kind: "event_signal",
+        snippet: String(event.evidence?.[0]?.snippet || ""),
+      });
+    }
+    for (const evidence of arr(event.evidence)) {
+      const keyword = String(evidence.keyword || "").trim();
+      if (!keyword) continue;
+      keywordRows.push({
+        ...shared,
+        keyword,
+        source_kind: "event_evidence",
+        chapter_num: Number(evidence.chapter_num || 0),
+        chapter_title: String(evidence.chapter_title || ""),
+        snippet: String(evidence.snippet || ""),
+      });
+    }
+  }
+
+  for (const row of uniqBy(keywordRows, (item) => `${item.event_id}|${item.keyword}|${item.source_kind}|${item.chapter_num || 0}|${item.chapter_title || ""}`)) {
+    appendJsonl(keywordFile, row);
+  }
+
   console.log(`DB: ${dbDir}`);
   console.log(`Run ID: ${runId}`);
-  console.log(`Written: runs/thunder/depression/risk/tags`);
+  console.log(`Written: runs/thunder/depression/risk/tags/keywords`);
 }
 
 try {

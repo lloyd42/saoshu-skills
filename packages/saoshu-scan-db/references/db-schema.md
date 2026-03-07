@@ -30,6 +30,24 @@
 - run_id / title
 - tag / count
 
+## keyword_candidates.jsonl
+- run_id / title / event_id
+- rule_candidate / category
+- keyword / source_kind
+- review_decision / status
+- subject_name / target_name
+- chapter_range / chapter_num / chapter_title
+- snippet
+
+## keyword_promotions.jsonl
+- promoted_at
+- keyword / rule
+- bucket（`thunder-risk|thunder-strict|depression|title-signal`）
+- patterns[]
+- title_type / weight / critical
+- severity / min_defense / min_count
+- note
+
 ## 对比维度建议
 - author（作者）
 - tags（标签拆分后聚合）

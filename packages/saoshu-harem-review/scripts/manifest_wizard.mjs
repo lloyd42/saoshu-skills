@@ -71,6 +71,7 @@ function baseManifest() {
     sample_min_count: 0,
     sample_max_count: 0,
     sample_strategy: "risk-aware",
+    keyword_rules: "",
     wiki_dict: "",
     report_default_view: "newbie",
     report_pdf: false,
