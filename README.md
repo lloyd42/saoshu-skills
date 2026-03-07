@@ -190,6 +190,7 @@ npm run check
 - 批次归并与报告输出的 focused regression
 - 事件复核与 event_id 写回的 focused regression
 - 用户可见术语的一致性检查
+- 外部模板命令契约检查
 - 版本元数据
 - CLI 帮助契约
 - 最小样例端到端主流程，以及子 skill 缺失时的兜底/跳过行为

@@ -118,7 +118,7 @@ async function interactiveFill(m) {
     if (m.db_mode === "local") {
       m.db_path = await ask(rl, "数据库目录", m.db_path);
     } else if (m.db_mode === "external") {
-      m.db_ingest_cmd = await ask(rl, "外部入库命令模板", m.db_ingest_cmd);
+      m.db_ingest_cmd = await ask(rl, "外部入库命令模板（支持 {report} {state} {manifest} {db}）", m.db_ingest_cmd);
     }
   } finally {
     rl.close();
