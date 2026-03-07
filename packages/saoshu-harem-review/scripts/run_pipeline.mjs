@@ -100,6 +100,7 @@ function main() {
   const sampleMaxCount = config.sampleMaxCount;
   const aliasMap = config.aliasMap;
   const keywordRules = config.keywordRules;
+  const riskQuestionPool = config.riskQuestionPool;
   const wikiDict = config.wikiDict;
   const dbMode = config.dbMode;
   const dbPath = config.dbPath;
@@ -238,6 +239,7 @@ function main() {
         "--report-default-view", reportDefaultView,
       ];
       if (wikiPath && fs.existsSync(path.resolve(wikiPath))) args.push("--wiki-dict", wikiPath);
+      if (riskQuestionPool) args.push("--risk-question-pool", riskQuestionPool);
       if (totalBatches > 0) args.push("--sample-coverage-rate", (selectedBatches / totalBatches).toFixed(6));
       return args;
     }

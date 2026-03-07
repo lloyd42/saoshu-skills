@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 function usage() {
-  console.log("Usage: node db_query.mjs --db <dir> [--metric overview|verdict|top-risks|top-tags|top-keywords|keyword-candidates|promoted-keywords|top-aliases|alias-candidates|promoted-aliases|runs] [--limit 10] [--format text|json]");
+  console.log("Usage: node db_query.mjs --db <dir> [--metric overview|verdict|top-risks|top-tags|top-keywords|keyword-candidates|promoted-keywords|top-aliases|alias-candidates|promoted-aliases|top-risk-questions|risk-question-candidates|promoted-risk-questions|runs] [--limit 10] [--format text|json]");
 }
 
 function parseArgs(argv) {
@@ -117,6 +117,39 @@ function topAliasCandidates(rows, limit) {
     .slice(0, limit);
 }
 
+function topRiskQuestionCandidates(rows, limit) {
+  const grouped = new Map();
+  for (const row of rows) {
+    const risk = String(row.risk || "").trim();
+    const question = String(row.question || "").trim();
+    if (!risk || !question) continue;
+    const key = `${risk}|${question}`;
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        risk,
+        question,
+        total_hits: 0,
+        run_ids: new Set(),
+        source_kinds: new Set(),
+      });
+    }
+    const agg = grouped.get(key);
+    agg.total_hits += 1;
+    if (row.run_id) agg.run_ids.add(String(row.run_id));
+    if (row.source_kind) agg.source_kinds.add(String(row.source_kind));
+  }
+  return [...grouped.values()]
+    .map((item) => ({
+      risk: item.risk,
+      question: item.question,
+      total_hits: item.total_hits,
+      run_count: item.run_ids.size,
+      source_kinds: [...item.source_kinds].sort(),
+    }))
+    .sort((a, b) => b.total_hits - a.total_hits || b.run_count - a.run_count || a.question.localeCompare(b.question, "zh"))
+    .slice(0, limit);
+}
+
 function main() {
   const args = parseArgs(process.argv);
   if (!args) return usage();
@@ -128,6 +161,8 @@ function main() {
   const promotions = readJsonl(path.join(db, "keyword_promotions.jsonl"));
   const aliases = readJsonl(path.join(db, "alias_candidates.jsonl"));
   const aliasPromotions = readJsonl(path.join(db, "alias_promotions.jsonl"));
+  const riskQuestions = readJsonl(path.join(db, "risk_question_candidates.jsonl"));
+  const riskQuestionPromotions = readJsonl(path.join(db, "risk_question_promotions.jsonl"));
 
   let out = {};
   if (args.metric === "overview") {
@@ -139,8 +174,10 @@ function main() {
       top_tags: topN(tags, "tag", 10),
       top_keywords: topN(keywords, "keyword", 10),
       top_aliases: topN(aliases, "alias", 10),
+      top_risk_questions: topN(riskQuestions, "risk", 10),
       promoted_keywords: promotions.slice(-Math.min(args.limit, 10)).reverse(),
       promoted_aliases: aliasPromotions.slice(-Math.min(args.limit, 10)).reverse(),
+      promoted_risk_questions: riskQuestionPromotions.slice(-Math.min(args.limit, 10)).reverse(),
     };
   } else if (args.metric === "verdict") out = topN(runs, "verdict", args.limit);
   else if (args.metric === "top-risks") out = topN(risks, "risk", args.limit);
@@ -151,8 +188,11 @@ function main() {
   else if (args.metric === "top-aliases") out = topN(aliases, "alias", args.limit);
   else if (args.metric === "alias-candidates") out = topAliasCandidates(aliases, args.limit);
   else if (args.metric === "promoted-aliases") out = aliasPromotions.slice(-args.limit).reverse();
+  else if (args.metric === "top-risk-questions") out = topN(riskQuestions, "risk", args.limit);
+  else if (args.metric === "risk-question-candidates") out = topRiskQuestionCandidates(riskQuestions, args.limit);
+  else if (args.metric === "promoted-risk-questions") out = riskQuestionPromotions.slice(-args.limit).reverse();
   else if (args.metric === "runs") out = runs.slice(-args.limit).reverse();
-  else throw new Error("metric must be overview|verdict|top-risks|top-tags|top-keywords|keyword-candidates|promoted-keywords|top-aliases|alias-candidates|promoted-aliases|runs");
+  else throw new Error("metric must be overview|verdict|top-risks|top-tags|top-keywords|keyword-candidates|promoted-keywords|top-aliases|alias-candidates|promoted-aliases|top-risk-questions|risk-question-candidates|promoted-risk-questions|runs");
 
   if (args.format === "json") {
     console.log(JSON.stringify(out, null, 2));
@@ -165,6 +205,7 @@ function main() {
     console.log(`Top tags: ${out.top_tags.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
     console.log(`Top keywords: ${out.top_keywords.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
     console.log(`Top aliases: ${out.top_aliases.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`Top risk questions: ${out.top_risk_questions.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
     return;
   }
   console.log(JSON.stringify(out, null, 2));

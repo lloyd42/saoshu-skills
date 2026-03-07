@@ -9,6 +9,8 @@
 - 关键词规则导出：`scripts/db_export_keyword_rules.mjs`
 - 别名晋升：`scripts/db_promote_alias.mjs`
 - 别名映射导出：`scripts/db_export_alias_map.mjs`
+- 补证问题晋升：`scripts/db_promote_risk_question.mjs`
+- 补证问题池导出：`scripts/db_export_risk_question_pool.mjs`
 - 趋势：`scripts/db_trends.mjs`
 - 对比：`scripts/db_compare.mjs`
 - 仪表板：`scripts/db_dashboard.mjs`

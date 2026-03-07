@@ -73,6 +73,7 @@ function baseManifest() {
     sample_strategy: "risk-aware",
     alias_map: "",
     keyword_rules: "",
+    risk_question_pool: "",
     wiki_dict: "",
     report_default_view: "newbie",
     report_pdf: false,

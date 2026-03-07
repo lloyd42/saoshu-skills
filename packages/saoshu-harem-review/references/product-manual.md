@@ -74,6 +74,7 @@
 - 支持生成数据库仪表盘 HTML，服务可视化复盘。
 - 支持记录 `keyword_candidates`，并允许人工把候选词晋升为下一轮可复用规则。
 - 支持记录 `alias_candidates`，并允许人工把角色别名晋升为下一轮可复用映射。
+- 支持记录 `risk_question_candidates`，并允许人工把补证问题整理成下一轮可复用问题池。
 
 ### 4.8 角色关系图（跨平台本地）
 - merge 后可选生成 `relation-graph.html`。
@@ -120,6 +121,14 @@ node packages/saoshu-scan-db/scripts/db_promote_alias.mjs --db ./scan-db --canon
 node packages/saoshu-scan-db/scripts/db_export_alias_map.mjs --db ./scan-db --output ./workspace/alias-map.json
 ```
 
+补证问题池闭环示例：
+
+```bash
+node packages/saoshu-scan-db/scripts/db_query.mjs --db ./scan-db --metric risk-question-candidates
+node packages/saoshu-scan-db/scripts/db_promote_risk_question.mjs --db ./scan-db --risk 背叛 --question "背叛是否只是伪装投敌，终局是否回到男主阵营？"
+node packages/saoshu-scan-db/scripts/db_export_risk_question_pool.mjs --db ./scan-db --output ./workspace/risk-question-pool.json
+```
+
 Manifest 向导（新手推荐）：
 - 交互式：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie`
 - 非交互：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie --non-interactive --input-txt <txt> --output-dir <dir> --title <name>`
@@ -138,6 +147,7 @@ Manifest 向导（新手推荐）：
 - `sample_strategy`: `risk-aware|uniform`
 - `alias_map`: 角色别名映射文件
 - `keyword_rules`: 额外关键词规则文件
+- `risk_question_pool`: 补证问题池文件
 - `wiki_dict`: 术语词典路径
 - `db_mode`: `none|local|external`
 - `db_path`: 本地数据库目录（local）

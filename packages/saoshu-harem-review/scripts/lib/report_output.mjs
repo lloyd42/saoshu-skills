@@ -40,6 +40,59 @@ export function loadGlossary(file) {
   }
 }
 
+export function loadRiskQuestionPool(file) {
+  if (!file) return [];
+  const p = path.resolve(file);
+  if (!fs.existsSync(p)) return [];
+  try {
+    const payload = readJsonFile(p);
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload.questions)) return payload.questions;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+function buildRiskQuestionIndex(rows) {
+  const index = new Map();
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const risk = String(row.risk || "").trim();
+    const questions = (Array.isArray(row.questions) ? row.questions : []).map((item) => String(item || "").trim()).filter(Boolean);
+    if (!risk || questions.length === 0) continue;
+    index.set(risk, questions);
+  }
+  return index;
+}
+
+function buildFollowUpQuestions(merged, riskQuestionPool) {
+  const questions = [];
+  const riskIndex = buildRiskQuestionIndex(riskQuestionPool);
+  for (const risk of Array.isArray(merged.risks) ? merged.risks : []) {
+    const riskName = String(risk.risk || "").trim();
+    if (!riskName) continue;
+    if (riskIndex.has(riskName)) {
+      for (const question of riskIndex.get(riskName)) questions.push(question);
+    } else if (risk.missing_evidence) {
+      questions.push(`[${riskName}] ${String(risk.missing_evidence).trim()}`);
+    }
+  }
+  for (const event of Array.isArray(merged.event_candidates) ? merged.event_candidates : []) {
+    const decision = String(event.review_decision || "").trim();
+    if (["已确认", "排除"].includes(decision)) continue;
+    const riskName = String(event.rule_candidate || "").trim();
+    const missing = Array.isArray(event.missing_evidence) ? event.missing_evidence : [];
+    for (const item of missing) {
+      const text = String(item || "").trim();
+      if (!text) continue;
+      questions.push(riskName ? `[${riskName}] ${text}` : text);
+    }
+  }
+  questions.push("是否存在未展示的番外或外传影响主线结论？");
+  questions.push("当前未证实风险项对应章节能否提供明确片段？");
+  return [...new Set(questions.filter(Boolean))].slice(0, 8);
+}
+
 export function buildGlossaryIndex(rows) {
   const map = new Map();
   for (const row of rows) {
@@ -154,7 +207,7 @@ function buildNewbieCard(verdict, rating, thunderCount, depressionCount, riskCou
   return { level, label, confidence, headline, bullets };
 }
 
-export function buildReportData(meta, merged, glossaryIndex) {
+export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = []) {
   const confirmedThunder = merged.thunders.filter((item) => CONFIRMED_LEVELS.has(String(item.evidence_level || "").trim()));
   const hasThunder = confirmedThunder.length > 0;
   const recommendations = defenseRecommendation(merged.thunders, merged.depressions);
@@ -300,11 +353,7 @@ export function buildReportData(meta, merged, glossaryIndex) {
       },
     },
     term_wiki: termWiki,
-    follow_up_questions: [
-      "是否有关键女主在后段出现关系反转（背叛/送女/死女）？",
-      "是否存在未展示的番外或外传影响主线结论？",
-      "当前未证实风险项对应章节能否提供明确片段？",
-    ],
+    follow_up_questions: buildFollowUpQuestions(merged, riskQuestionPool),
   };
 }
 

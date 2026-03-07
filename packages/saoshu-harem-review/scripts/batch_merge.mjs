@@ -27,13 +27,14 @@ import {
   CONFIRMED_LEVELS,
   DEF_RANK,
   loadGlossary,
+  loadRiskQuestionPool,
   renderHtml,
   renderMarkdown,
   SEV_RANK,
 } from "./lib/report_output.mjs";
 
 function usage() {
-  console.log("Usage: node batch_merge.mjs --input <batch-dir> [--output <report.md>] [--title <name>] [--author <name>] [--tags <text>] [--target-defense <defense>] [--covered <text>] [--json-out <report.json>] [--html-out <report.html>] [--pipeline-mode <performance|economy>] [--state-path <pipeline-state.json>] [--wiki-dict <glossary.json>] [--report-default-view newbie|expert]");
+  console.log("Usage: node batch_merge.mjs --input <batch-dir> [--output <report.md>] [--title <name>] [--author <name>] [--tags <text>] [--target-defense <defense>] [--covered <text>] [--json-out <report.json>] [--html-out <report.html>] [--pipeline-mode <performance|economy>] [--state-path <pipeline-state.json>] [--wiki-dict <glossary.json>] [--risk-question-pool <json>] [--report-default-view newbie|expert]");
 }
 
 function parseArgs(argv) {
@@ -61,6 +62,7 @@ function parseArgs(argv) {
     sampleCoverageRate: 0,
     statePath: "",
     wikiDict: "",
+    riskQuestionPool: "",
     reportDefaultView: "newbie",
   };
   for (let index = 2; index < argv.length; index++) {
@@ -89,6 +91,7 @@ function parseArgs(argv) {
     else if (key === "--sample-coverage-rate") out.sampleCoverageRate = Number(value), index++;
     else if (key === "--state-path") out.statePath = value, index++;
     else if (key === "--wiki-dict") out.wikiDict = value, index++;
+    else if (key === "--risk-question-pool") out.riskQuestionPool = value, index++;
     else if (key === "--report-default-view") out.reportDefaultView = value, index++;
     else if (key === "--help" || key === "-h") return null;
     else throw new Error(`Unknown argument: ${key}`);
@@ -251,9 +254,10 @@ function main() {
   }
   args.glossaryRows = loadGlossary(args.wikiDict);
   args.glossaryIndex = buildGlossaryIndex(args.glossaryRows);
+  args.riskQuestionRows = loadRiskQuestionPool(args.riskQuestionPool);
 
   const merged = mergeBatches(batches);
-  const data = buildReportData(args, merged, args.glossaryIndex);
+  const data = buildReportData(args, merged, args.glossaryIndex, args.riskQuestionRows);
 
   const inputPath = path.resolve(args.input);
   const defaultMarkdownPath = path.join(inputPath, "merged-report.md");

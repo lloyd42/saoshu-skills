@@ -24,6 +24,7 @@
     "sample_strategy": {"type": "string", "enum": ["risk-aware", "uniform"]},
     "alias_map": {"type": "string"},
     "keyword_rules": {"type": "string"},
+    "risk_question_pool": {"type": "string"},
     "wiki_dict": {"type": "string"},
     "db_mode": {"type": "string", "enum": ["none", "local", "external"]},
     "db_path": {"type": "string"},

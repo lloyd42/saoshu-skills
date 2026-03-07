@@ -60,6 +60,17 @@
 - gender / role_hint / relation_label
 - note
 
+## risk_question_candidates.jsonl
+- run_id / title
+- risk / source_kind
+- question
+- current_evidence / impact
+
+## risk_question_promotions.jsonl
+- promoted_at
+- risk / question
+- note
+
 ## 对比维度建议
 - author（作者）
 - tags（标签拆分后聚合）

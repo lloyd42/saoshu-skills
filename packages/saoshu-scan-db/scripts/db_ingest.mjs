@@ -82,6 +82,7 @@ function main() {
   const tagFile = path.join(dbDir, "tag_items.jsonl");
   const keywordFile = path.join(dbDir, "keyword_candidates.jsonl");
   const aliasFile = path.join(dbDir, "alias_candidates.jsonl");
+  const riskQuestionFile = path.join(dbDir, "risk_question_candidates.jsonl");
 
   const run = {
     run_id: runId,
@@ -226,9 +227,63 @@ function main() {
     appendJsonl(aliasFile, row);
   }
 
+  const riskQuestionRows = [];
+  for (const risk of arr(report.risks_unconfirmed)) {
+    const riskName = String(risk.risk || "").trim();
+    const question = String(risk.missing_evidence || "").trim();
+    if (!riskName || !question) continue;
+    riskQuestionRows.push({
+      run_id: runId,
+      title: run.title,
+      risk: riskName,
+      source_kind: "risk_unconfirmed",
+      question,
+      current_evidence: String(risk.current_evidence || ""),
+      impact: String(risk.impact || ""),
+    });
+  }
+
+  for (const event of arr(report.events?.items)) {
+    const riskName = String(event.rule_candidate || "").trim();
+    const decision = String(event.review_decision || event.status || "").trim();
+    if (["已确认", "排除", "已排除"].includes(decision)) continue;
+    for (const question of arr(event.missing_evidence)) {
+      const text = String(question || "").trim();
+      if (!riskName || !text) continue;
+      riskQuestionRows.push({
+        run_id: runId,
+        title: run.title,
+        risk: riskName,
+        source_kind: "event_missing_evidence",
+        question: text,
+        current_evidence: String(event.evidence?.[0]?.snippet || ""),
+        impact: "待补证后可能改变最终结论",
+      });
+    }
+  }
+
+  for (const question of arr(report.follow_up_questions)) {
+    const text = String(question || "").trim();
+    if (!text) continue;
+    const m = /^\[(.+?)\]\s*(.+)$/.exec(text);
+    riskQuestionRows.push({
+      run_id: runId,
+      title: run.title,
+      risk: m ? String(m[1] || "").trim() : "通用补证",
+      source_kind: "report_follow_up",
+      question: m ? String(m[2] || "").trim() : text,
+      current_evidence: "",
+      impact: "用于下一轮补证与人工复核",
+    });
+  }
+
+  for (const row of uniqBy(riskQuestionRows, (item) => `${item.risk}|${item.question}|${item.source_kind}|${item.run_id}`)) {
+    appendJsonl(riskQuestionFile, row);
+  }
+
   console.log(`DB: ${dbDir}`);
   console.log(`Run ID: ${runId}`);
-  console.log(`Written: runs/thunder/depression/risk/tags/keywords/aliases`);
+  console.log(`Written: runs/thunder/depression/risk/tags/keywords/aliases/risk-questions`);
 }
 
 try {
