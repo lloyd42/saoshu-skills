@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getExitCode } from "./lib/exit_codes.mjs";
+import { CRITICAL_RISK_RULES } from "./lib/rule_catalog.mjs";
 import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
 
 function usage() {
@@ -68,10 +69,11 @@ function riskScore(batch) {
   const thunder = Array.isArray(batch.thunder_hits) ? batch.thunder_hits : [];
   const dep = Array.isArray(batch.depression_hits) ? batch.depression_hits : [];
   const risk = Array.isArray(batch.risk_unconfirmed) ? batch.risk_unconfirmed : [];
+  const criticalRules = new Set(CRITICAL_RISK_RULES);
   let score = thunder.length * 6 + risk.length * 4 + dep.length;
   for (const r of risk) {
     const name = String(r.risk || "");
-    if (["绿帽", "死女", "背叛", "送女", "wrq"].includes(name)) score += 4;
+    if (criticalRules.has(name)) score += 4;
   }
   return score;
 }
@@ -91,7 +93,7 @@ function readTitleScan(batch) {
 }
 
 function hasCriticalSignal(batch) {
-  const critical = new Set(["wrq", "死女", "送女", "背叛", "绿帽"]);
+  const critical = new Set(CRITICAL_RISK_RULES);
   const thunder = Array.isArray(batch.thunder_hits) ? batch.thunder_hits : [];
   const risk = Array.isArray(batch.risk_unconfirmed) ? batch.risk_unconfirmed : [];
   for (const t of thunder) {
