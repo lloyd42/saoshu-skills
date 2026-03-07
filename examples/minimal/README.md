@@ -7,6 +7,7 @@
 - `novel.txt`：最小纯文本输入夹具
 - `manifest.json`：指向当前目录内样例文件的最小清单
 - `final-report.json`：示例输出结构参考
+- `report-reading-guide.md`：新手读报告顺序说明
 
 ## 运行方式
 
@@ -17,6 +18,10 @@ node packages/saoshu-harem-review/scripts/run_pipeline.mjs --manifest examples/m
 ```
 
 运行后，输出会写入 `examples/minimal/workspace/minimal-example/`。
+
+如果你是第一次接触扫书报告，建议再看：
+
+- `examples/minimal/report-reading-guide.md`
 
 ## 说明
 

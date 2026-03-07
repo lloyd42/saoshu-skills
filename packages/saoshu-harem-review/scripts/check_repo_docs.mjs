@@ -12,6 +12,7 @@ const requiredFiles = [
   "CHANGELOG.md",
   "SECURITY.md",
   "package.json",
+  "examples/minimal/report-reading-guide.md",
   "docs/architecture.md",
   "docs/development-workflow.md",
   "docs/troubleshooting.md",
@@ -30,6 +31,7 @@ const linkContracts = [
       "`docs/roadmap.md`",
       "`CONTRIBUTING.md`",
       "`VERSIONING.md`",
+      "`examples/minimal/report-reading-guide.md`",
     ],
   },
   {

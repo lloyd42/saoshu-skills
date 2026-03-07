@@ -152,6 +152,7 @@ node packages/saoshu-harem-review/scripts/saoshu_cli.mjs wiki --term wrq
 - `packages/saoshu-harem-review/references/architecture/manifest.example.json`
 - `examples/minimal/manifest.json`
 - `examples/minimal/README.md`
+- `examples/minimal/report-reading-guide.md`
 
 然后再执行：
 
