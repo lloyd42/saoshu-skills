@@ -8,8 +8,10 @@
 - target_defense
 - verdict / rating
 - batch_count
-- pipeline_mode / sample_mode / sample_level
-- coverage_ratio
+- pipeline_mode / coverage_mode / coverage_template / serial_status
+- sample_mode / sample_level
+- total_batches / selected_batches / coverage_ratio
+- coverage_gap_summary / coverage_gap_risk_types
 - thunder_total / depression_total / risk_total
 - keyword_candidate_total / alias_candidate_total / risk_question_candidate_total / relation_candidate_total
 - input_txt / output_dir
@@ -100,3 +102,6 @@
 - pipeline_mode（economy/performance）
 - target_defense（目标防御）
 - title（按作品聚合）
+- coverage_mode（sampled / chapter-full / full-book）
+- coverage_template（如 opening-100 / head-tail / head-tail-risk / opening-latest）
+- serial_status（unknown / ongoing / completed）

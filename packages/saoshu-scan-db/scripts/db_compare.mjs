@@ -4,13 +4,13 @@ import path from "node:path";
 import { getModeDiffDbFile, readJsonl, splitTags, toNumber } from "./lib/mode_diff_db.mjs";
 
 function usage() {
-  console.log("Usage: node db_compare.mjs --db <dir> [--dimensions author,tags,verdict,pipeline_mode,target_defense,title,mode_diff_gain_window,mode_diff_band] [--top 20] [--output-dir <dir>]");
+  console.log("Usage: node db_compare.mjs --db <dir> [--dimensions author,tags,verdict,pipeline_mode,coverage_mode,coverage_template,serial_status,target_defense,title,mode_diff_gain_window,mode_diff_band] [--top 20] [--output-dir <dir>]");
 }
 
 function parseArgs(argv) {
   const out = {
     db: "",
-    dimensions: "author,tags,verdict,pipeline_mode,target_defense",
+    dimensions: "author,tags,verdict,pipeline_mode,coverage_mode,target_defense",
     top: 20,
     outputDir: "",
   };

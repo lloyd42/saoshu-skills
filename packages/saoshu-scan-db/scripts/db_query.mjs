@@ -190,6 +190,10 @@ function formatModeDiffText(summary) {
   ].join("\n");
 }
 
+function countCoverageGapRuns(rows) {
+  return rows.filter((row) => String(row.coverage_gap_summary || "").trim()).length;
+}
+
 function main() {
   const args = parseArgs(process.argv);
   if (!args) return usage();
@@ -220,6 +224,10 @@ function main() {
       top_aliases: topN(aliases, "alias", 10),
       top_risk_questions: topN(riskQuestions, "risk", 10),
       top_relations: topN(relations, "type", 10),
+      top_coverage_modes: topN(runs, "coverage_mode", 10),
+      top_coverage_templates: topN(runs, "coverage_template", 10),
+      top_serial_statuses: topN(runs, "serial_status", 10),
+      coverage_gap_runs: countCoverageGapRuns(runs),
       promoted_keywords: promotions.slice(-Math.min(args.limit, 10)).reverse(),
       promoted_aliases: aliasPromotions.slice(-Math.min(args.limit, 10)).reverse(),
       promoted_risk_questions: riskQuestionPromotions.slice(-Math.min(args.limit, 10)).reverse(),
@@ -259,6 +267,10 @@ function main() {
     console.log(`Top aliases: ${out.top_aliases.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
     console.log(`Top risk questions: ${out.top_risk_questions.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
     console.log(`Top relations: ${out.top_relations.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`Top coverage modes: ${out.top_coverage_modes.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`Top coverage templates: ${out.top_coverage_templates.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`Top serial statuses: ${out.top_serial_statuses.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`Coverage-gap runs: ${out.coverage_gap_runs}`);
     console.log(formatModeDiffText(out.mode_diff_overview));
     return;
   }
