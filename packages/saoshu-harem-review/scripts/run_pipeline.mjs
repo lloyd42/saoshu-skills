@@ -70,6 +70,57 @@ function parseRecommendedLevelFromState(steps) {
   return "";
 }
 
+function parseCoverageTemplate(detail) {
+  const text = String(detail || "");
+  const match = /auto\s*->\s*(opening-100|head-tail|head-tail-risk|opening-latest)/i.exec(text);
+  return match ? match[1] : "";
+}
+
+function parseRecommendedCoverageTemplate(state) {
+  if (String(state?.coverage_template || "").trim()) return String(state.coverage_template).trim();
+  const rows = Array.isArray(state?.steps) ? state.steps : [];
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const step = rows[index];
+    if (!step || step.step !== "coverage_template_recommendation") continue;
+    const parsed = parseCoverageTemplate(step.detail || "");
+    if (parsed) return parsed;
+  }
+  return "";
+}
+
+function readCoverageTemplateMeta(batchDir) {
+  if (!fs.existsSync(batchDir)) return [];
+  return fs.readdirSync(batchDir)
+    .filter((file) => /^B\d+\.json$/i.test(file))
+    .sort((left, right) => left.localeCompare(right, undefined, { numeric: true }))
+    .map((file) => {
+      const batch = readJson(path.join(batchDir, file));
+      const titleScan = batch?.metadata?.chapter_title_scan || {};
+      const titleScore = Number.isFinite(Number(titleScan.score)) ? Number(titleScan.score) : 0;
+      const titleCritical = Boolean(titleScan.critical);
+      const critical = Array.isArray(batch?.thunder_hits) && batch.thunder_hits.length > 0
+        || Array.isArray(batch?.risk_unconfirmed) && batch.risk_unconfirmed.length > 0;
+      return { titleScore, titleCritical, critical };
+    });
+}
+
+function recommendCoverageTemplate({ serialStatus, totalBatches, metaRows }) {
+  const rows = Array.isArray(metaRows) ? metaRows : [];
+  const total = Math.max(1, Number(totalBatches || rows.length || 0));
+  const titleSignalDensity = rows.filter((row) => Number(row.titleScore || 0) > 0).length / total;
+  const titleCriticalDensity = rows.filter((row) => row.titleCritical).length / total;
+  const criticalDensity = rows.filter((row) => row.critical).length / total;
+
+  if (serialStatus === "ongoing") return total <= 2 ? "opening-100" : "opening-latest";
+  if (total <= 2) return "opening-100";
+  if (serialStatus === "completed") {
+    if (titleCriticalDensity > 0 || criticalDensity >= 0.15 || titleSignalDensity >= 0.3) return "head-tail-risk";
+    return "head-tail";
+  }
+  if (titleCriticalDensity > 0 || criticalDensity >= 0.15 || titleSignalDensity >= 0.3) return "head-tail-risk";
+  return "head-tail";
+}
+
 function main() {
   const args = parseArgs(process.argv);
   if (!args) return usage();
@@ -92,10 +143,13 @@ function main() {
   const enrichMode = config.enrichMode;
   const enricherCmd = config.enricherCmd;
   const pipelineMode = config.pipelineMode;
+  const coverageMode = config.coverageMode;
+  const coverageTemplate = config.coverageTemplate;
   const sampleCount = config.sampleCount;
   const sampleMode = config.sampleMode;
   const sampleLevel = config.sampleLevel;
   const sampleStrategy = config.sampleStrategy;
+  const serialStatus = config.serialStatus;
   const sampleMinCount = config.sampleMinCount;
   const sampleMaxCount = config.sampleMaxCount;
   const aliasMap = config.aliasMap;
@@ -122,6 +176,7 @@ function main() {
   const chapterAssistResult = config.chapterAssistResult;
   let effectiveSampleLevel = sampleLevel;
   let sampleLevelRecommended = "";
+  let effectiveCoverageTemplate = coverageTemplate || parseRecommendedCoverageTemplate(state);
 
   const allBatchesDir = path.join(outputDir, "batches-all");
   const workBatchesDir = pipelineMode === "economy" ? path.join(outputDir, "batches-sampled") : allBatchesDir;
@@ -157,7 +212,22 @@ function main() {
       } else {
         effectiveSampleLevel = effectiveLevel;
       }
+      if (!effectiveCoverageTemplate) {
+        const templateMeta = readCoverageTemplateMeta(allBatchesDir);
+        const recommendedTemplate = recommendCoverageTemplate({
+          serialStatus,
+          totalBatches: templateMeta.length,
+          metaRows: templateMeta,
+        });
+        effectiveCoverageTemplate = recommendedTemplate;
+        const titleSignalDensity = templateMeta.length ? (templateMeta.filter((row) => Number(row.titleScore || 0) > 0).length / templateMeta.length) : 0;
+        const titleCriticalDensity = templateMeta.length ? (templateMeta.filter((row) => row.titleCritical).length / templateMeta.length) : 0;
+        const criticalDensity = templateMeta.length ? (templateMeta.filter((row) => row.critical).length / templateMeta.length) : 0;
+        mark("coverage_template_recommendation", "done", `auto -> ${recommendedTemplate} (serial_status=${serialStatus}, total_batches=${templateMeta.length}, title_signal_density=${titleSignalDensity.toFixed(3)}, title_critical_density=${titleCriticalDensity.toFixed(3)}, critical_density=${criticalDensity.toFixed(3)})`);
+      }
       const cmd2Args = ["--input", allBatchesDir, "--output", workBatchesDir, "--mode", sampleMode, "--strategy", sampleStrategy];
+      if (effectiveCoverageTemplate) cmd2Args.push("--coverage-template", effectiveCoverageTemplate);
+      if (serialStatus) cmd2Args.push("--serial-status", serialStatus);
       if (sampleMode === "dynamic") {
         cmd2Args.push("--level", effectiveLevel);
         if (sampleMinCount > 0) cmd2Args.push("--min-count", sampleMinCount);
@@ -237,6 +307,7 @@ function main() {
         "--sample-level", sampleLevel,
         "--sample-level-effective", mergeEffectiveLevel,
         "--sample-level-recommended", mergeRecommendedLevel,
+        "--serial-status", serialStatus,
         "--sample-count", sampleCount,
         "--sample-min-count", sampleMinCount,
         "--sample-max-count", sampleMaxCount,
@@ -245,6 +316,8 @@ function main() {
         "--state-path", statePath,
         "--report-default-view", reportDefaultView,
       ];
+      if (coverageMode) args.push("--coverage-mode", coverageMode);
+      if (effectiveCoverageTemplate) args.push("--coverage-template", effectiveCoverageTemplate);
       if (wikiPath && fs.existsSync(path.resolve(wikiPath))) args.push("--wiki-dict", wikiPath);
       if (riskQuestionPool) args.push("--risk-question-pool", riskQuestionPool);
       if (relationshipMap) args.push("--relationship-map", relationshipMap);
@@ -336,6 +409,9 @@ function main() {
 
     state.finished_at = now();
     state.pipeline_mode = pipelineMode;
+    if (coverageMode) state.coverage_mode = coverageMode;
+    if (effectiveCoverageTemplate) state.coverage_template = effectiveCoverageTemplate;
+    if (serialStatus) state.serial_status = serialStatus;
     state.work_batches_dir = workBatchesDir;
     writeJson(statePath, state);
     runMerge();
@@ -349,6 +425,9 @@ function main() {
 
   if (!state.finished_at) state.finished_at = now();
   state.pipeline_mode = pipelineMode;
+  if (coverageMode) state.coverage_mode = coverageMode;
+  if (effectiveCoverageTemplate) state.coverage_template = effectiveCoverageTemplate;
+  if (serialStatus) state.serial_status = serialStatus;
   state.work_batches_dir = workBatchesDir;
   writeJson(statePath, state);
   console.log(`Pipeline finished. State: ${statePath}`);

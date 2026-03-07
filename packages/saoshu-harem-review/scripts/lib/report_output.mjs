@@ -294,6 +294,49 @@ function buildDeepDiveSummary({ sampleBasis, selectionReasons, auditSteps, termW
   };
 }
 
+function summarizeSelectionWindows(selectionReasons) {
+  const rows = Array.isArray(selectionReasons) ? selectionReasons : [];
+  const grouped = new Map();
+  for (const row of rows) {
+    const label = String(row.selection_label || "").trim();
+    const range = String(row.range || "").trim();
+    if (!label || !range) continue;
+    if (!grouped.has(label)) grouped.set(label, []);
+    const current = grouped.get(label);
+    if (!current.includes(range)) current.push(range);
+  }
+  return [...grouped.entries()].map(([label, ranges]) => `${label}：${ranges.slice(0, 3).join("、")}`);
+}
+
+function buildCoverageGapHints(meta, totalBatches, selectedBatches) {
+  const coverageTemplate = String(meta.coverageTemplate || "").trim();
+  const serialStatus = String(meta.serialStatus || "").trim();
+  if (!coverageTemplate || !(totalBatches > selectedBatches)) return { summary: "", riskTypes: [] };
+  if (coverageTemplate === "opening-100") return {
+    summary: "后段与结局段未覆盖",
+    riskTypes: ["后期翻车", "结局反转", "慢热型雷点"],
+  };
+  if (coverageTemplate === "head-tail") return {
+    summary: "大部分中段常规章节未覆盖",
+    riskTypes: ["中段关系演化", "慢热型风险", "中期人物线变质"],
+  };
+  if (coverageTemplate === "head-tail-risk") return {
+    summary: "中段常规章节仍非完整覆盖",
+    riskTypes: ["慢热型关系变化", "非热点中段翻车", "中段人物线变质"],
+  };
+  if (coverageTemplate === "opening-latest") {
+    if (serialStatus === "completed") return {
+      summary: "已看开篇与结尾，但中段长期演化未完整覆盖",
+      riskTypes: ["中段关系演化", "中期翻车铺垫", "慢热型结局风险"],
+    };
+    return {
+      summary: "已看开篇与最新进度，但中段长期演化未完整覆盖",
+      riskTypes: ["阶段性变质", "设定回收问题", "中段关系改写"],
+    };
+  }
+  return { summary: "", riskTypes: [] };
+}
+
 export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = []) {
   const confirmedThunder = merged.thunders.filter((item) => CONFIRMED_LEVELS.has(String(item.evidence_level || "").trim()));
   const hasThunder = confirmedThunder.length > 0;
@@ -306,8 +349,18 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
   const coverageRate = Number.isFinite(Number(meta.sampleCoverageRate)) && Number(meta.sampleCoverageRate) > 0
     ? Number(meta.sampleCoverageRate)
     : (totalBatches > 0 ? selectedBatches / totalBatches : 1);
+  const coverageGap = buildCoverageGapHints(meta, totalBatches || merged.batchIds.length, selectedBatches || merged.batchIds.length);
 
   const sampleBasis = [];
+  if (meta.coverageMode) {
+    sampleBasis.push(formatUiKeyValue("coverage_mode", lineOrDash(meta.coverageMode), { bilingual: true }));
+  }
+  if (meta.coverageTemplate) {
+    sampleBasis.push(formatUiKeyValue("coverage_template", lineOrDash(meta.coverageTemplate), { bilingual: true }));
+  }
+  if (meta.serialStatus) {
+    sampleBasis.push(formatUiKeyValue("serial_status", lineOrDash(meta.serialStatus), { bilingual: true }));
+  }
   if (String(meta.pipelineMode) === "economy") {
     sampleBasis.push(formatUiKeyValue("sample_mode", lineOrDash(meta.sampleMode), { bilingual: true }));
     sampleBasis.push(formatUiKeyValue("sample_strategy", lineOrDash(meta.sampleStrategy), { bilingual: true }));
@@ -322,12 +375,18 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
     const sampleReasons = Array.isArray(merged.metadata.sample_reasons) ? merged.metadata.sample_reasons : [];
     if (sampleReasons.length > 0) {
       const preview = sampleReasons.slice(0, 3).map((item) => {
+        if (item.selection_label) return `${item.batch_id}(${item.selection_label})`;
         const firstHit = Array.isArray(item.title_hits) && item.title_hits.length > 0 ? item.title_hits[0] : null;
         if (!firstHit) return `${item.batch_id}(标题分=${item.title_score})`;
         return `${item.batch_id}(${firstHit.rule}:${firstHit.matched})`;
       });
-      sampleBasis.push(`标题命中优先：${preview.join("、")}`);
+      sampleBasis.push(`${meta.coverageTemplate ? "模板窗口" : "标题命中优先"}：${preview.join("、")}`);
+      if (meta.coverageTemplate) {
+        summarizeSelectionWindows(sampleReasons).forEach((item) => sampleBasis.push(`模板区间：${item}`));
+      }
     }
+    if (coverageGap.summary) sampleBasis.push(`未覆盖提醒：${coverageGap.summary}`);
+    if (coverageGap.riskTypes.length > 0) sampleBasis.push(`保守关注：${coverageGap.riskTypes.join("、")}`);
   } else {
     sampleBasis.push(`扫描模式：${formatUiTerm("performance", { bilingual: true })}`);
     sampleBasis.push(`覆盖：${selectedBatches || merged.batchIds.length}/${totalBatches || merged.batchIds.length} (100%)`);
@@ -392,6 +451,9 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
       ranges: merged.ranges,
       sampling: {
         pipeline_mode: lineOrDash(meta.pipelineMode),
+        coverage_mode: lineOrDash(meta.coverageMode),
+        coverage_template: lineOrDash(meta.coverageTemplate),
+        serial_status: lineOrDash(meta.serialStatus),
         sample_mode: lineOrDash(meta.sampleMode),
         sample_strategy: lineOrDash(meta.sampleStrategy),
         sample_level: lineOrDash(meta.sampleLevel),
@@ -403,6 +465,8 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
         total_batches: totalBatches || merged.batchIds.length,
         selected_batches: selectedBatches || merged.batchIds.length,
         coverage_ratio: Number(coverageRate.toFixed(6)),
+        coverage_gap_summary: coverageGap.summary,
+        coverage_gap_risk_types: coverageGap.riskTypes,
         basis_lines: sampleBasis,
         selection_reasons: merged.metadata.sample_reasons || [],
       },
@@ -527,6 +591,7 @@ export function renderMarkdown(data) {
   const selectionReasons = (data.scan.sampling && Array.isArray(data.scan.sampling.selection_reasons)) ? data.scan.sampling.selection_reasons : [];
   if (selectionReasons.length > 0) {
     lines.push(`- 抽样命中原因：${selectionReasons.map((item) => {
+      if (item.selection_label) return `${item.batch_id}[${item.selection_label}]`;
       const firstHit = Array.isArray(item.title_hits) && item.title_hits.length > 0 ? item.title_hits[0] : null;
       if (!firstHit) return `${item.batch_id}(标题分=${item.title_score})`;
       return `${item.batch_id}[${firstHit.rule}:${firstHit.matched}]`;
@@ -627,7 +692,7 @@ export function renderHtml(data) {
   const selectionReasons = Array.isArray(sampling.selection_reasons) ? sampling.selection_reasons : [];
   const selectionReasonsHtml = selectionReasons.map((item) => {
     const hitRows = Array.isArray(item.title_hits) ? item.title_hits.map((hit) => `${escapeHtml(hit.rule)} / ${escapeHtml(hit.matched)} / 第${Number(hit.chapter_num) || '-'}章`).join("；") : "";
-    const reason = hitRows || `标题分 ${Number(item.title_score || 0)}`;
+    const reason = item.selection_detail ? escapeHtml(item.selection_detail) : (hitRows || escapeHtml(`标题分 ${Number(item.title_score || 0)}`));
     return `<tr><td>${escapeHtml(item.batch_id || '-')}</td><td>${escapeHtml(item.range || '-')}</td><td>${Number(item.title_score || 0)}</td><td>${item.title_critical ? '是' : '否'}</td><td>${reason}</td></tr>`;
   }).join("");
   const audit = data.audit || {};
@@ -687,6 +752,7 @@ body.view-newbie .expert-only{display:none}
       <div class="kv"><div class="k">扫描批次</div><div class="v">${data.scan.batch_count}</div></div>
       <div class="kv"><div class="k">结论 / 评分</div><div class="v"><span class="badge">${escapeHtml(data.overall.verdict)} · ${data.overall.rating}/10</span></div></div>
       <div class="kv"><div class="k">运行模式</div><div class="v">${escapeHtml(formatUiTerm(sampling.pipeline_mode || "-", { bilingual: true }))}</div></div>
+      ${sampling.coverage_template && sampling.coverage_template !== "-" ? `<div class="kv"><div class="k">覆盖模板</div><div class="v">${escapeHtml(formatUiTerm(sampling.coverage_template || "-", { bilingual: true }))}</div></div>` : ""}
       <div class="kv"><div class="k">抽样覆盖率</div><div class="v">${Number.isFinite(Number(sampling.coverage_ratio)) ? `${(Number(sampling.coverage_ratio) * 100).toFixed(1)}%` : "-"}</div></div>
       <div class="kv"><div class="k">抽样档位</div><div class="v">${escapeHtml(sampling.sample_level_effective || "-")}</div></div>
     </div>

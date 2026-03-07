@@ -15,6 +15,9 @@
           "type": "object",
           "properties": {
             "pipeline_mode": {"type": "string"},
+            "coverage_mode": {"type": "string"},
+            "coverage_template": {"type": "string"},
+            "serial_status": {"type": "string"},
             "sample_mode": {"type": "string"},
             "sample_strategy": {"type": "string"},
             "sample_level": {"type": "string"},
@@ -23,6 +26,8 @@
             "total_batches": {"type": "integer"},
             "selected_batches": {"type": "integer"},
             "coverage_ratio": {"type": "number"},
+            "coverage_gap_summary": {"type": "string"},
+            "coverage_gap_risk_types": {"type": "array", "items": {"type": "string"}},
             "basis_lines": {"type": "array", "items": {"type": "string"}},
             "selection_reasons": {"type": "array", "items": {"type": "object"}}
           },

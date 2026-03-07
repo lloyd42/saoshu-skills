@@ -7,6 +7,7 @@ const PIPELINE_MODES = ["economy", "performance"];
 const SAMPLE_MODES = ["fixed", "dynamic"];
 const SAMPLE_LEVELS = ["auto", "low", "medium", "high"];
 const SAMPLE_STRATEGIES = ["risk-aware", "uniform"];
+const SERIAL_STATUSES = ["unknown", "ongoing", "completed"];
 const ENRICH_MODES = ["fallback", "external"];
 const DB_MODES = ["none", "local", "external"];
 const CHAPTER_DETECT_MODES = ["auto", "script", "assist"];
@@ -19,7 +20,11 @@ function usage() {
   console.log("  node manifest_wizard.mjs --output <manifest.json> --non-interactive --input-txt <txt> --output-dir <dir> --title <name> [--author <name>]");
   console.log("");
   console.log("Notes:");
-  console.log("  - preset=newbie 默认生成 economy + dynamic + auto + local db");
+  console.log("  - preset=newbie 默认生成“快速摸底”配置：economy + dynamic + auto + local db");
+  console.log("  - preset=full 默认生成“完整复核”配置：performance + local db");
+  console.log("  - 当前稳定入口仍写 pipeline_mode；运行时也接受 coverage_mode=sampled|chapter-full|full-book 兼容字段");
+  console.log("  - 如需指定快速摸底采用的抽查模板，可手动在 manifest 中补 coverage_template=opening-100|head-tail|head-tail-risk|opening-latest");
+  console.log("  - 如需让 opening-latest 区分‘最新进度’与‘完结尾部’，可设置 serial_status=ongoing|completed|unknown");
   console.log("  - chapter_detect_mode 支持 auto|script|assist；auto 会在脚本识别失败或低置信时生成 AI 协作包");
   console.log("  - db_mode=external 时，db_ingest_cmd 支持 {report} {state} {manifest} {db}");
   console.log("  - enrich_mode=external 时，enricher_cmd 支持 {batch_file}");
@@ -65,6 +70,7 @@ function baseManifest() {
     sample_min_count: 0,
     sample_max_count: 0,
     sample_strategy: "risk-aware",
+    serial_status: "unknown",
     chapter_detect_mode: "auto",
     chapter_assist_dir: "",
     chapter_assist_result: "",
@@ -156,6 +162,7 @@ function validateManifest(manifest, options = {}) {
   if (!manifest.title) throw new Error("title cannot be empty");
   assertChoice(manifest.pipeline_mode, PIPELINE_MODES, "pipeline_mode");
   assertChoice(manifest.enrich_mode, ENRICH_MODES, "enrich_mode");
+  assertChoice(manifest.serial_status, SERIAL_STATUSES, "serial_status");
   assertChoice(manifest.db_mode, DB_MODES, "db_mode");
   assertChoice(manifest.report_default_view, VIEWS, "report_default_view");
   assertChoice(manifest.chapter_detect_mode, CHAPTER_DETECT_MODES, "chapter_detect_mode");
@@ -193,7 +200,8 @@ async function interactiveFill(manifest) {
     manifest.author = await ask(rl, "作者", manifest.author);
     manifest.tags = await ask(rl, "标签（用 / 分隔）", manifest.tags);
     manifest.target_defense = await askChoice(rl, "目标防御", DEFENSES, manifest.target_defense);
-    manifest.pipeline_mode = await askChoice(rl, "模式", PIPELINE_MODES, manifest.pipeline_mode);
+    manifest.pipeline_mode = await askChoice(rl, "扫描模式（economy=快速摸底 / performance=完整复核）", PIPELINE_MODES, manifest.pipeline_mode);
+    manifest.serial_status = await askChoice(rl, "作品状态（unknown=未知 / ongoing=连载 / completed=完结）", SERIAL_STATUSES, manifest.serial_status);
     manifest.chapter_detect_mode = await askChoice(rl, "章节识别模式", CHAPTER_DETECT_MODES, manifest.chapter_detect_mode);
     manifest.enrich_mode = await askChoice(rl, "增强模式", ENRICH_MODES, manifest.enrich_mode);
     if (manifest.enrich_mode === "external") manifest.enricher_cmd = await ask(rl, "外部增强命令模板（支持 {batch_file}）", manifest.enricher_cmd);

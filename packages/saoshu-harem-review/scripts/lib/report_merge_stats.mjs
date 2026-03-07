@@ -65,7 +65,17 @@ export function accumulateBatchMetadata(stats, batch, batchId) {
     }))
     .filter((item) => item.rule || item.chapter_title);
 
-  if (titleHits.length > 0 || Number(titleScan.score || 0) > 0) {
+  const selectionNotes = normList(meta.sample_selection?.notes)
+    .map((item) => ({
+      selection_label: String(item.selection_label || "").trim(),
+      selection_detail: String(item.selection_detail || "").trim(),
+      selection_priority: Number(item.selection_priority || 999),
+      selection_role: String(item.selection_role || "").trim(),
+    }))
+    .filter((item) => item.selection_label || item.selection_detail);
+
+  if (titleHits.length > 0 || Number(titleScan.score || 0) > 0 || selectionNotes.length > 0) {
+    const topSelection = selectionNotes.sort((left, right) => left.selection_priority - right.selection_priority || left.selection_label.localeCompare(right.selection_label, "zh"))[0] || null;
     stats.sampleReasonRows.push({
       batch_id: batchId,
       range: String(batch.range || ""),
@@ -73,6 +83,11 @@ export function accumulateBatchMetadata(stats, batch, batchId) {
       title_critical: Boolean(titleScan.critical),
       hit_chapter_count: Number(titleScan.hit_chapter_count || 0),
       title_hits: titleHits,
+      selection_label: String(topSelection?.selection_label || ""),
+      selection_detail: String(topSelection?.selection_detail || ""),
+      selection_priority: Number(topSelection?.selection_priority || 999),
+      selection_role: String(topSelection?.selection_role || ""),
+      serial_status: String(meta.sample_selection?.serial_status || ""),
     });
   }
 }
@@ -98,7 +113,7 @@ export function finalizeMergeStats(stats) {
       .sort((left, right) => Number(right.weight || 0) - Number(left.weight || 0) || left.from.localeCompare(right.from, "zh") || left.to.localeCompare(right.to, "zh"))
       .slice(0, 80),
     sample_reasons: stats.sampleReasonRows
-      .sort((left, right) => right.title_score - left.title_score || Number(right.title_critical) - Number(left.title_critical) || left.batch_id.localeCompare(right.batch_id, "zh"))
+      .sort((left, right) => Number(left.selection_priority || 999) - Number(right.selection_priority || 999) || right.title_score - left.title_score || Number(right.title_critical) - Number(left.title_critical) || left.batch_id.localeCompare(right.batch_id, "zh"))
       .slice(0, 8),
   };
 }

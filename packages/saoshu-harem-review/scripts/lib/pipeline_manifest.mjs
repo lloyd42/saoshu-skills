@@ -1,6 +1,10 @@
 import path from "node:path";
 import { pipelineUsage } from "./pipeline_feedback.mjs";
 
+const COVERAGE_MODES = ["sampled", "chapter-full", "full-book"];
+const COVERAGE_TEMPLATES = ["opening-100", "head-tail", "head-tail-risk", "opening-latest"];
+const SERIAL_STATUSES = ["unknown", "ongoing", "completed"];
+
 function toNumber(value, fallback) {
   return Number(value ?? fallback);
 }
@@ -16,22 +20,74 @@ function assertEnum(value, allowedValues, fieldName) {
   }
 }
 
+function pipelineModeForCoverageMode(coverageMode) {
+  if (coverageMode === "sampled") return "economy";
+  if (coverageMode === "chapter-full" || coverageMode === "full-book") return "performance";
+  return "performance";
+}
+
+function resolveCoverageCompatibility(manifest) {
+  const coverageMode = String(manifest.coverage_mode || "").trim();
+  if (coverageMode) {
+    assertEnum(coverageMode, COVERAGE_MODES, "coverage_mode");
+  }
+
+  const explicitPipelineMode = String(manifest.pipeline_mode || "").trim();
+  if (explicitPipelineMode) {
+    assertEnum(explicitPipelineMode, ["performance", "economy"], "pipeline_mode");
+  }
+
+  if (coverageMode && explicitPipelineMode) {
+    const expectedPipelineMode = pipelineModeForCoverageMode(coverageMode);
+    if (explicitPipelineMode !== expectedPipelineMode) {
+      pipelineUsage(
+        "coverage_mode 与 pipeline_mode 冲突",
+        "sampled 对应 economy；chapter-full / full-book 对应 performance"
+      );
+    }
+  }
+
+  return {
+    coverageMode,
+    pipelineMode: explicitPipelineMode || (coverageMode ? pipelineModeForCoverageMode(coverageMode) : "performance"),
+  };
+}
+
+function resolveCoverageTemplate(manifest, pipelineMode, coverageMode) {
+  const coverageTemplate = String(manifest.coverage_template || "").trim();
+  if (!coverageTemplate) return "";
+
+  assertEnum(coverageTemplate, COVERAGE_TEMPLATES, "coverage_template");
+  const sampledMode = pipelineMode === "economy" || coverageMode === "sampled";
+  if (!sampledMode) {
+    pipelineUsage(
+      "coverage_template 与当前覆盖层冲突",
+      "coverage_template 仅用于 sampled / economy 这类快速摸底路径"
+    );
+  }
+  return coverageTemplate;
+}
+
 export function resolvePipelineManifest(manifestPath, manifest) {
   const manifestDir = path.dirname(path.resolve(manifestPath));
   const outputDir = path.resolve(manifestDir, manifest.output_dir);
-  const pipelineMode = manifest.pipeline_mode || "performance";
-  const sampleMode = manifest.sample_mode || "fixed";
-  const sampleLevel = manifest.sample_level || "auto";
+  const compatibility = resolveCoverageCompatibility(manifest);
+  const pipelineMode = compatibility.pipelineMode;
+  const coverageMode = compatibility.coverageMode;
+  const coverageTemplate = resolveCoverageTemplate(manifest, pipelineMode, coverageMode);
+  const sampleMode = manifest.sample_mode || (coverageMode === "sampled" ? "dynamic" : "fixed");
+  const sampleLevel = manifest.sample_level || (coverageMode === "sampled" ? "auto" : "high");
   const sampleStrategy = manifest.sample_strategy || "risk-aware";
+  const serialStatus = manifest.serial_status || "unknown";
   const dbMode = manifest.db_mode || "none";
   const reportDefaultView = manifest.report_default_view || "newbie";
   const enrichMode = manifest.enrich_mode || "fallback";
   const chapterDetectMode = manifest.chapter_detect_mode || "auto";
 
-  assertEnum(pipelineMode, ["performance", "economy"], "pipeline_mode");
   assertEnum(sampleMode, ["fixed", "dynamic"], "sample_mode");
   assertEnum(sampleLevel, ["auto", "low", "medium", "high"], "sample_level");
   assertEnum(sampleStrategy, ["risk-aware", "uniform"], "sample_strategy");
+  assertEnum(serialStatus, SERIAL_STATUSES, "serial_status");
   assertEnum(dbMode, ["none", "local", "external"], "db_mode");
   assertEnum(reportDefaultView, ["newbie", "expert"], "report_default_view");
   assertEnum(enrichMode, ["external", "fallback"], "enrich_mode");
@@ -51,10 +107,13 @@ export function resolvePipelineManifest(manifestPath, manifest) {
     enrichMode,
     enricherCmd: manifest.enricher_cmd || "",
     pipelineMode,
+    coverageMode,
+    coverageTemplate,
     sampleCount: toNumber(manifest.sample_count, 7),
     sampleMode,
     sampleLevel,
     sampleStrategy,
+    serialStatus,
     sampleMinCount: toNumber(manifest.sample_min_count, 0),
     sampleMaxCount: toNumber(manifest.sample_max_count, 0),
     aliasMap: manifest.alias_map ? path.resolve(manifestDir, manifest.alias_map) : "",

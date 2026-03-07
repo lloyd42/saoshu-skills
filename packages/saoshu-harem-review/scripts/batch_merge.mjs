@@ -34,7 +34,7 @@ import {
 } from "./lib/report_output.mjs";
 
 function usage() {
-  console.log("Usage: node batch_merge.mjs --input <batch-dir> [--output <report.md>] [--title <name>] [--author <name>] [--tags <text>] [--target-defense <defense>] [--covered <text>] [--json-out <report.json>] [--html-out <report.html>] [--pipeline-mode <performance|economy>] [--state-path <pipeline-state.json>] [--wiki-dict <glossary.json>] [--risk-question-pool <json>] [--relationship-map <json>] [--report-default-view newbie|expert]");
+  console.log("Usage: node batch_merge.mjs --input <batch-dir> [--output <report.md>] [--title <name>] [--author <name>] [--tags <text>] [--target-defense <defense>] [--covered <text>] [--json-out <report.json>] [--html-out <report.html>] [--pipeline-mode <performance|economy>] [--coverage-mode <sampled|chapter-full|full-book>] [--coverage-template <opening-100|head-tail|head-tail-risk|opening-latest>] [--state-path <pipeline-state.json>] [--wiki-dict <glossary.json>] [--risk-question-pool <json>] [--relationship-map <json>] [--report-default-view newbie|expert]");
 }
 
 function parseArgs(argv) {
@@ -49,7 +49,10 @@ function parseArgs(argv) {
     jsonOut: "",
     htmlOut: "",
     pipelineMode: "performance",
+    coverageMode: "",
+    coverageTemplate: "",
     sampleMode: "fixed",
+    serialStatus: "unknown",
     sampleStrategy: "risk-aware",
     sampleLevel: "",
     sampleLevelEffective: "",
@@ -79,7 +82,10 @@ function parseArgs(argv) {
     else if (key === "--json-out") out.jsonOut = value, index++;
     else if (key === "--html-out") out.htmlOut = value, index++;
     else if (key === "--pipeline-mode") out.pipelineMode = value, index++;
+    else if (key === "--coverage-mode") out.coverageMode = value, index++;
+    else if (key === "--coverage-template") out.coverageTemplate = value, index++;
     else if (key === "--sample-mode") out.sampleMode = value, index++;
+    else if (key === "--serial-status") out.serialStatus = value, index++;
     else if (key === "--sample-strategy") out.sampleStrategy = value, index++;
     else if (key === "--sample-level") out.sampleLevel = value, index++;
     else if (key === "--sample-level-effective") out.sampleLevelEffective = value, index++;

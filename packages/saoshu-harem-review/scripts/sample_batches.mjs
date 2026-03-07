@@ -5,8 +5,11 @@ import { getExitCode } from "./lib/exit_codes.mjs";
 import { CRITICAL_RISK_RULES } from "./lib/rule_catalog.mjs";
 import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
 
+const COVERAGE_TEMPLATES = ["opening-100", "head-tail", "head-tail-risk", "opening-latest"];
+const SERIAL_STATUSES = ["unknown", "ongoing", "completed"];
+
 function usage() {
-  console.log("Usage: node sample_batches.mjs --input <batch-dir> --output <sample-dir> [--mode fixed|dynamic] [--count 7] [--level low|medium|high] [--strategy risk-aware|uniform] [--min-count N] [--max-count N]");
+  console.log("Usage: node sample_batches.mjs --input <batch-dir> --output <sample-dir> [--mode fixed|dynamic] [--count 7] [--level low|medium|high] [--strategy risk-aware|uniform] [--coverage-template opening-100|head-tail|head-tail-risk|opening-latest] [--min-count N] [--max-count N]");
 }
 
 function parseArgs(argv) {
@@ -17,6 +20,8 @@ function parseArgs(argv) {
     count: 7,
     level: "medium",
     strategy: "risk-aware",
+    coverageTemplate: "",
+    serialStatus: "unknown",
     minCount: 0,
     maxCount: 0,
   };
@@ -29,6 +34,8 @@ function parseArgs(argv) {
     else if (k === "--count") out.count = Number(v), i++;
     else if (k === "--level") out.level = v, i++;
     else if (k === "--strategy") out.strategy = v, i++;
+    else if (k === "--coverage-template") out.coverageTemplate = v, i++;
+    else if (k === "--serial-status") out.serialStatus = v, i++;
     else if (k === "--min-count") out.minCount = Number(v), i++;
     else if (k === "--max-count") out.maxCount = Number(v), i++;
     else if (k === "--help" || k === "-h") return null;
@@ -39,6 +46,8 @@ function parseArgs(argv) {
   if (!Number.isFinite(out.count) || out.count < 3) scriptUsage("`--count` 非法", "要求：count >= 3");
   if (!["low", "medium", "high"].includes(out.level)) scriptUsage("`--level` 非法", "允许值：low|medium|high");
   if (!["risk-aware", "uniform"].includes(out.strategy)) scriptUsage("`--strategy` 非法", "允许值：risk-aware|uniform");
+  if (out.coverageTemplate && !COVERAGE_TEMPLATES.includes(out.coverageTemplate)) scriptUsage("`--coverage-template` 非法", `允许值：${COVERAGE_TEMPLATES.join("|")}`);
+  if (!SERIAL_STATUSES.includes(out.serialStatus)) scriptUsage("`--serial-status` 非法", `允许值：${SERIAL_STATUSES.join("|")}`);
   if (!Number.isFinite(out.minCount) || out.minCount < 0) scriptUsage("`--min-count` 非法", "要求：min-count >= 0");
   if (!Number.isFinite(out.maxCount) || out.maxCount < 0) scriptUsage("`--max-count` 非法", "要求：max-count >= 0");
   if (out.minCount > 0 && out.maxCount > 0 && out.minCount > out.maxCount) scriptUsage("`--min-count` 不能大于 `--max-count`");
@@ -63,6 +72,10 @@ function pickIndexes(n, k) {
 
 function readJson(p) {
   return JSON.parse(fs.readFileSync(p, "utf8"));
+}
+
+function writeJson(p, payload) {
+  fs.writeFileSync(p, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 }
 
 function riskScore(batch) {
@@ -167,16 +180,111 @@ function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
 }
 
+function parseChapterRange(range) {
+  const text = String(range || "").trim();
+  const match = /^第\s*(\d+)\s*-\s*(\d+)\s*章$/u.exec(text);
+  if (!match) return null;
+  const start = Number(match[1]);
+  const end = Number(match[2]);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start <= 0 || end < start) return null;
+  return { start, end };
+}
+
+function overlapsWindow(row, windowStart, windowEnd) {
+  if (!Number.isFinite(windowStart) || !Number.isFinite(windowEnd) || windowEnd < windowStart) return false;
+  if (Number.isFinite(row.startChapter) && Number.isFinite(row.endChapter)) {
+    return row.startChapter <= windowEnd && row.endChapter >= windowStart;
+  }
+  return false;
+}
+
+function estimateWindowBatchCount(meta, chapterWindow = 100) {
+  const spans = meta
+    .map((row) => Number(row.endChapter) - Number(row.startChapter) + 1)
+    .filter((value) => Number.isFinite(value) && value > 0);
+  const avgSpan = spans.length > 0 ? spans.reduce((sum, value) => sum + value, 0) / spans.length : 80;
+  return Math.max(1, Math.ceil(chapterWindow / Math.max(avgSpan, 1)));
+}
+
+function noteForWindow(label, detail, priority, role) {
+  return { selection_label: label, selection_detail: detail, selection_priority: priority, selection_role: role };
+}
+
+function addNote(noteMap, idx, note) {
+  if (!noteMap.has(idx)) noteMap.set(idx, []);
+  noteMap.get(idx).push(note);
+}
+
+function collectWindowIndexes(meta, windowStart, windowEnd, fallbackIndexes = []) {
+  const indexes = meta.filter((row) => overlapsWindow(row, windowStart, windowEnd)).map((row) => row.i);
+  return indexes.length > 0 ? indexes : fallbackIndexes;
+}
+
+function pickTemplateSelection(meta, templateName, targetCount, serialStatus) {
+  const noteMap = new Map();
+  const chosen = new Set();
+  const totalChapters = meta.reduce((max, row) => Number.isFinite(row.endChapter) ? Math.max(max, row.endChapter) : max, 0);
+  const estimatedWindowBatchCount = estimateWindowBatchCount(meta, 100);
+  const estimatedLatestBatchCount = estimateWindowBatchCount(meta, 60);
+  const fallbackHead = [...Array(Math.min(meta.length, estimatedWindowBatchCount)).keys()];
+  const fallbackTail = [...Array(Math.min(meta.length, estimatedWindowBatchCount)).keys()].map((offset) => meta.length - 1 - offset).sort((a, b) => a - b);
+  const fallbackLatest = [...Array(Math.min(meta.length, estimatedLatestBatchCount)).keys()].map((offset) => meta.length - 1 - offset).sort((a, b) => a - b);
+  const headIndexes = collectWindowIndexes(meta, 1, 100, fallbackHead);
+  const tailWindowStart = totalChapters > 0 ? Math.max(1, totalChapters - 99) : NaN;
+  const tailIndexes = collectWindowIndexes(meta, tailWindowStart, totalChapters, fallbackTail);
+  const latestWindowStart = totalChapters > 0 ? Math.max(1, totalChapters - 59) : NaN;
+  const latestIndexes = collectWindowIndexes(meta, latestWindowStart, totalChapters, fallbackLatest);
+
+  function addIndexes(indexes, label, detail, priority, role) {
+    for (const idx of indexes) {
+      chosen.add(idx);
+      addNote(noteMap, idx, noteForWindow(label, detail, priority, role));
+    }
+  }
+
+  if (templateName === "opening-100") {
+    addIndexes(headIndexes, "开篇窗口", "覆盖前100章附近，优先确认开篇质量与早期风险", 1, "opening-window");
+  } else if (templateName === "head-tail") {
+    addIndexes(headIndexes, "开篇窗口", "覆盖前100章附近，优先确认早期风险", 1, "opening-window");
+    addIndexes(tailIndexes, "尾部窗口", "覆盖尾部100章附近，优先防结局翻车与后期反转", 2, "tail-window");
+  } else if (templateName === "head-tail-risk") {
+    addIndexes(headIndexes, "开篇窗口", "覆盖前100章附近，优先确认早期风险", 1, "opening-window");
+    addIndexes(tailIndexes, "尾部窗口", "覆盖尾部100章附近，优先防结局翻车与后期反转", 2, "tail-window");
+    const scored = [...meta].sort((a, b) => b.combinedScore - a.combinedScore || b.titleScore - a.titleScore || b.score - a.score);
+    const expectedCount = Math.max(targetCount, chosen.size);
+    for (const row of scored) {
+      if (chosen.size >= expectedCount) break;
+      if (chosen.has(row.i)) continue;
+      chosen.add(row.i);
+      addNote(noteMap, row.i, noteForWindow("热点补刀", "补入高风险/高标题信号批次，降低关键风险漏检", 3, "risk-hotspot"));
+    }
+  } else if (templateName === "opening-latest") {
+    addIndexes(headIndexes, "开篇窗口", "覆盖前100章附近，优先确认开篇质量与设定起手", 1, "opening-window");
+    if (serialStatus === "completed") addIndexes(tailIndexes, "结尾窗口", "作品已标记为完结，因此优先覆盖结尾段，检查结局翻车与最终反转", 2, "ending-window");
+    else addIndexes(latestIndexes, "最新进度窗口", "覆盖最新进度附近，优先观察连载近期是否翻车或明显变质", 2, "latest-window");
+  }
+
+  return {
+    indexes: [...chosen].sort((a, b) => a - b),
+    noteMap,
+  };
+}
+
 function buildMeta(files, inputDir) {
   return files.map((f, i) => {
     const p = path.join(inputDir, f);
     try {
       const b = readJson(p);
+      const range = parseChapterRange(b.range);
       const titleScan = readTitleScan(b);
       const contentScore = riskScore(b);
       const titleBonus = titleScan.score * 2 + titleScan.hitChapterCount;
       return {
         i,
+        batchId: String(b.batch_id || path.basename(f, ".json")),
+        range: String(b.range || ""),
+        startChapter: Number(range?.start || 0),
+        endChapter: Number(range?.end || 0),
         score: contentScore,
         critical: hasCriticalSignal(b),
         titleScore: titleScan.score,
@@ -185,9 +293,20 @@ function buildMeta(files, inputDir) {
         combinedScore: contentScore + titleBonus,
       };
     } catch {
-      return { i, score: 0, critical: false, titleScore: 0, titleCritical: false, titleHitChapterCount: 0, combinedScore: 0 };
+      return { i, batchId: path.basename(f, ".json"), range: "", startChapter: 0, endChapter: 0, score: 0, critical: false, titleScore: 0, titleCritical: false, titleHitChapterCount: 0, combinedScore: 0 };
     }
   });
+}
+
+function annotateSelectedBatch(filePath, templateName, serialStatus, notes) {
+  const payload = readJson(filePath);
+  payload.metadata = payload.metadata && typeof payload.metadata === "object" ? payload.metadata : {};
+  payload.metadata.sample_selection = {
+    coverage_template: templateName,
+    serial_status: serialStatus,
+    notes: Array.isArray(notes) ? notes : [],
+  };
+  writeJson(filePath, payload);
 }
 
 function resolveDynamicCount(total, level, meta, minCountArg, maxCountArg) {
@@ -249,18 +368,32 @@ function main() {
     targetCount = dynamicInfo.count;
   }
 
-  const idxes = args.strategy === "uniform"
-    ? pickIndexes(files.length, targetCount)
-    : pickRiskAware(files, input, targetCount, meta);
+  let idxes = [];
+  let selectionNoteMap = new Map();
+  if (args.coverageTemplate) {
+    const templateSelection = pickTemplateSelection(meta, args.coverageTemplate, targetCount, args.serialStatus);
+    idxes = templateSelection.indexes;
+    selectionNoteMap = templateSelection.noteMap;
+  } else {
+    idxes = args.strategy === "uniform"
+      ? pickIndexes(files.length, targetCount)
+      : pickRiskAware(files, input, targetCount, meta);
+  }
   const selected = idxes.map((i) => files[i]);
 
   for (const f of selected) {
-    fs.copyFileSync(path.join(input, f), path.join(output, f));
+    const outputFile = path.join(output, f);
+    fs.copyFileSync(path.join(input, f), outputFile);
+    if (args.coverageTemplate) {
+      const fileIndex = files.indexOf(f);
+      annotateSelectedBatch(outputFile, args.coverageTemplate, args.serialStatus, selectionNoteMap.get(fileIndex) || []);
+    }
   }
 
   console.log(`Total batches: ${files.length}`);
   console.log(`Selected: ${selected.length}`);
   console.log(`Mode: ${args.mode}`);
+  if (args.coverageTemplate) console.log(`Coverage template: ${args.coverageTemplate}`);
   if (dynamicInfo) {
     console.log(`Level: ${args.level}`);
     console.log(`Target rate: ${(dynamicInfo.targetRate * 100).toFixed(1)}%`);
