@@ -4,7 +4,7 @@ import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { readJsonFile } from "./lib/json_input.mjs";
-import { findFirstExisting, getScriptDir, quotePath, runCommand } from "./lib/script_helpers.mjs";
+import { findFirstExisting, formatCommand, getScriptDir, pushArg, runNodeScript, runShellCommand } from "./lib/script_helpers.mjs";
 import { resolvePipelineManifest } from "./lib/pipeline_manifest.mjs";
 import { runOptionalStage, runStageIfSelected } from "./lib/pipeline_stages.mjs";
 import { getExitCode } from "./lib/exit_codes.mjs";
@@ -124,9 +124,15 @@ function main() {
     writeJson(statePath, state);
   }
 
+  function executeNodeScript(scriptName, args) {
+    const scriptPath = path.join(scriptDir, scriptName);
+    runNodeScript(scriptPath, args);
+    return formatCommand(process.execPath, [scriptPath, ...args.map((item) => String(item))]);
+  }
+
   function stageChunk() {
-    const cmd1 = `node ${quotePath(path.join(scriptDir, 'scan_txt_batches.mjs'))} --input ${quotePath(inputTxt)} --output ${quotePath(allBatchesDir)} --batch-size ${batchSize} --overlap ${overlap}`;
-    runCommand(cmd1);
+    const cmd1Args = ["--input", inputTxt, "--output", allBatchesDir, "--batch-size", batchSize, "--overlap", overlap];
+    const cmd1 = executeNodeScript("scan_txt_batches.mjs", cmd1Args);
 
     if (pipelineMode === "economy") {
       let effectiveLevel = sampleLevel;
@@ -139,15 +145,15 @@ function main() {
       } else {
         effectiveSampleLevel = effectiveLevel;
       }
-      let cmd2 = `node ${quotePath(path.join(scriptDir, 'sample_batches.mjs'))} --input ${quotePath(allBatchesDir)} --output ${quotePath(workBatchesDir)} --mode ${sampleMode} --strategy ${sampleStrategy}`;
+      const cmd2Args = ["--input", allBatchesDir, "--output", workBatchesDir, "--mode", sampleMode, "--strategy", sampleStrategy];
       if (sampleMode === "dynamic") {
-        cmd2 += ` --level ${effectiveLevel}`;
-        if (sampleMinCount > 0) cmd2 += ` --min-count ${sampleMinCount}`;
-        if (sampleMaxCount > 0) cmd2 += ` --max-count ${sampleMaxCount}`;
+        cmd2Args.push("--level", effectiveLevel);
+        if (sampleMinCount > 0) cmd2Args.push("--min-count", sampleMinCount);
+        if (sampleMaxCount > 0) cmd2Args.push("--max-count", sampleMaxCount);
       } else {
-        cmd2 += ` --count ${sampleCount}`;
+        cmd2Args.push("--count", sampleCount);
       }
-      runCommand(cmd2);
+      const cmd2 = executeNodeScript("sample_batches.mjs", cmd2Args);
       mark("chunk", "done", `${cmd1} && ${cmd2}`);
     } else {
       mark("chunk", "done", cmd1);
@@ -155,25 +161,21 @@ function main() {
   }
 
   function stageEnrich() {
-    let cmd = `node ${quotePath(path.join(scriptDir, 'enrich_batches.mjs'))} --batches ${quotePath(workBatchesDir)} --mode ${enrichMode}`;
-    if (enrichMode === "external" && enricherCmd) {
-      cmd += ` --enricher-cmd ${quotePath(enricherCmd)}`;
-    }
-    runCommand(cmd);
+    const cmdArgs = ["--batches", workBatchesDir, "--mode", enrichMode];
+    if (enrichMode === "external" && enricherCmd) cmdArgs.push("--enricher-cmd", enricherCmd);
+    const cmd = executeNodeScript("enrich_batches.mjs", cmdArgs);
     mark("enrich", "done", cmd);
   }
 
   function stageReview() {
     const reviewOut = path.join(outputDir, "review-pack");
-    const cmd = `node ${quotePath(path.join(scriptDir, 'review_contexts.mjs'))} --input ${quotePath(inputTxt)} --batches ${quotePath(workBatchesDir)} --output ${quotePath(reviewOut)}`;
-    runCommand(cmd);
+    const cmd = executeNodeScript("review_contexts.mjs", ["--input", inputTxt, "--batches", workBatchesDir, "--output", reviewOut]);
     mark("review", "done", cmd);
   }
 
   function stageApply() {
     const reviewOut = path.join(outputDir, "review-pack");
-    const cmd = `node ${quotePath(path.join(scriptDir, 'apply_review_results.mjs'))} --batches ${quotePath(workBatchesDir)} --reviews ${quotePath(reviewOut)}`;
-    runCommand(cmd);
+    const cmd = executeNodeScript("apply_review_results.mjs", ["--batches", workBatchesDir, "--reviews", reviewOut]);
     mark("apply", "done", cmd);
   }
 
@@ -207,19 +209,42 @@ function main() {
       home ? path.join(home, ".codex", "skills", "saoshu-term-wiki", "references", "glossary.json") : "",
     ]);
     const wikiPath = wikiDict || defaultWiki;
-    function buildMergeCommand() {
-      let cmd = `node ${quotePath(path.join(scriptDir, 'batch_merge.mjs'))} --input ${quotePath(workBatchesDir)} --output ${quotePath(md)} --json-out ${quotePath(js)} --html-out ${quotePath(html)} --title ${quotePath(title)} --author ${quotePath(author)} --tags ${quotePath(tags)} --target-defense ${quotePath(target)} --pipeline-mode ${quotePath(pipelineMode)} --sample-mode ${quotePath(sampleMode)} --sample-strategy ${quotePath(sampleStrategy)} --sample-level ${quotePath(sampleLevel)} --sample-level-effective ${quotePath(mergeEffectiveLevel)} --sample-level-recommended ${quotePath(mergeRecommendedLevel)} --sample-count ${sampleCount} --sample-min-count ${sampleMinCount} --sample-max-count ${sampleMaxCount} --total-batches ${totalBatches} --selected-batches ${selectedBatches} --state-path ${quotePath(statePath)} --report-default-view ${quotePath(reportDefaultView)}`;
-      if (wikiPath && fs.existsSync(path.resolve(wikiPath))) {
-        cmd += ` --wiki-dict ${quotePath(wikiPath)}`;
-      }
-      if (totalBatches > 0) {
-        cmd += ` --sample-coverage-rate ${(selectedBatches / totalBatches).toFixed(6)}`;
-      }
-      return cmd;
+    function buildMergeArgs() {
+      const args = [
+        "--input", workBatchesDir,
+        "--output", md,
+        "--json-out", js,
+        "--html-out", html,
+        "--title", title,
+        "--author", author,
+        "--tags", tags,
+        "--target-defense", target,
+        "--pipeline-mode", pipelineMode,
+        "--sample-mode", sampleMode,
+        "--sample-strategy", sampleStrategy,
+        "--sample-level", sampleLevel,
+        "--sample-level-effective", mergeEffectiveLevel,
+        "--sample-level-recommended", mergeRecommendedLevel,
+        "--sample-count", sampleCount,
+        "--sample-min-count", sampleMinCount,
+        "--sample-max-count", sampleMaxCount,
+        "--total-batches", totalBatches,
+        "--selected-batches", selectedBatches,
+        "--state-path", statePath,
+        "--report-default-view", reportDefaultView,
+      ];
+      if (wikiPath && fs.existsSync(path.resolve(wikiPath))) args.push("--wiki-dict", wikiPath);
+      if (totalBatches > 0) args.push("--sample-coverage-rate", (selectedBatches / totalBatches).toFixed(6));
+      return args;
+    }
+    function runMerge() {
+      const args = buildMergeArgs();
+      const scriptPath = path.join(scriptDir, "batch_merge.mjs");
+      runNodeScript(scriptPath, args);
+      return formatCommand(process.execPath, [scriptPath, ...args.map((item) => String(item))]);
     }
 
-    const mergeCommand = buildMergeCommand();
-    runCommand(mergeCommand);
+    const mergeCommand = runMerge();
 
     runOptionalStage({
       enabled: reportPdf,
@@ -228,11 +253,12 @@ function main() {
       mark,
       run: () => {
         const pdfScript = path.join(scriptDir, "export_pdf.mjs");
-        let pdfCmd = `node ${quotePath(pdfScript)} --input-html ${quotePath(html)} --output-pdf ${quotePath(reportPdfOutput)}`;
-        if (reportPdfEngineCmd) pdfCmd += ` --engine-cmd ${quotePath(reportPdfEngineCmd)}`;
+        const pdfArgs = ["--input-html", html, "--output-pdf", reportPdfOutput];
+        pushArg(pdfArgs, "--engine-cmd", reportPdfEngineCmd);
+        const detail = formatCommand(process.execPath, [pdfScript, ...pdfArgs.map((item) => String(item))]);
         return {
-          detail: pdfCmd,
-          execute: () => runCommand(pdfCmd),
+          detail,
+          execute: () => runNodeScript(pdfScript, pdfArgs),
         };
       },
     });
@@ -244,12 +270,21 @@ function main() {
       mark,
       run: () => {
         const graphScript = path.join(scriptDir, "relation_graph.mjs");
-        let gcmd = `node ${quotePath(graphScript)} --report ${quotePath(js)} --output ${quotePath(reportRelationGraphOutput)} --top-chars ${reportRelationTopChars} --top-signals ${reportRelationTopSignals} --min-edge-weight ${reportRelationMinEdgeWeight} --max-links ${reportRelationMaxLinks} --min-name-freq ${reportRelationMinNameFreq}`;
+        const graphArgs = [
+          "--report", js,
+          "--output", reportRelationGraphOutput,
+          "--top-chars", reportRelationTopChars,
+          "--top-signals", reportRelationTopSignals,
+          "--min-edge-weight", reportRelationMinEdgeWeight,
+          "--max-links", reportRelationMaxLinks,
+          "--min-name-freq", reportRelationMinNameFreq,
+        ];
         const reviewOut = path.join(outputDir, "review-pack");
-        if (fs.existsSync(reviewOut)) gcmd += ` --review-dir ${quotePath(reviewOut)}`;
+        if (fs.existsSync(reviewOut)) graphArgs.push("--review-dir", reviewOut);
+        const detail = formatCommand(process.execPath, [graphScript, ...graphArgs.map((item) => String(item))]);
         return {
-          detail: gcmd,
-          execute: () => runCommand(gcmd),
+          detail,
+          execute: () => runNodeScript(graphScript, graphArgs),
         };
       },
     });
@@ -262,8 +297,9 @@ function main() {
         home ? path.join(home, ".codex", "skills", "saoshu-scan-db", "scripts", "db_ingest.mjs") : "",
       ]);
       if (localIngestScript && fs.existsSync(path.resolve(localIngestScript))) {
-        const dbCmd = `node ${quotePath(localIngestScript)} --db ${quotePath(dbPath)} --report ${quotePath(js)} --state ${quotePath(statePath)} --manifest ${quotePath(manifestPath)}`;
-        runCommand(dbCmd);
+        const dbArgs = ["--db", dbPath, "--report", js, "--state", statePath, "--manifest", manifestPath];
+        const dbCmd = formatCommand(process.execPath, [path.resolve(localIngestScript), ...dbArgs.map((item) => String(item))]);
+        runNodeScript(localIngestScript, dbArgs);
         mark("db_ingest", "done", dbCmd);
       } else {
         mark("db_ingest", "skipped", "local ingest script not found: saoshu-scan-db/scripts/db_ingest.mjs");
@@ -277,7 +313,7 @@ function main() {
           .replaceAll("{state}", statePath.replaceAll("\\", "/"))
           .replaceAll("{manifest}", manifestPath.replaceAll("\\", "/"))
           .replaceAll("{db}", dbPath.replaceAll("\\", "/"));
-        runCommand(ext);
+        runShellCommand(ext);
         mark("db_ingest", "done", ext);
       }
     } else {
@@ -288,7 +324,7 @@ function main() {
     state.pipeline_mode = pipelineMode;
     state.work_batches_dir = workBatchesDir;
     writeJson(statePath, state);
-    runCommand(buildMergeCommand());
+    runMerge();
   }
 
   runStageIfSelected(args.stage, "chunk", stageChunk);

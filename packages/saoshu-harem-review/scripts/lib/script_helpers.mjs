@@ -1,15 +1,37 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-export function quotePath(value) {
-  return `\"${String(value).replaceAll("\\", "/")}\"`;
+function shellQuote(value) {
+  const text = String(value ?? "");
+  if (!/[\s"'`]/.test(text)) return text;
+  return `"${text.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
 }
 
-export function runCommand(command) {
-  execSync(command, { stdio: "inherit" });
+export function formatCommand(command, args = []) {
+  return [command, ...args].map((item) => shellQuote(item)).join(" ");
+}
+
+export function runCommand(command, args = [], options = {}) {
+  const result = spawnSync(command, args, {
+    stdio: "inherit",
+    ...options,
+  });
+  if (result.error) throw result.error;
+  if (typeof result.status === "number" && result.status !== 0) {
+    throw new Error(`Command failed (${result.status}): ${formatCommand(command, args)}`);
+  }
+}
+
+export function runNodeScript(scriptPath, args = [], options = {}) {
+  return runCommand(process.execPath, [path.resolve(scriptPath), ...args.map((item) => String(item))], options);
+}
+
+export function runShellCommand(command, options = {}) {
+  if (process.platform === "win32") return runCommand(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", String(command)], options);
+  return runCommand(process.env.SHELL || "/bin/sh", ["-lc", String(command)], options);
 }
 
 export function getScriptDir(importMetaUrl) {
@@ -48,17 +70,14 @@ export function hasFlag(rest, key) {
   return rest.includes(key);
 }
 
-export function appendArg(command, key, value) {
-  if (value === "" || value === undefined || value === null) return command;
-  return `${command} ${key} ${quotePath(value)}`;
+export function pushArg(args, key, value) {
+  if (value === "" || value === undefined || value === null) return args;
+  args.push(key, String(value));
+  return args;
 }
 
-export function appendRawArg(command, key, value) {
-  if (value === "" || value === undefined || value === null) return command;
-  return `${command} ${key} ${value}`;
-}
-
-export function appendFlag(command, enabled, flag) {
-  if (!enabled) return command;
-  return `${command} ${flag}`;
+export function pushFlag(args, enabled, flag) {
+  if (!enabled) return args;
+  args.push(flag);
+  return args;
 }

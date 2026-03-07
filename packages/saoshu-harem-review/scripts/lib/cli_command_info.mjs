@@ -1,14 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
-  appendArg,
-  appendFlag,
-  appendRawArg,
   getInstalledSkillPath,
-  quotePath,
-  runCommand,
-  valueOf,
   hasFlag,
+  pushArg,
+  runNodeScript,
+  valueOf,
 } from "./script_helpers.mjs";
 import { failUsage, requireArg } from "./cli_feedback.mjs";
 
@@ -19,10 +16,10 @@ export function handleWiki(rest, context) {
   const mcpCmd = valueOf(rest, "--mcp-cmd", "");
   const wikiScript = path.join(getInstalledSkillPath("saoshu-term-wiki", context.importMetaUrl), "scripts/query_term_wiki.mjs");
   if (!fs.existsSync(wikiScript)) failUsage(`未找到术语脚本：${wikiScript}`);
-  let cmdLine = `node ${quotePath(wikiScript)} --term ${quotePath(term)} --format ${format}`;
-  cmdLine = appendFlag(cmdLine, contains, "--contains");
-  cmdLine = appendArg(cmdLine, "--mcp-cmd", mcpCmd);
-  runCommand(cmdLine);
+  const args = ["--term", term, "--format", format];
+  if (contains) args.push("--contains");
+  pushArg(args, "--mcp-cmd", mcpCmd);
+  runNodeScript(wikiScript, args);
 }
 
 export function handleRelation(rest, context) {
@@ -34,12 +31,12 @@ export function handleRelation(rest, context) {
   const minEdgeWeight = valueOf(rest, "--min-edge-weight", "");
   const maxLinks = valueOf(rest, "--max-links", "");
   const minNameFreq = valueOf(rest, "--min-name-freq", "");
-  let cmdLine = `node ${quotePath(path.join(context.scriptDir, "relation_graph.mjs"))} --report ${quotePath(report)} --output ${quotePath(output)}`;
-  cmdLine = appendArg(cmdLine, "--review-dir", reviewDir);
-  cmdLine = appendRawArg(cmdLine, "--top-chars", topChars);
-  cmdLine = appendRawArg(cmdLine, "--top-signals", topSignals);
-  cmdLine = appendRawArg(cmdLine, "--min-edge-weight", minEdgeWeight);
-  cmdLine = appendRawArg(cmdLine, "--max-links", maxLinks);
-  cmdLine = appendRawArg(cmdLine, "--min-name-freq", minNameFreq);
-  runCommand(cmdLine);
+  const args = ["--report", report, "--output", output];
+  pushArg(args, "--review-dir", reviewDir);
+  pushArg(args, "--top-chars", topChars);
+  pushArg(args, "--top-signals", topSignals);
+  pushArg(args, "--min-edge-weight", minEdgeWeight);
+  pushArg(args, "--max-links", maxLinks);
+  pushArg(args, "--min-name-freq", minNameFreq);
+  runNodeScript(path.join(context.scriptDir, "relation_graph.mjs"), args);
 }

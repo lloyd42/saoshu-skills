@@ -2,36 +2,111 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 
 function usage() {
-  console.log("Usage: node export_pdf.mjs --input-html <file.html> --output-pdf <file.pdf> [--engine-cmd <cmd with {input} {output}>]");
+  console.log("Usage: node export_pdf.mjs --input-html <file.html> --output-pdf <file.pdf> [--engine-cmd <cmd with {input} {output} {input_url}>]");
 }
 
 function parseArgs(argv) {
   const out = { inputHtml: "", outputPdf: "", engineCmd: "" };
   for (let i = 2; i < argv.length; i++) {
-    const k = argv[i];
-    const v = argv[i + 1];
-    if (k === "--input-html") out.inputHtml = v, i++;
-    else if (k === "--output-pdf") out.outputPdf = v, i++;
-    else if (k === "--engine-cmd") out.engineCmd = v, i++;
-    else if (k === "--help" || k === "-h") return null;
-    else throw new Error(`Unknown arg: ${k}`);
+    const key = argv[i];
+    const value = argv[i + 1];
+    if (key === "--input-html") out.inputHtml = value, i++;
+    else if (key === "--output-pdf") out.outputPdf = value, i++;
+    else if (key === "--engine-cmd") out.engineCmd = value, i++;
+    else if (key === "--help" || key === "-h") return null;
+    else throw new Error(`Unknown arg: ${key}`);
   }
   if (!out.inputHtml || !out.outputPdf) throw new Error("--input-html and --output-pdf are required");
   return out;
 }
 
-function q(s) {
-  return `\"${String(s).replaceAll("\\", "/")}\"`;
+function existsPdf(filePath) {
+  return fs.existsSync(filePath) && fs.statSync(filePath).size > 1000;
 }
 
-function runShell(cmd) {
-  return spawnSync("cmd.exe", ["/d", "/s", "/c", cmd], { stdio: "pipe", encoding: "utf8" });
+function shellInfo() {
+  if (process.platform === "win32") return { command: process.env.ComSpec || "cmd.exe", args: ["/d", "/s", "/c"] };
+  return { command: process.env.SHELL || "/bin/sh", args: ["-lc"] };
 }
 
-function existsPdf(file) {
-  return fs.existsSync(file) && fs.statSync(file).size > 1000;
+function runShellCommand(command) {
+  const shell = shellInfo();
+  return spawnSync(shell.command, [...shell.args, command], { stdio: "pipe", encoding: "utf8" });
+}
+
+function canExecute(command) {
+  const probe = spawnSync(command, ["--version"], { stdio: "ignore" });
+  return !probe.error;
+}
+
+function uniqueStrings(values) {
+  return [...new Set(values.filter(Boolean).map((value) => String(value).trim()).filter(Boolean))];
+}
+
+function replaceTemplate(template, replacements) {
+  return Object.entries(replacements).reduce((output, [key, value]) => output.replaceAll(`{${key}}`, String(value)), String(template || ""));
+}
+
+function defaultBrowserCandidates() {
+  const fromEnv = [];
+  for (const envKey of ["SAOSHU_PDF_BROWSER", "BROWSER"]) {
+    const value = String(process.env[envKey] || "").trim();
+    if (!value) continue;
+    if (fs.existsSync(value)) fromEnv.push(value);
+    else if (!value.includes(" ")) fromEnv.push(value);
+  }
+
+  const windowsAbsolute = [
+    "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
+    "C:/Program Files/Microsoft/Edge/Application/msedge.exe",
+    "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
+  ];
+  const macAbsolute = [
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+  ];
+  const linuxPathNames = [
+    "google-chrome-stable",
+    "google-chrome",
+    "chromium",
+    "chromium-browser",
+    "microsoft-edge",
+    "microsoft-edge-stable",
+  ];
+  const winPathNames = ["msedge.exe", "msedge", "chrome.exe", "chrome"];
+
+  const candidates = [
+    ...fromEnv,
+    ...(process.platform === "win32" ? windowsAbsolute : []),
+    ...(process.platform === "darwin" ? macAbsolute : []),
+    ...(process.platform === "linux" ? linuxPathNames : []),
+    ...(process.platform === "win32" ? winPathNames : []),
+  ];
+
+  return uniqueStrings(candidates)
+    .filter((candidate) => fs.existsSync(candidate) || canExecute(candidate))
+    .map((candidate) => ({
+      name: path.basename(candidate),
+      command: candidate,
+      args: (inputUrl, outputPath) => ["--headless", "--disable-gpu", `--print-to-pdf=${outputPath}`, inputUrl],
+    }));
+}
+
+function runPdfEngine(command, args) {
+  return spawnSync(command, args, { stdio: "pipe", encoding: "utf8" });
+}
+
+function describeFailure(result) {
+  if (!result) return "unknown error";
+  if (result.error?.message) return result.error.message;
+  const stderr = String(result.stderr || "").trim();
+  if (stderr) return stderr.split(/\r?\n/).slice(-1)[0];
+  return `exit ${result.status}`;
 }
 
 function main() {
@@ -43,38 +118,30 @@ function main() {
   if (!fs.existsSync(input)) throw new Error(`Input html not found: ${input}`);
   fs.mkdirSync(path.dirname(output), { recursive: true });
 
-  const inputUrl = `file:///${input.replaceAll("\\", "/")}`;
-
-  const tried = [];
-  const candidates = [];
+  const inputUrl = pathToFileURL(input).href;
+  const failures = [];
 
   if (args.engineCmd) {
-    const cmd = args.engineCmd
-      .replaceAll("{input}", input.replaceAll("\\", "/"))
-      .replaceAll("{output}", output.replaceAll("\\", "/"))
-      .replaceAll("{input_url}", inputUrl);
-    candidates.push({ name: "custom", cmd });
-  }
-
-  const edge = "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
-  const chrome = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-  const chromeX86 = "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe";
-  for (const p of [edge, chrome, chromeX86]) {
-    if (!fs.existsSync(p)) continue;
-    const cmd = `${q(p)} --headless --disable-gpu --print-to-pdf=${q(output)} ${q(inputUrl)}`;
-    candidates.push({ name: path.basename(p), cmd });
-  }
-
-  for (const c of candidates) {
-    tried.push(c.name);
-    const r = runShell(c.cmd);
-    if (r.status === 0 && existsPdf(output)) {
-      console.log(`PDF generated by ${c.name}: ${output}`);
+    const command = replaceTemplate(args.engineCmd, { input, output, input_url: inputUrl });
+    const result = runShellCommand(command);
+    if (result.status === 0 && existsPdf(output)) {
+      console.log(`PDF generated by custom engine: ${output}`);
       return;
     }
+    failures.push(`custom: ${describeFailure(result)}`);
   }
 
-  throw new Error(`Failed to generate pdf. Tried engines: ${tried.join(", ") || "none"}`);
+  const candidates = defaultBrowserCandidates();
+  for (const candidate of candidates) {
+    const result = runPdfEngine(candidate.command, candidate.args(inputUrl, output));
+    if (result.status === 0 && existsPdf(output)) {
+      console.log(`PDF generated by ${candidate.name}: ${output}`);
+      return;
+    }
+    failures.push(`${candidate.name}: ${describeFailure(result)}`);
+  }
+
+  throw new Error(`Failed to generate pdf. Tried engines: ${failures.join(" | ") || "none"}`);
 }
 
 try {
@@ -83,4 +150,3 @@ try {
   console.error(`Error: ${err.message}`);
   process.exit(1);
 }
-
