@@ -47,6 +47,7 @@ export function handleDb(rest, context) {
 export function handleCompare(rest, context) {
   const sub = rest[0] || "";
   const reviewRoot = getInstalledSkillPath("saoshu-harem-review", context.importMetaUrl);
+
   if (sub === "ledger") {
     const ledger = requireArg(valueOf(rest, "--ledger"), "compare ledger 缺少 `--ledger`", "示例：node saoshu_cli.mjs compare ledger --ledger ./mode-diff-ledger.jsonl --output-dir ./workspace/mode-diff-summary");
     const outputDir = requireArg(valueOf(rest, "--output-dir"), "compare ledger 缺少 `--output-dir`", "示例：node saoshu_cli.mjs compare ledger --ledger ./mode-diff-ledger.jsonl --output-dir ./workspace/mode-diff-summary");
@@ -55,6 +56,25 @@ export function handleCompare(rest, context) {
     if (!fs.existsSync(ledgerScript)) failUsage(`未找到台账汇总脚本：${ledgerScript}`);
     return runNodeScript(ledgerScript, ["--ledger", ledger, "--output-dir", outputDir, "--title", title]);
   }
+
+  if (sub === "batch") {
+    const queue = requireArg(valueOf(rest, "--queue"), "compare batch 缺少 `--queue`", "示例：node saoshu_cli.mjs compare batch --queue ./mode-diff-queue.json");
+    const queueScript = path.join(reviewRoot, "scripts/mode_diff_queue_run.mjs");
+    if (!fs.existsSync(queueScript)) failUsage(`未找到 mode-diff 批量脚本：${queueScript}`);
+    const args = ["--queue", queue];
+    pushArg(args, "--ledger", valueOf(rest, "--ledger", ""));
+    pushArg(args, "--summary-dir", valueOf(rest, "--summary-dir", ""));
+    pushArg(args, "--summary-title", valueOf(rest, "--summary-title", ""));
+    pushArg(args, "--db", valueOf(rest, "--db", ""));
+    pushArg(args, "--db-compare-dir", valueOf(rest, "--db-compare-dir", ""));
+    pushArg(args, "--db-compare-dimensions", valueOf(rest, "--db-compare-dimensions", ""));
+    pushArg(args, "--db-trends-dir", valueOf(rest, "--db-trends-dir", ""));
+    pushArg(args, "--db-dashboard", valueOf(rest, "--db-dashboard", ""));
+    pushArg(args, "--out", valueOf(rest, "--out", ""));
+    if (rest.includes("--stop-on-error")) args.push("--stop-on-error");
+    return runNodeScript(queueScript, args);
+  }
+
   if (sub === "record") {
     const perf = requireArg(valueOf(rest, "--perf"), "compare record 缺少 `--perf`", "示例：node saoshu_cli.mjs compare record --perf ./perf.json --econ ./econ.json --out-dir ./workspace/mode-diff/book-a --ledger ./workspace/mode-diff-ledger.jsonl");
     const econ = requireArg(valueOf(rest, "--econ"), "compare record 缺少 `--econ`", "示例：node saoshu_cli.mjs compare record --perf ./perf.json --econ ./econ.json --out-dir ./workspace/mode-diff/book-a --ledger ./workspace/mode-diff-ledger.jsonl");
@@ -73,6 +93,7 @@ export function handleCompare(rest, context) {
     pushArg(args, "--db-dashboard", valueOf(rest, "--db-dashboard", ""));
     return runNodeScript(workflowScript, args);
   }
+
   if (sub === "sync") {
     const ledger = requireArg(valueOf(rest, "--ledger"), "compare sync 缺少 `--ledger`", "示例：node saoshu_cli.mjs compare sync --ledger ./workspace/mode-diff-ledger.jsonl --db ./scan-db");
     const workflowScript = path.join(reviewRoot, "scripts/mode_diff_workflow.mjs");

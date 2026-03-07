@@ -16,6 +16,7 @@ export function showCliHelp() {
   console.log("  node saoshu_cli.mjs compare --db <dir> [--dimensions author,tags,verdict,pipeline_mode,target_defense,title,mode_diff_gain_window,mode_diff_band] [--output-dir <dir>]");
   console.log("  node saoshu_cli.mjs compare ledger --ledger <mode-diff-ledger.jsonl> --output-dir <dir> [--title <name>]");
   console.log("  node saoshu_cli.mjs compare record --perf <perf.json> --econ <econ.json> --out-dir <dir> --ledger <mode-diff-ledger.jsonl> [--db <dir>]");
+  console.log("  node saoshu_cli.mjs compare batch --queue <queue.json> [--ledger <mode-diff-ledger.jsonl>] [--db <dir>]");
   console.log("  node saoshu_cli.mjs compare sync --ledger <mode-diff-ledger.jsonl> [--db <dir>]");
   console.log("");
   console.log("术语说明:");
