@@ -13,6 +13,7 @@
 - 新增 `mode_diff_workflow.mjs` 与 `saoshu_cli.mjs compare record|sync`，把真实样本入账、台账汇总、DB 入库与 compare/trends/dashboard 刷新串成一条低成本工作流。
 - 新增 `mode_diff_queue_run.mjs` 与 `saoshu_cli.mjs compare batch`，支持多本书的 perf/econ 报告批量入账，批量结束后统一刷新 summary/DB 产物。
 - `mode_diff_queue_run.mjs` 现在会同时输出 `queue-summary.json/.md/.html`，方便快速查看批量执行结果与产物位置。
+- 新增 `mode-diff-queue.real-sample.template.json` 与 `real-sample-batch-checklist.md`，降低首次用真实样本批量积累 mode-diff 台账的使用成本。
 - 新增 `mode_diff_discover_queue.mjs` 与 `saoshu_cli.mjs compare discover`，可从目录中自动发现常见 `performance/economy`、`perf/econ` 报告配对并生成批量队列。
 
 ## [0.4.0] - 2026-03-07

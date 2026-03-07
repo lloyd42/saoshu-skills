@@ -1,0 +1,22 @@
+{
+  "ledger": "./workspace/mode-diff-ledger.jsonl",
+  "db": "./scan-db",
+  "summary_dir": "./workspace/mode-diff-summary",
+  "db_compare_dimensions": "author,tags,mode_diff_gain_window,mode_diff_band",
+  "jobs": [
+    {
+      "name": "作品A",
+      "title": "作品A 模式对比",
+      "perf": "./reports/作品A/performance/merged-report.json",
+      "econ": "./reports/作品A/economy/merged-report.json",
+      "out_dir": "./workspace/mode-diff/作品A"
+    },
+    {
+      "name": "作品B",
+      "title": "作品B 模式对比",
+      "perf": "./reports/作品B/perf/merged-report.json",
+      "econ": "./reports/作品B/econ/merged-report.json",
+      "out_dir": "./workspace/mode-diff/作品B"
+    }
+  ]
+}

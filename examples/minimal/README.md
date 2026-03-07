@@ -8,6 +8,9 @@
 - `manifest.json`：指向当前目录内样例文件的最小清单
 - `final-report.json`：示例输出结构参考
 - `report-reading-guide.md`：新手读报告顺序说明
+- `mode-diff-queue.example.json`：最小队列样例
+- `mode-diff-queue.real-sample.template.json`：真实样本批量队列模板
+- `real-sample-batch-checklist.md`：真实样本批量执行清单
 
 ## 运行方式
 
@@ -22,6 +25,7 @@ node packages/saoshu-harem-review/scripts/run_pipeline.mjs --manifest examples/m
 如果你是第一次接触扫书报告，建议再看：
 
 - `examples/minimal/report-reading-guide.md`
+- `examples/minimal/real-sample-batch-checklist.md`
 
 ## 说明
 
