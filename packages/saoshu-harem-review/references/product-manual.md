@@ -73,6 +73,7 @@
 - 支持统计查询（结论分布、高频风险、高频标签）。
 - 支持生成数据库仪表盘 HTML，服务可视化复盘。
 - 支持记录 `keyword_candidates`，并允许人工把候选词晋升为下一轮可复用规则。
+- 支持记录 `alias_candidates`，并允许人工把角色别名晋升为下一轮可复用映射。
 
 ### 4.8 角色关系图（跨平台本地）
 - merge 后可选生成 `relation-graph.html`。
@@ -111,6 +112,14 @@ node packages/saoshu-scan-db/scripts/db_promote_keyword.mjs --db ./scan-db --key
 node packages/saoshu-scan-db/scripts/db_export_keyword_rules.mjs --db ./scan-db --output ./workspace/keyword-rules.json
 ```
 
+角色别名闭环示例：
+
+```bash
+node packages/saoshu-scan-db/scripts/db_query.mjs --db ./scan-db --metric alias-candidates
+node packages/saoshu-scan-db/scripts/db_promote_alias.mjs --db ./scan-db --canonical-name 苏梨 --alias 阿梨 --gender female --role-hint 女主候选 --relation-label 未婚妻
+node packages/saoshu-scan-db/scripts/db_export_alias_map.mjs --db ./scan-db --output ./workspace/alias-map.json
+```
+
 Manifest 向导（新手推荐）：
 - 交互式：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie`
 - 非交互：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie --non-interactive --input-txt <txt> --output-dir <dir> --title <name>`
@@ -127,6 +136,7 @@ Manifest 向导（新手推荐）：
 - `sample_count`（fixed 模式）
 - `sample_min_count/sample_max_count`（dynamic 边界）
 - `sample_strategy`: `risk-aware|uniform`
+- `alias_map`: 角色别名映射文件
 - `keyword_rules`: 额外关键词规则文件
 - `wiki_dict`: 术语词典路径
 - `db_mode`: `none|local|external`

@@ -1,3 +1,5 @@
+import { buildAliasContext, createAliasCandidate, resolveAliasName } from "./name_aliases.mjs";
+
 const FEMALE_WORDS = ["她", "女主", "准女主", "妻子", "未婚妻", "道侣", "姑娘", "小姐", "夫人", "公主", "圣女", "仙子", "师姐", "妹妹", "姐姐", "王后", "女王"];
 const MALE_WORDS = ["他", "男主", "公子", "少主", "皇子", "师兄", "夫君", "丈夫", "主角"];
 const FEMALE_CORE_WORDS = ["妻子", "未婚妻", "道侣", "女主", "准女主", "红颜", "妃子"];
@@ -93,8 +95,8 @@ function normalizeCandidateName(text) {
   return value;
 }
 
-function resolveKnownNameAlias(text, knownNames = []) {
-  const value = normalizeCandidateName(text);
+function resolveKnownNameAlias(text, knownNames = [], aliasContext = null) {
+  const value = resolveAliasName(normalizeCandidateName(text), aliasContext);
   const names = (knownNames || []).map((item) => normalizeCandidateName(item)).filter(Boolean);
   if (names.includes(value)) return value;
   if (value.length === 1) {
@@ -118,6 +120,13 @@ function resolveKnownNameAlias(text, knownNames = []) {
   return value;
 }
 
+function withAliasCandidates(entity, rawValues = []) {
+  const aliasCandidates = [...new Set((Array.isArray(rawValues) ? rawValues : [])
+    .map((raw) => createAliasCandidate(raw, entity?.name || ""))
+    .filter(Boolean))];
+  return aliasCandidates.length > 0 ? { ...entity, alias_candidates: aliasCandidates } : entity;
+}
+
 function looksLikeName(text) {
   const value = normalizeCandidateName(text);
   if (!/^[\u4e00-\u9fa5]{2,3}$/.test(value)) return false;
@@ -138,55 +147,67 @@ function withRelationMeta(entity, relationLabel, relationConfidence) {
   return { ...entity, relation_label: relationLabel, relation_confidence: relationConfidence };
 }
 
-function relationPairFromSnippet(snippet, knownNames = []) {
+function relationPairFromSnippet(snippet, knownNames = [], aliasContext = null) {
   const match = /([\u4e00-\u9fa5]{2,3})是([\u4e00-\u9fa5]{2,3})的(未婚妻|妻子|道侣|女友|夫人|妃子)/.exec(snippet);
   if (!match) return null;
-  const subjectName = resolveKnownNameAlias(match[1], knownNames);
-  const targetName = resolveKnownNameAlias(match[2], knownNames);
+  const rawSubjectName = String(match[1] || "").trim();
+  const rawTargetName = String(match[2] || "").trim();
+  const subjectName = resolveKnownNameAlias(rawSubjectName, knownNames, aliasContext);
+  const targetName = resolveKnownNameAlias(rawTargetName, knownNames, aliasContext);
   if (!looksLikeName(subjectName) || !looksLikeName(targetName)) return null;
   const relationMeta = relationMetaFromTitle(match[3]);
   return {
-    subject: withRelationMeta({ name: subjectName, gender: "female", role_hint: "女主候选", confidence: 0.92 }, relationMeta.subjectLabel, 0.92),
-    target: withRelationMeta({ name: targetName, role_hint: relationMeta.targetRoleHint, confidence: 0.84 }, relationMeta.targetLabel, 0.84),
+    subject: withAliasCandidates(withRelationMeta({ name: subjectName, gender: "female", role_hint: "女主候选", confidence: 0.92 }, relationMeta.subjectLabel, 0.92), [rawSubjectName]),
+    target: withAliasCandidates(withRelationMeta({ name: targetName, role_hint: relationMeta.targetRoleHint, confidence: 0.84 }, relationMeta.targetLabel, 0.84), [rawTargetName]),
   };
 }
 
-function buildBatchContext(batchText, topCharacters = []) {
+function buildBatchContext(batchText, topCharacters = [], aliasContext = null) {
   const directNames = [...new Set((batchText.match(/[\u4e00-\u9fa5]{2,3}/g) || []).map((value) => normalizeCandidateName(value)).filter((value) => looksLikeName(value)))];
-  const knownNames = new Set([...(topCharacters || []).map((item) => String(item.name || "").trim()).filter(Boolean), ...directNames]);
-  const relationPair = relationPairFromSnippet(batchText, [...knownNames]);
+  const knownNames = new Set([
+    ...(topCharacters || []).map((item) => String(item.name || "").trim()).filter(Boolean),
+    ...directNames,
+    ...(aliasContext?.rows || []).flatMap((row) => [row.canonical_name, ...(row.aliases || [])]),
+  ]);
+  const relationPair = relationPairFromSnippet(batchText, [...knownNames], aliasContext);
   if (relationPair?.subject?.name) knownNames.add(relationPair.subject.name);
   if (relationPair?.target?.name) knownNames.add(relationPair.target.name);
   return {
     relationPair,
     knownNames: [...knownNames],
+    aliasContext,
   };
 }
 
 function inferNamedPair(snippet, keyword, batchContext = null) {
   const knownNames = batchContext?.knownNames || [];
-  const relationPair = relationPairFromSnippet(snippet, knownNames) || batchContext?.relationPair || null;
+  const aliasContext = batchContext?.aliasContext || null;
+  const relationPair = relationPairFromSnippet(snippet, knownNames, aliasContext) || batchContext?.relationPair || null;
   const betrayal = /([\u4e00-\u9fa5]{2,3}|她)(?:并未|未曾|没有|不会)?背叛([\u4e00-\u9fa5]{2,3})/.exec(snippet);
   if (betrayal && (!keyword || betrayal[0].includes(keyword))) {
-    const targetName = resolveKnownNameAlias(betrayal[2], knownNames);
+    const rawTargetName = String(betrayal[2] || "").trim();
+    const targetName = resolveKnownNameAlias(rawTargetName, knownNames, aliasContext);
     if (looksLikeName(targetName)) {
-      const subjectName = looksLikeName(betrayal[1]) ? resolveKnownNameAlias(betrayal[1], knownNames) : relationPair?.subject?.name;
+      const rawSubjectName = String(betrayal[1] || "").trim();
+      const subjectName = looksLikeName(betrayal[1]) ? resolveKnownNameAlias(rawSubjectName, knownNames, aliasContext) : relationPair?.subject?.name;
       if (subjectName && looksLikeName(subjectName)) {
         return {
-          subject: withRelationMeta({ name: subjectName, gender: "female", role_hint: "女主候选", confidence: 0.88 }, relationPair ? String(relationPair.subject?.relation_label || "女主候选") : "女主候选", relationPair ? Number(relationPair.subject?.relation_confidence || 0.88) : 0.88),
-          target: withRelationMeta({ name: targetName, role_hint: relationPair && relationPair.target?.name === targetName ? "male_lead_candidate" : "close_relation_candidate", confidence: 0.78 }, relationPair && relationPair.target?.name === targetName ? String(relationPair.target?.relation_label || "男主候选") : "关系对象", relationPair && relationPair.target?.name === targetName ? Number(relationPair.target?.relation_confidence || 0.84) : 0.7),
+          subject: withAliasCandidates(withRelationMeta({ name: subjectName, gender: "female", role_hint: "女主候选", confidence: 0.88 }, relationPair ? String(relationPair.subject?.relation_label || "女主候选") : "女主候选", relationPair ? Number(relationPair.subject?.relation_confidence || 0.88) : 0.88), [rawSubjectName]),
+          target: withAliasCandidates(withRelationMeta({ name: targetName, role_hint: relationPair && relationPair.target?.name === targetName ? "male_lead_candidate" : "close_relation_candidate", confidence: 0.78 }, relationPair && relationPair.target?.name === targetName ? String(relationPair.target?.relation_label || "男主候选") : "关系对象", relationPair && relationPair.target?.name === targetName ? Number(relationPair.target?.relation_confidence || 0.84) : 0.7), [rawTargetName]),
         };
       }
     }
   }
   const loyalty = /([\u4e00-\u9fa5]{2,3}|她)(?:只是假装)?投靠([\u4e00-\u9fa5]{2,3})/.exec(snippet);
   if (loyalty && (!keyword || loyalty[0].includes(keyword))) {
-    const targetName = resolveKnownNameAlias(loyalty[2], knownNames);
-    const subjectName = looksLikeName(loyalty[1]) ? resolveKnownNameAlias(loyalty[1], knownNames) : relationPair?.subject?.name;
+    const rawTargetName = String(loyalty[2] || "").trim();
+    const rawSubjectName = String(loyalty[1] || "").trim();
+    const targetName = resolveKnownNameAlias(rawTargetName, knownNames, aliasContext);
+    const subjectName = looksLikeName(loyalty[1]) ? resolveKnownNameAlias(rawSubjectName, knownNames, aliasContext) : relationPair?.subject?.name;
     if (subjectName && looksLikeName(subjectName) && looksLikeName(targetName)) {
       return {
-        subject: withRelationMeta({ name: subjectName, gender: "female", role_hint: "女主候选", confidence: 0.82 }, relationPair ? String(relationPair.subject?.relation_label || "女主候选") : "女主候选", relationPair ? Number(relationPair.subject?.relation_confidence || 0.82) : 0.82),
-        target: withRelationMeta({ name: targetName, role_hint: relationPair && relationPair.target?.name === targetName ? "male_lead_candidate" : "rival_or_faction_target", confidence: 0.76 }, relationPair && relationPair.target?.name === targetName ? String(relationPair.target?.relation_label || "男主候选") : "投靠对象", relationPair && relationPair.target?.name === targetName ? Number(relationPair.target?.relation_confidence || 0.84) : 0.72),
+        subject: withAliasCandidates(withRelationMeta({ name: subjectName, gender: "female", role_hint: "女主候选", confidence: 0.82 }, relationPair ? String(relationPair.subject?.relation_label || "女主候选") : "女主候选", relationPair ? Number(relationPair.subject?.relation_confidence || 0.82) : 0.82), [rawSubjectName]),
+        target: withAliasCandidates(withRelationMeta({ name: targetName, role_hint: relationPair && relationPair.target?.name === targetName ? "male_lead_candidate" : "rival_or_faction_target", confidence: 0.76 }, relationPair && relationPair.target?.name === targetName ? String(relationPair.target?.relation_label || "男主候选") : "投靠对象", relationPair && relationPair.target?.name === targetName ? Number(relationPair.target?.relation_confidence || 0.84) : 0.72), [rawTargetName]),
       };
     }
   }
@@ -380,9 +401,10 @@ function resolveCandidateConflicts(candidate) {
   delete candidate._timeline_votes;
 }
 
-export function buildEventCandidates({ batchId, batchRange, batchText, chapters, topCharacters, thunderRules, riskRules, depressionRules }) {
+export function buildEventCandidates({ batchId, batchRange, batchText, chapters, topCharacters, nameAliasRows = [], thunderRules, riskRules, depressionRules }) {
   const groups = new Map();
-  const batchContext = buildBatchContext(batchText, topCharacters);
+  const aliasContext = buildAliasContext(nameAliasRows);
+  const batchContext = buildBatchContext(batchText, topCharacters, aliasContext);
   const allRules = [
     ...thunderRules.map((item) => ({ ...item, category: "thunder" })),
     ...riskRules.map((item) => ({ ...item, category: "risk" })),
@@ -430,6 +452,9 @@ export function buildEventCandidates({ batchId, batchRange, batchText, chapters,
 
         const candidate = groups.get(groupKey);
         if (!candidate.signals.includes(keyword)) candidate.signals.push(keyword);
+        if (Array.isArray(subject?.alias_candidates) && subject.alias_candidates.length > 0) {
+          candidate.subject.alias_candidates = [...new Set([...(Array.isArray(candidate.subject?.alias_candidates) ? candidate.subject.alias_candidates : []), ...subject.alias_candidates])];
+        }
         if (candidate.polarity === "affirmed" && polarity !== "affirmed") candidate.polarity = polarity;
         if (candidate.timeline === "mainline" && timeline !== "mainline") candidate.timeline = timeline;
         candidate._target_votes.push(target);

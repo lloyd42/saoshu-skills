@@ -48,6 +48,18 @@
 - severity / min_defense / min_count
 - note
 
+## alias_candidates.jsonl
+- run_id / title / event_id
+- rule_candidate / review_decision / status
+- role（`subject|target`）
+- canonical_name / alias
+
+## alias_promotions.jsonl
+- promoted_at
+- canonical_name / alias
+- gender / role_hint / relation_label
+- note
+
 ## 对比维度建议
 - author（作者）
 - tags（标签拆分后聚合）

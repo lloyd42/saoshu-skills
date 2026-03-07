@@ -67,6 +67,7 @@ manifest 字段：
 - `sample_level`: `dynamic` 模式档位 `auto|low|medium|high`
 - `sample_min_count` / `sample_max_count`: dynamic 计数下限/上限（可选）
 - `sample_strategy`: `risk-aware|uniform`
+- `alias_map`: 角色别名映射文件路径（可选；通常由 scan-db 导出）
 - `keyword_rules`: 额外关键词规则文件路径（可选；通常由 scan-db 导出）
 - `wiki_dict`: 术语词典路径（可选，默认尝试 `saoshu-term-wiki`）
 - `db_mode`: `none|local|external`
@@ -105,6 +106,7 @@ dynamic 抽样策略：
 - 本地默认调用独立 skill：`saoshu-scan-db/scripts/db_ingest.mjs`。
 - 外部模式支持命令模板占位符：`{report}` `{state}` `{manifest}` `{db}`。
 - 可额外记录 `keyword_candidates.jsonl` 与 `keyword_promotions.jsonl`，用于“新关键词 -> 人工晋升 -> 导出规则 -> 下一次扫描复用”的闭环。
+- 可额外记录 `alias_candidates.jsonl` 与 `alias_promotions.jsonl`，用于“角色别名 -> 人工晋升 -> 导出映射 -> 下一次归一化复用”的闭环。
 
 PDF 导出：
 - merge 后可执行 `export_pdf.mjs`。

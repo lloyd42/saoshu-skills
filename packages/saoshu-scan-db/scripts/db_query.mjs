@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 function usage() {
-  console.log("Usage: node db_query.mjs --db <dir> [--metric overview|verdict|top-risks|top-tags|top-keywords|keyword-candidates|promoted-keywords|runs] [--limit 10] [--format text|json]");
+  console.log("Usage: node db_query.mjs --db <dir> [--metric overview|verdict|top-risks|top-tags|top-keywords|keyword-candidates|promoted-keywords|top-aliases|alias-candidates|promoted-aliases|runs] [--limit 10] [--format text|json]");
 }
 
 function parseArgs(argv) {
@@ -81,6 +81,42 @@ function topKeywordCandidates(rows, limit) {
     .slice(0, limit);
 }
 
+function topAliasCandidates(rows, limit) {
+  const grouped = new Map();
+  for (const row of rows) {
+    const canonicalName = String(row.canonical_name || "").trim();
+    const alias = String(row.alias || "").trim();
+    if (!canonicalName || !alias) continue;
+    const key = `${canonicalName}|${alias}`;
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        canonical_name: canonicalName,
+        alias,
+        total_hits: 0,
+        run_ids: new Set(),
+        subject_hits: 0,
+        target_hits: 0,
+      });
+    }
+    const agg = grouped.get(key);
+    agg.total_hits += 1;
+    if (row.run_id) agg.run_ids.add(String(row.run_id));
+    if (String(row.role || "") === "subject") agg.subject_hits += 1;
+    else if (String(row.role || "") === "target") agg.target_hits += 1;
+  }
+  return [...grouped.values()]
+    .map((item) => ({
+      canonical_name: item.canonical_name,
+      alias: item.alias,
+      total_hits: item.total_hits,
+      run_count: item.run_ids.size,
+      subject_hits: item.subject_hits,
+      target_hits: item.target_hits,
+    }))
+    .sort((a, b) => b.total_hits - a.total_hits || b.run_count - a.run_count || a.alias.localeCompare(b.alias, "zh"))
+    .slice(0, limit);
+}
+
 function main() {
   const args = parseArgs(process.argv);
   if (!args) return usage();
@@ -90,6 +126,8 @@ function main() {
   const tags = readJsonl(path.join(db, "tag_items.jsonl"));
   const keywords = readJsonl(path.join(db, "keyword_candidates.jsonl"));
   const promotions = readJsonl(path.join(db, "keyword_promotions.jsonl"));
+  const aliases = readJsonl(path.join(db, "alias_candidates.jsonl"));
+  const aliasPromotions = readJsonl(path.join(db, "alias_promotions.jsonl"));
 
   let out = {};
   if (args.metric === "overview") {
@@ -100,7 +138,9 @@ function main() {
       top_risks: topN(risks, "risk", 10),
       top_tags: topN(tags, "tag", 10),
       top_keywords: topN(keywords, "keyword", 10),
+      top_aliases: topN(aliases, "alias", 10),
       promoted_keywords: promotions.slice(-Math.min(args.limit, 10)).reverse(),
+      promoted_aliases: aliasPromotions.slice(-Math.min(args.limit, 10)).reverse(),
     };
   } else if (args.metric === "verdict") out = topN(runs, "verdict", args.limit);
   else if (args.metric === "top-risks") out = topN(risks, "risk", args.limit);
@@ -108,8 +148,11 @@ function main() {
   else if (args.metric === "top-keywords") out = topN(keywords, "keyword", args.limit);
   else if (args.metric === "keyword-candidates") out = topKeywordCandidates(keywords, args.limit);
   else if (args.metric === "promoted-keywords") out = promotions.slice(-args.limit).reverse();
+  else if (args.metric === "top-aliases") out = topN(aliases, "alias", args.limit);
+  else if (args.metric === "alias-candidates") out = topAliasCandidates(aliases, args.limit);
+  else if (args.metric === "promoted-aliases") out = aliasPromotions.slice(-args.limit).reverse();
   else if (args.metric === "runs") out = runs.slice(-args.limit).reverse();
-  else throw new Error("metric must be overview|verdict|top-risks|top-tags|top-keywords|keyword-candidates|promoted-keywords|runs");
+  else throw new Error("metric must be overview|verdict|top-risks|top-tags|top-keywords|keyword-candidates|promoted-keywords|top-aliases|alias-candidates|promoted-aliases|runs");
 
   if (args.format === "json") {
     console.log(JSON.stringify(out, null, 2));
@@ -121,6 +164,7 @@ function main() {
     console.log(`Top risks: ${out.top_risks.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
     console.log(`Top tags: ${out.top_tags.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
     console.log(`Top keywords: ${out.top_keywords.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`Top aliases: ${out.top_aliases.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
     return;
   }
   console.log(JSON.stringify(out, null, 2));

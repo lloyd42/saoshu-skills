@@ -98,6 +98,7 @@ function main() {
   const sampleStrategy = config.sampleStrategy;
   const sampleMinCount = config.sampleMinCount;
   const sampleMaxCount = config.sampleMaxCount;
+  const aliasMap = config.aliasMap;
   const keywordRules = config.keywordRules;
   const wikiDict = config.wikiDict;
   const dbMode = config.dbMode;
@@ -133,6 +134,7 @@ function main() {
 
   function stageChunk() {
     const cmd1Args = ["--input", inputTxt, "--output", allBatchesDir, "--batch-size", batchSize, "--overlap", overlap];
+    if (aliasMap) cmd1Args.push("--alias-map", aliasMap);
     if (keywordRules) cmd1Args.push("--keyword-rules", keywordRules);
     const cmd1 = executeNodeScript("scan_txt_batches.mjs", cmd1Args);
 

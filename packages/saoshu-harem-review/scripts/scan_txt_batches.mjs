@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { buildEventCandidates } from "./lib/event_candidates.mjs";
 import { getExitCode } from "./lib/exit_codes.mjs";
+import { buildAliasContext, enrichTopCharactersWithAliasHits, loadAliasRows, normalizeTopCharacters } from "./lib/name_aliases.mjs";
 import { parseChapters, readNovelText } from "./lib/novel_input.mjs";
 import {
   DEPRESSION_RULES,
@@ -17,11 +18,11 @@ import {
 import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
 
 function usage() {
-  console.log("Usage: node scan_txt_batches.mjs --input <novel.txt> --output <batch-dir> [--batch-size 80] [--overlap 2] [--keyword-rules <json>]");
+  console.log("Usage: node scan_txt_batches.mjs --input <novel.txt> --output <batch-dir> [--batch-size 80] [--overlap 2] [--keyword-rules <json>] [--alias-map <json>]");
 }
 
 function parseArgs(argv) {
-  const out = { input: "", output: "", batchSize: 80, overlap: 2, keywordRules: "" };
+  const out = { input: "", output: "", batchSize: 80, overlap: 2, keywordRules: "", aliasMap: "" };
   for (let i = 2; i < argv.length; i++) {
     const k = argv[i];
     const v = argv[i + 1];
@@ -30,6 +31,7 @@ function parseArgs(argv) {
     else if (k === "--batch-size") out.batchSize = Number(v), i++;
     else if (k === "--overlap") out.overlap = Number(v), i++;
     else if (k === "--keyword-rules") out.keywordRules = v, i++;
+    else if (k === "--alias-map") out.aliasMap = v, i++;
     else if (k === "--help" || k === "-h") return null;
     else scriptUsage(`未知参数：${k}`, "示例：node scan_txt_batches.mjs --input ./novel.txt --output ./batches");
   }
@@ -235,6 +237,8 @@ function main() {
   const input = path.resolve(args.input);
   const output = path.resolve(args.output);
   const rules = loadRuleCatalog(args.keywordRules);
+  const aliasRows = loadAliasRows(args.aliasMap);
+  const aliasContext = buildAliasContext(aliasRows);
   const loaded = readNovelText(input);
   const text = loaded.text;
   const chapters = parseChapters(text);
@@ -260,7 +264,7 @@ function main() {
     const hits = detectHits(batchText, range, rules);
     const events = batch.slice(0, 6).map((c) => c.title);
     const topTags = extractTopTags(batchText, 12);
-    const topChars = extractTopCharacters(batchText, 16);
+    const topChars = enrichTopCharactersWithAliasHits(normalizeTopCharacters(extractTopCharacters(batchText, 16), aliasContext), batchText, aliasContext).slice(0, 16);
     const chapterTitleScan = analyzeChapterTitles(batch, rules.titleSignalRules);
     const eventCandidates = buildEventCandidates({
       batchId,
@@ -268,6 +272,7 @@ function main() {
       batchText,
       chapters: batch,
       topCharacters: topChars,
+      nameAliasRows: aliasRows,
       thunderRules: rules.thunderStrict,
       riskRules: rules.thunderRisk,
       depressionRules: rules.depressionRules,

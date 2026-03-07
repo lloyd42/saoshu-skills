@@ -81,6 +81,7 @@ function main() {
   const riskFile = path.join(dbDir, "risk_items.jsonl");
   const tagFile = path.join(dbDir, "tag_items.jsonl");
   const keywordFile = path.join(dbDir, "keyword_candidates.jsonl");
+  const aliasFile = path.join(dbDir, "alias_candidates.jsonl");
 
   const run = {
     run_id: runId,
@@ -192,9 +193,42 @@ function main() {
     appendJsonl(keywordFile, row);
   }
 
+  const aliasRows = [];
+  for (const event of arr(report.events?.items)) {
+    const shared = {
+      run_id: runId,
+      title: run.title,
+      event_id: String(event.event_id || ""),
+      rule_candidate: String(event.rule_candidate || ""),
+      review_decision: String(event.review_decision || ""),
+      status: String(event.status || ""),
+    };
+    for (const role of [
+      { kind: "subject", entity: event.subject },
+      { kind: "target", entity: event.target },
+    ]) {
+      const canonicalName = String(role.entity?.name || "").trim();
+      const aliases = Array.isArray(role.entity?.alias_candidates) ? role.entity.alias_candidates : [];
+      for (const alias of aliases) {
+        const aliasName = String(alias || "").trim();
+        if (!aliasName || !canonicalName || aliasName === canonicalName) continue;
+        aliasRows.push({
+          ...shared,
+          role: role.kind,
+          canonical_name: canonicalName,
+          alias: aliasName,
+        });
+      }
+    }
+  }
+
+  for (const row of uniqBy(aliasRows, (item) => `${item.event_id}|${item.role}|${item.canonical_name}|${item.alias}`)) {
+    appendJsonl(aliasFile, row);
+  }
+
   console.log(`DB: ${dbDir}`);
   console.log(`Run ID: ${runId}`);
-  console.log(`Written: runs/thunder/depression/risk/tags/keywords`);
+  console.log(`Written: runs/thunder/depression/risk/tags/keywords/aliases`);
 }
 
 try {
