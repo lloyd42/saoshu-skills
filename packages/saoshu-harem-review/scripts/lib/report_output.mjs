@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { readJsonFile } from "./json_input.mjs";
+import { CRITICAL_RISK_RULES } from "./rule_catalog.mjs";
 import { formatUiKeyValue, formatUiTerm } from "./ui_terms.mjs";
 import { describeEvent, eventDecisionLabel, polarityLabel, timelineLabel } from "./report_events.mjs";
 
@@ -65,16 +66,30 @@ function buildRiskQuestionIndex(rows) {
   return index;
 }
 
+function scoreRiskUrgency(risk) {
+  const criticalRules = new Set(CRITICAL_RISK_RULES);
+  const riskName = String(risk?.risk || "").trim();
+  const impact = String(risk?.impact || "");
+  const missing = String(risk?.missing_evidence || "");
+  let score = 0;
+  if (criticalRules.has(riskName)) score += 100;
+  if (/(劝退|改变结论|显著下调|直接劝退|关键)/.test(impact)) score += 40;
+  if (missing) score += Math.min(20, 5 + missing.length / 10);
+  return score;
+}
+
 function buildFollowUpQuestions(merged, riskQuestionPool) {
-  const questions = [];
+  const questionRows = [];
   const riskIndex = buildRiskQuestionIndex(riskQuestionPool);
   for (const risk of Array.isArray(merged.risks) ? merged.risks : []) {
     const riskName = String(risk.risk || "").trim();
     if (!riskName) continue;
     if (riskIndex.has(riskName)) {
-      for (const question of riskIndex.get(riskName)) questions.push(question);
+      for (const question of riskIndex.get(riskName)) {
+        questionRows.push({ text: question, risk: riskName, score: scoreRiskUrgency(risk) + 30, source: "risk_pool" });
+      }
     } else if (risk.missing_evidence) {
-      questions.push(`[${riskName}] ${String(risk.missing_evidence).trim()}`);
+      questionRows.push({ text: `[${riskName}] ${String(risk.missing_evidence).trim()}`, risk: riskName, score: scoreRiskUrgency(risk) + 20, source: "risk_missing" });
     }
   }
   for (const event of Array.isArray(merged.event_candidates) ? merged.event_candidates : []) {
@@ -82,15 +97,28 @@ function buildFollowUpQuestions(merged, riskQuestionPool) {
     if (["已确认", "排除"].includes(decision)) continue;
     const riskName = String(event.rule_candidate || "").trim();
     const missing = Array.isArray(event.missing_evidence) ? event.missing_evidence : [];
+    const eventScore = (new Set(CRITICAL_RISK_RULES).has(riskName) ? 90 : 20) + Number(event.confidence_score || 0);
     for (const item of missing) {
       const text = String(item || "").trim();
       if (!text) continue;
-      questions.push(riskName ? `[${riskName}] ${text}` : text);
+      questionRows.push({ text: riskName ? `[${riskName}] ${text}` : text, risk: riskName, score: eventScore, source: "event_missing" });
     }
   }
-  questions.push("是否存在未展示的番外或外传影响主线结论？");
-  questions.push("当前未证实风险项对应章节能否提供明确片段？");
-  return [...new Set(questions.filter(Boolean))].slice(0, 8);
+  questionRows.push({ text: "是否存在未展示的番外或外传影响主线结论？", risk: "", score: 5, source: "generic" });
+  questionRows.push({ text: "当前未证实风险项对应章节能否提供明确片段？", risk: "", score: 4, source: "generic" });
+
+  const deduped = [];
+  const seen = new Set();
+  for (const row of questionRows) {
+    const text = String(row.text || "").trim();
+    if (!text || seen.has(text)) continue;
+    seen.add(text);
+    deduped.push({ ...row, text });
+  }
+  return deduped
+    .sort((left, right) => right.score - left.score || left.text.localeCompare(right.text, "zh"))
+    .slice(0, 3)
+    .map((item) => item.text);
 }
 
 export function buildGlossaryIndex(rows) {

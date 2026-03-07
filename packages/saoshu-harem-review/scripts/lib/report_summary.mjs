@@ -3,6 +3,7 @@ import {
   promoteEventToRisk,
   promoteEventToThunder,
 } from "./report_events.mjs";
+import { CRITICAL_RISK_RULES } from "./rule_catalog.mjs";
 
 export function keyOfThunder(item) {
   return `${item.rule || ""}|${item.summary || ""}|${item.anchor || ""}|${item.batch_id || ""}`;
@@ -76,5 +77,24 @@ export function sortEventCandidates(mergedEvents) {
 }
 
 export function sortRisks(riskMap) {
-  return [...riskMap.values()].sort((left, right) => keyOfRisk(left).localeCompare(keyOfRisk(right), "zh"));
+  const criticalRules = new Set(CRITICAL_RISK_RULES);
+  function priority(item) {
+    let score = 0;
+    const risk = String(item?.risk || "").trim();
+    const impact = String(item?.impact || "");
+    const missing = String(item?.missing_evidence || "");
+    const evidence = String(item?.current_evidence || "");
+    if (criticalRules.has(risk)) score += 100;
+    if (/(劝退|改变结论|显著下调|直接劝退|关键)/.test(impact)) score += 40;
+    if (missing) score += Math.min(20, 5 + missing.length / 10);
+    if (evidence) score += Math.min(10, 3 + evidence.length / 20);
+    return score;
+  }
+  return [...riskMap.values()].sort((left, right) => {
+    const scoreDiff = priority(right) - priority(left);
+    if (scoreDiff !== 0) return scoreDiff;
+    const missingDiff = String(right.missing_evidence || "").length - String(left.missing_evidence || "").length;
+    if (missingDiff !== 0) return missingDiff;
+    return keyOfRisk(left).localeCompare(keyOfRisk(right), "zh");
+  });
 }
