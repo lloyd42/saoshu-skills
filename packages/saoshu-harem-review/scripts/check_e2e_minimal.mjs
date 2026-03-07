@@ -96,6 +96,15 @@ function readJson(jsonPath) {
   return JSON.parse(fs.readFileSync(jsonPath, "utf8"));
 }
 
+function readJsonl(filePath) {
+  if (!fs.existsSync(filePath)) return [];
+  return fs.readFileSync(filePath, "utf8")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
+}
+
 function updateEventDecision(reviewPath, eventId, decision) {
   const content = fs.readFileSync(reviewPath, "utf8");
   const blocks = content.split(/(?=^### )/m);
@@ -121,6 +130,16 @@ function prepareFixture(baseDir, outputDirRelative, overrides = {}) {
     manifestPath,
     outputDir: path.resolve(baseDir, outputDirRelative),
   };
+}
+
+function prepareCoverageTemplateFixture(baseDir, outputDirRelative, templateName) {
+  return prepareFixture(baseDir, outputDirRelative, {
+    pipeline_mode: "economy",
+    coverage_mode: "sampled",
+    coverage_template: templateName,
+    serial_status: "completed",
+    db_mode: "local",
+  });
 }
 
 function prepareCustomFixture(baseDir, outputDirRelative, novelContent, overrides = {}, options = {}) {
@@ -225,6 +244,58 @@ function runIntegratedOptionalScenario() {
   expectSuccess(dbOverview, "integrated db overview query");
   if (dbOverview.stdout.includes("Total runs: 1")) ok("integrated db overview reflects ingested run");
   else fail("integrated db overview missing ingested run");
+}
+
+function runCoverageTemplateMetadataScenario() {
+  const scenarioDir = path.join(tmpRoot, "coverage-template");
+  const fixture = prepareCoverageTemplateFixture(scenarioDir, "./workspace/minimal-e2e-coverage-template", "head-tail-risk");
+  ok("prepared coverage template metadata fixture");
+
+  const pipelineResult = runNode("packages/saoshu-harem-review/scripts/run_pipeline.mjs", ["--manifest", fixture.manifestPath, "--stage", "all"]);
+  expectSuccess(pipelineResult, "coverage template metadata pipeline run");
+
+  const reportJson = path.join(fixture.outputDir, "merged-report.json");
+  const statePath = path.join(fixture.outputDir, "pipeline-state.json");
+  const dbRuns = path.join(fixture.outputDir, "scan-db", "runs.jsonl");
+  assertExists(reportJson, "coverage template merged-report.json");
+  assertExists(statePath, "coverage template pipeline-state.json");
+  assertExists(dbRuns, "coverage template scan-db runs.jsonl");
+
+  const report = readJson(reportJson);
+  const state = readJson(statePath);
+  const dbRun = readJsonl(dbRuns).slice(-1)[0] || {};
+  if (report.scan?.sampling?.coverage_template === "head-tail-risk") ok("coverage template is written into merged report sampling metadata");
+  else fail(`coverage template should be written into merged report: ${JSON.stringify(report.scan?.sampling || {})}`);
+  if (report.scan?.sampling?.serial_status === "completed") ok("serial_status is written into merged report sampling metadata");
+  else fail(`serial_status should be written into merged report: ${JSON.stringify(report.scan?.sampling || {})}`);
+  if (Array.isArray(report.scan?.sampling?.basis_lines) && report.scan.sampling.basis_lines.some((item) => String(item).includes("覆盖模板"))) ok("coverage template appears in sampling basis lines");
+  else fail("coverage template should appear in sampling basis lines");
+  if (Array.isArray(report.scan?.sampling?.basis_lines) && report.scan.sampling.basis_lines.some((item) => String(item).includes("模板区间："))) ok("coverage template basis lines summarize concrete sampled ranges");
+  else fail("coverage template basis lines should summarize concrete sampled ranges");
+  const selectedBatches = Number(report.scan?.sampling?.selected_batches || 0);
+  const totalBatches = Number(report.scan?.sampling?.total_batches || 0);
+  if (totalBatches > selectedBatches) {
+    if (Array.isArray(report.scan?.sampling?.basis_lines) && report.scan.sampling.basis_lines.some((item) => String(item).includes("保守关注："))) ok("coverage template basis lines include conservative reminder for uncovered ranges");
+    else fail("coverage template basis lines should include conservative reminder for uncovered ranges");
+  } else {
+    ok("coverage template conservative reminder is skipped when there is no uncovered range");
+  }
+  if (state.coverage_template === "head-tail-risk") ok("coverage template is written into pipeline state metadata");
+  else fail(`coverage template should be written into pipeline state: ${JSON.stringify(state)}`);
+  if (state.serial_status === "completed") ok("serial_status is written into pipeline state metadata");
+  else fail(`serial_status should be written into pipeline state: ${JSON.stringify(state)}`);
+  if (dbRun.coverage_mode === "sampled" && dbRun.coverage_template === "head-tail-risk" && dbRun.serial_status === "completed") ok("coverage template metadata is written into db runs contract");
+  else fail(`db runs should keep coverage metadata: ${JSON.stringify(dbRun)}`);
+  if (Number(dbRun.total_batches || 0) === totalBatches && Number(dbRun.selected_batches || 0) === selectedBatches) ok("db runs keeps selected and total batch counts");
+  else fail(`db runs should keep selected and total batch counts: ${JSON.stringify(dbRun)}`);
+  if (String(dbRun.coverage_gap_summary || "") === String(report.scan?.sampling?.coverage_gap_summary || "")) ok("db runs keeps coverage gap summary");
+  else fail(`db runs should keep coverage gap summary: ${JSON.stringify(dbRun)}`);
+  if (JSON.stringify(dbRun.coverage_gap_risk_types || []) === JSON.stringify(report.scan?.sampling?.coverage_gap_risk_types || [])) ok("db runs keeps coverage gap risk types");
+  else fail(`db runs should keep coverage gap risk types: ${JSON.stringify(dbRun)}`);
+  const dbOverview = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["--db", path.join(fixture.outputDir, "scan-db"), "--metric", "overview", "--format", "text"]);
+  expectSuccess(dbOverview, "coverage template db overview query");
+  if (dbOverview.stdout.includes("Top coverage modes: sampled(1)") && dbOverview.stdout.includes("Top coverage templates: head-tail-risk(1)")) ok("db overview text surfaces coverage mode and template summary");
+  else fail(`db overview should surface coverage mode and template summary\nSTDOUT:\n${dbOverview.stdout}`);
 }
 
 function runBomAndChineseChapterScenario() {
@@ -500,6 +571,7 @@ function runFallbackScenario() {
 function main() {
   ensureCleanDir(tmpRoot);
   runIntegratedOptionalScenario();
+  runCoverageTemplateMetadataScenario();
   runBomAndChineseChapterScenario();
   runEventCandidateScenario();
   runCrossBatchEventMergeScenario();
