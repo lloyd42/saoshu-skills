@@ -156,6 +156,7 @@ node scripts/saoshu_cli.mjs db assets --db ./scan-db --output-dir ./workspace/fe
 - 单次 `mode-diff` 不会直接要求新增模式；只有多次对比都稳定落在灰区时，才值得评估中档模式
 - 如果要长期积累样本，可在 `compare_reports.mjs` 里加 `--ledger ./workspace/mode-diff-ledger.jsonl`，让每次对比自动入账
 - 之后可运行 `node scripts/mode_diff_ledger.mjs --ledger ./workspace/mode-diff-ledger.jsonl --output-dir ./workspace/mode-diff-summary`，或 `node scripts/saoshu_cli.mjs compare ledger --ledger ./workspace/mode-diff-ledger.jsonl --output-dir ./workspace/mode-diff-summary` 汇总跨书差异
+- 如果希望把这类差异长期沉淀到数据库与仪表盘，可继续执行 `node ../saoshu-scan-db/scripts/db_ingest_mode_diff.mjs --db ./scan-db --ledger ./workspace/mode-diff-ledger.jsonl`，之后 `db overview` / `db dashboard` / `db trends` 都会带上 mode-diff 视角
 
 Manifest 向导（新手推荐）：
 - 交互式：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie`

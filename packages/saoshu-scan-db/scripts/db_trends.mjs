@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { aggregateModeDiffByDay, buildModeDiffSummaryFromRows, getModeDiffDbFile, readJsonl } from "./lib/mode_diff_db.mjs";
 
 function usage() {
   console.log("Usage: node db_trends.mjs --db <dir> [--by day] [--output-dir <dir>] [--top 10]");
@@ -22,15 +23,6 @@ function parseArgs(argv) {
   return out;
 }
 
-function readJsonl(file) {
-  if (!fs.existsSync(file)) return [];
-  return fs.readFileSync(file, "utf8")
-    .split(/\r?\n/)
-    .map((x) => x.trim())
-    .filter(Boolean)
-    .map((x) => JSON.parse(x));
-}
-
 function esc(s) {
   return String(s || "")
     .replace(/&/g, "&amp;")
@@ -45,7 +37,8 @@ function dayKey(iso) {
 }
 
 function splitTags(raw) {
-  const s = String(raw || "")
+  const text = Array.isArray(raw) ? raw.join("/") : String(raw || "");
+  const s = text
     .replace(/\[[^\]]+\]/g, " ")
     .replace(/[|｜]/g, "/")
     .replace(/[，,、]/g, "/")
@@ -58,7 +51,7 @@ function topN(map, n) {
   return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
 }
 
-function aggregate(runs, top) {
+function aggregateRuns(runs, top) {
   const byDay = new Map();
   const byAuthor = new Map();
   const byTag = new Map();
@@ -84,10 +77,16 @@ function renderMd(data) {
   lines.push("# 扫书趋势报告");
   lines.push("");
   lines.push(`- 总运行数：${data.runs_total}`);
+  lines.push(`- Mode-diff 台账数：${data.mode_diff.total_entries}`);
+  lines.push(`- Mode-diff 当前建议：${data.mode_diff.recommendation?.summary || "-"}`);
   lines.push("");
   lines.push("## 按日趋势");
   if (!data.by_day.length) lines.push("- 无");
   else data.by_day.forEach((x) => lines.push(`- ${x.day}: ${x.count}`));
+  lines.push("");
+  lines.push("## Mode-diff 按日趋势");
+  if (!data.mode_diff.by_day.length) lines.push("- 无");
+  else data.mode_diff.by_day.forEach((x) => lines.push(`- ${x.day}: ${x.count}`));
   lines.push("");
   lines.push("## 作者趋势 Top");
   if (!data.top_authors.length) lines.push("- 无");
@@ -96,26 +95,44 @@ function renderMd(data) {
   lines.push("## 标签趋势 Top");
   if (!data.top_tags.length) lines.push("- 无");
   else data.top_tags.forEach((x) => lines.push(`- ${x.name}: ${x.count}`));
+  lines.push("");
+  lines.push("## Mode-diff 档位分布");
+  lines.push(`- 可接受：${data.mode_diff.gain_window_counts?.acceptable || 0}`);
+  lines.push(`- 灰区：${data.mode_diff.gain_window_counts?.gray || 0}`);
+  lines.push(`- 差距过大：${data.mode_diff.gain_window_counts?.too_wide || 0}`);
   return lines.join("\n");
 }
 
 function renderHtml(data) {
-  const maxDay = Math.max(1, ...data.by_day.map((x) => x.count));
+  const maxDay = Math.max(1, ...data.by_day.map((x) => x.count), ...data.mode_diff.by_day.map((x) => x.count));
   const dayRows = data.by_day.map((x) => {
+    const w = ((x.count / maxDay) * 100).toFixed(1);
+    return `<tr><td>${esc(x.day)}</td><td>${x.count}</td><td><div class="bar"><span style="width:${w}%"></span></div></td></tr>`;
+  }).join("");
+  const modeRows = data.mode_diff.by_day.map((x) => {
     const w = ((x.count / maxDay) * 100).toFixed(1);
     return `<tr><td>${esc(x.day)}</td><td>${x.count}</td><td><div class="bar"><span style="width:${w}%"></span></div></td></tr>`;
   }).join("");
   const authorRows = data.top_authors.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.count}</td></tr>`).join("");
   const tagRows = data.top_tags.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.count}</td></tr>`).join("");
+  const modeSummaryRows = [
+    ["可接受", data.mode_diff.gain_window_counts?.acceptable || 0],
+    ["灰区", data.mode_diff.gain_window_counts?.gray || 0],
+    ["差距过大", data.mode_diff.gain_window_counts?.too_wide || 0],
+  ].map((x) => `<tr><td>${esc(x[0])}</td><td>${x[1]}</td></tr>`).join("");
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>扫书趋势报告</title>
-<style>body{font:14px/1.5 "Microsoft YaHei",sans-serif;background:#f4f1ea;margin:0;color:#222}.wrap{max-width:1100px;margin:20px auto;padding:0 16px}.card{background:#fff;border:1px solid #e7dccd;border-radius:12px;padding:12px;margin-bottom:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #eee;padding:7px;text-align:left}.bar{height:10px;background:#f2e8da;border-radius:999px;overflow:hidden}.bar>span{display:block;height:100%;background:#cc8f4a}</style>
+<style>body{font:14px/1.5 "Microsoft YaHei",sans-serif;background:#f4f1ea;margin:0;color:#222}.wrap{max-width:1180px;margin:20px auto;padding:0 16px}.card{background:#fff;border:1px solid #e7dccd;border-radius:12px;padding:12px;margin-bottom:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #eee;padding:7px;text-align:left}.bar{height:10px;background:#f2e8da;border-radius:999px;overflow:hidden}.bar>span{display:block;height:100%;background:#cc8f4a}</style>
 </head><body><div class="wrap">
-<div class="card"><h1>扫书趋势报告</h1><div>总运行数：${data.runs_total}</div></div>
+<div class="card"><h1>扫书趋势报告</h1><div>总运行数：${data.runs_total} ｜ Mode-diff 台账数：${data.mode_diff.total_entries}</div><div style="margin-top:8px">${esc(data.mode_diff.recommendation?.summary || "暂无 mode-diff 台账")}</div></div>
+<div class="grid">
 <div class="card"><h2>按日趋势</h2><table><thead><tr><th>日期</th><th>次数</th><th>趋势</th></tr></thead><tbody>${dayRows || "<tr><td colspan=3>-</td></tr>"}</tbody></table></div>
+<div class="card"><h2>Mode-diff 按日趋势</h2><table><thead><tr><th>日期</th><th>次数</th><th>趋势</th></tr></thead><tbody>${modeRows || "<tr><td colspan=3>-</td></tr>"}</tbody></table></div>
+</div>
 <div class="grid">
 <div class="card"><h2>作者 Top</h2><table><thead><tr><th>作者</th><th>次数</th></tr></thead><tbody>${authorRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
 <div class="card"><h2>标签 Top</h2><table><thead><tr><th>标签</th><th>次数</th></tr></thead><tbody>${tagRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
 </div>
+<div class="card"><h2>Mode-diff 档位分布</h2><table><thead><tr><th>档位</th><th>次数</th></tr></thead><tbody>${modeSummaryRows}</tbody></table></div>
 </div></body></html>`;
 }
 
@@ -124,9 +141,20 @@ function main() {
   if (!args) return usage();
   const db = path.resolve(args.db);
   const runs = readJsonl(path.join(db, "runs.jsonl"));
-  const data = aggregate(runs, args.top);
-  data.generated_at = new Date().toISOString();
-  data.db = db;
+  const modeDiffEntries = readJsonl(getModeDiffDbFile(db));
+  const runData = aggregateRuns(runs, args.top);
+  const modeDiffSummary = buildModeDiffSummaryFromRows(modeDiffEntries, args.top);
+  const modeDiffTrend = aggregateModeDiffByDay(modeDiffEntries);
+  const data = {
+    ...runData,
+    generated_at: new Date().toISOString(),
+    db,
+    mode_diff: {
+      ...modeDiffSummary,
+      by_day: modeDiffTrend.by_day,
+      gain_window_by_day: modeDiffTrend.gain_window_by_day,
+    },
+  };
 
   if (!args.outputDir) {
     console.log(JSON.stringify(data, null, 2));
@@ -152,4 +180,3 @@ try {
   console.error(`Error: ${err.message}`);
   process.exit(1);
 }
-

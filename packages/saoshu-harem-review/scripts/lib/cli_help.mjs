@@ -11,6 +11,7 @@ export function showCliHelp() {
   console.log("  node saoshu_cli.mjs db trends --db <dir> [--output-dir <dir>] [--top 10]");
   console.log("  node saoshu_cli.mjs db dashboard --db <dir> --output <html>");
   console.log("  node saoshu_cli.mjs db ingest --db <dir> --report <merged-report.json> [--state <pipeline-state.json>] [--manifest <manifest.json>]");
+  console.log("  node saoshu_cli.mjs db ingest-mode-diff --db <dir> --ledger <mode-diff-ledger.jsonl>");
   console.log("  node saoshu_cli.mjs db assets --db <dir> --output-dir <dir>");
   console.log("  node saoshu_cli.mjs compare --db <dir> [--dimensions author,tags,verdict,pipeline_mode,target_defense] [--output-dir <dir>]");
   console.log("  node saoshu_cli.mjs compare ledger --ledger <mode-diff-ledger.jsonl> --output-dir <dir> [--title <name>]");

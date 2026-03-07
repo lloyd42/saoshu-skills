@@ -9,7 +9,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "check": "npm run check:skills && npm run check:docs && npm run check:boundaries && npm run check:encoding && npm run check:helpers && npm run check:rules && npm run check:keyword-loop && npm run check:alias-loop && npm run check:risk-question-loop && npm run check:relation-loop && npm run check:feedback-assets && npm run check:db-compare-feedback && npm run check:report-compare-feedback && npm run check:mode-diff-ledger && npm run check:report-views && npm run check:report-priority && npm run check:merge-focus && npm run check:event-review-focus && npm run check:terms && npm run check:cmd-templates && npm run check:wizard && npm run check:release-meta && npm run check:cli && npm run check:e2e && npm run check:schema",
+    "check": "npm run check:skills && npm run check:docs && npm run check:boundaries && npm run check:encoding && npm run check:helpers && npm run check:rules && npm run check:keyword-loop && npm run check:alias-loop && npm run check:risk-question-loop && npm run check:relation-loop && npm run check:feedback-assets && npm run check:db-compare-feedback && npm run check:db-mode-diff && npm run check:report-compare-feedback && npm run check:mode-diff-ledger && npm run check:report-views && npm run check:report-priority && npm run check:merge-focus && npm run check:event-review-focus && npm run check:terms && npm run check:cmd-templates && npm run check:wizard && npm run check:release-meta && npm run check:cli && npm run check:e2e && npm run check:schema",
     "check:skills": "node packages/saoshu-harem-review/scripts/quick_validate.mjs packages/saoshu-harem-review && node packages/saoshu-harem-review/scripts/quick_validate.mjs packages/saoshu-term-wiki && node packages/saoshu-harem-review/scripts/quick_validate.mjs packages/saoshu-scan-db && node packages/saoshu-harem-review/scripts/quick_validate.mjs packages/saoshu-orchestrator && node packages/saoshu-harem-review/scripts/quick_validate.mjs packages/saoshu-mcp-enricher-adapter",
     "check:docs": "node packages/saoshu-harem-review/scripts/check_repo_docs.mjs",
     "check:boundaries": "node packages/saoshu-harem-review/scripts/check_repo_boundaries.mjs",
@@ -35,6 +35,7 @@
     "check:release-meta": "node packages/saoshu-harem-review/scripts/check_release_meta.mjs",
     "cli": "node packages/saoshu-harem-review/scripts/saoshu_cli.mjs",
     "check:encoding": "node packages/saoshu-harem-review/scripts/check_repo_encoding.mjs",
-    "check:mode-diff-ledger": "node packages/saoshu-harem-review/scripts/check_mode_diff_ledger.mjs"
+    "check:mode-diff-ledger": "node packages/saoshu-harem-review/scripts/check_mode_diff_ledger.mjs",
+    "check:db-mode-diff": "node packages/saoshu-harem-review/scripts/check_db_mode_diff_integration.mjs"
   }
 }

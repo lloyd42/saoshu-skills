@@ -85,6 +85,14 @@
 - weight / evidence / source
 - note
 
+## mode_diff_entries.jsonl
+- entry_hash / ingested_at / recorded_at
+- compare_title / title / author / tags[]
+- gain_window / band / score / coverage_ratio
+- verdict_mismatch / risk_gap / follow_up_gap / relation_gap / event_gap / thunder_gap / depression_gap / rating_gap
+- top_reason / reasons[]
+- summary / action / next_step / third_mode_advice
+- perf_report / econ_report
 ## 对比维度建议
 - author（作者）
 - tags（标签拆分后聚合）

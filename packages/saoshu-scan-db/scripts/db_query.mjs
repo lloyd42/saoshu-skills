@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { buildModeDiffSummaryFromRows, getModeDiffDbFile, readJsonl } from "./lib/mode_diff_db.mjs";
 
 function usage() {
-  console.log("Usage: node db_query.mjs --db <dir> [--metric overview|verdict|top-risks|top-tags|top-keywords|keyword-candidates|promoted-keywords|top-aliases|alias-candidates|promoted-aliases|top-risk-questions|risk-question-candidates|promoted-risk-questions|top-relations|relation-candidates|promoted-relations|runs] [--limit 10] [--format text|json]");
+  console.log("Usage: node db_query.mjs --db <dir> [--metric overview|verdict|top-risks|top-tags|top-keywords|keyword-candidates|promoted-keywords|top-aliases|alias-candidates|promoted-aliases|top-risk-questions|risk-question-candidates|promoted-risk-questions|top-relations|relation-candidates|promoted-relations|runs|mode-diff-overview|mode-diff-entries] [--limit 10] [--format text|json]");
 }
 
 function parseArgs(argv) {
@@ -20,12 +21,6 @@ function parseArgs(argv) {
   }
   if (!out.db) throw new Error("--db is required");
   return out;
-}
-
-function readJsonl(file) {
-  if (!fs.existsSync(file)) return [];
-  const text = fs.readFileSync(file, "utf8");
-  return text.split(/\r?\n/).map((x) => x.trim()).filter(Boolean).map((x) => JSON.parse(x));
 }
 
 function topN(rows, key, n) {
@@ -186,6 +181,15 @@ function topRelationCandidates(rows, limit) {
     .slice(0, limit);
 }
 
+function formatModeDiffText(summary) {
+  return [
+    `Mode-diff entries: ${summary.total_entries}`,
+    `Mode-diff gain windows: 可接受(${summary.gain_window_counts?.acceptable || 0}) / 灰区(${summary.gain_window_counts?.gray || 0}) / 差距过大(${summary.gain_window_counts?.too_wide || 0})`,
+    `Mode-diff recommendation: ${summary.recommendation?.summary || "-"}`,
+    `Mode-diff top reasons: ${Array.isArray(summary.recurring_reasons) && summary.recurring_reasons.length ? summary.recurring_reasons.map((item) => `${item.reason}(${item.count})`).join(" / ") : "-"}`,
+  ].join("\n");
+}
+
 function main() {
   const args = parseArgs(process.argv);
   if (!args) return usage();
@@ -201,6 +205,8 @@ function main() {
   const riskQuestionPromotions = readJsonl(path.join(db, "risk_question_promotions.jsonl"));
   const relations = readJsonl(path.join(db, "relation_candidates.jsonl"));
   const relationPromotions = readJsonl(path.join(db, "relation_promotions.jsonl"));
+  const modeDiffEntries = readJsonl(getModeDiffDbFile(db));
+  const modeDiffSummary = buildModeDiffSummaryFromRows(modeDiffEntries, args.limit);
 
   let out = {};
   if (args.metric === "overview") {
@@ -218,6 +224,7 @@ function main() {
       promoted_aliases: aliasPromotions.slice(-Math.min(args.limit, 10)).reverse(),
       promoted_risk_questions: riskQuestionPromotions.slice(-Math.min(args.limit, 10)).reverse(),
       promoted_relations: relationPromotions.slice(-Math.min(args.limit, 10)).reverse(),
+      mode_diff_overview: modeDiffSummary,
     };
   } else if (args.metric === "verdict") out = topN(runs, "verdict", args.limit);
   else if (args.metric === "top-risks") out = topN(risks, "risk", args.limit);
@@ -235,7 +242,9 @@ function main() {
   else if (args.metric === "relation-candidates") out = topRelationCandidates(relations, args.limit);
   else if (args.metric === "promoted-relations") out = relationPromotions.slice(-args.limit).reverse();
   else if (args.metric === "runs") out = runs.slice(-args.limit).reverse();
-  else throw new Error("metric must be overview|verdict|top-risks|top-tags|top-keywords|keyword-candidates|promoted-keywords|top-aliases|alias-candidates|promoted-aliases|top-risk-questions|risk-question-candidates|promoted-risk-questions|top-relations|relation-candidates|promoted-relations|runs");
+  else if (args.metric === "mode-diff-overview") out = modeDiffSummary;
+  else if (args.metric === "mode-diff-entries") out = modeDiffEntries.slice(-args.limit).reverse();
+  else throw new Error("metric must be overview|verdict|top-risks|top-tags|top-keywords|keyword-candidates|promoted-keywords|top-aliases|alias-candidates|promoted-aliases|top-risk-questions|risk-question-candidates|promoted-risk-questions|top-relations|relation-candidates|promoted-relations|runs|mode-diff-overview|mode-diff-entries");
 
   if (args.format === "json") {
     console.log(JSON.stringify(out, null, 2));
@@ -250,6 +259,11 @@ function main() {
     console.log(`Top aliases: ${out.top_aliases.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
     console.log(`Top risk questions: ${out.top_risk_questions.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
     console.log(`Top relations: ${out.top_relations.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
+    console.log(formatModeDiffText(out.mode_diff_overview));
+    return;
+  }
+  if (args.metric === "mode-diff-overview") {
+    console.log(formatModeDiffText(out));
     return;
   }
   console.log(JSON.stringify(out, null, 2));
@@ -261,4 +275,3 @@ try {
   console.error(`Error: ${err.message}`);
   process.exit(1);
 }
-
