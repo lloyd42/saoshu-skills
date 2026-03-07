@@ -51,6 +51,7 @@
 - Node.js `20+`
 - 建议使用 UTF-8 文本环境
 - 在仓库根目录执行命令
+- Windows PowerShell 如看到中文乱码，先执行 `chcp 65001 > $null`，并优先用 `Get-Content -Encoding utf8` 判断是不是终端显示问题
 
 ### 输入兼容策略
 
@@ -77,6 +78,8 @@ node packages/saoshu-harem-review/scripts/run_pipeline.mjs --manifest examples/m
 ```
 
 运行后，样例输出会写入 `examples/minimal/workspace/minimal-example/`。
+
+如需排查编码、BOM、PowerShell 中文显示问题，可先看 `docs/troubleshooting.md`。
 
 ### 结果产物
 
@@ -158,6 +161,19 @@ node packages/saoshu-harem-review/scripts/run_pipeline.mjs --manifest <manifest.
 
 ## 开发与校验
 
+建议把 `docs/development-workflow.md` 作为接手开发、处理中断与发布前自检的统一入口。
+编码与终端显示问题优先看 `docs/troubleshooting.md`。
+
+如果你是第一次接手这个仓库，推荐按下面顺序阅读：
+
+1. `docs/architecture.md`：先理解项目为什么是 skill-first，而不是 CLI-first
+2. `docs/development-workflow.md`：再理解日常开发、验证与闭环流程
+3. `docs/troubleshooting.md`：最后补上 PowerShell / 编码 / BOM 排障基线
+4. `CONTRIBUTING.md`：查看提交流程、PR 说明与协作约定
+5. `VERSIONING.md`：准备发版时再看版本与发布规则
+
+如果想直接看后续可推进项，优先看 `docs/roadmap.md`。
+
 仓库根目录提供统一检查入口：
 
 ```bash
@@ -170,6 +186,10 @@ npm run check
 - 仓库级文档约束
 - 边界与目录约束
 - 编码一致性
+- 命令执行 helper 的参数与路径回归
+- 批次归并与报告输出的 focused regression
+- 事件复核与 event_id 写回的 focused regression
+- 用户可见术语的一致性检查
 - 版本元数据
 - CLI 帮助契约
 - 最小样例端到端主流程，以及子 skill 缺失时的兜底/跳过行为
