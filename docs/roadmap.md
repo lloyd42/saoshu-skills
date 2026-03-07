@@ -127,6 +127,8 @@
 - 命令执行 helper 回归
 - 批次归并 focused regression
 - 用户可见术语一致性检查
+- 外部模板命令契约检查
+- manifest 向导 focused validation
 - argv 化内部命令执行
 - `batch_merge.mjs` 已按事件层 / 输出层完成第一轮拆分
 - PowerShell / 编码排障文档

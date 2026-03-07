@@ -9,7 +9,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "check": "npm run check:skills && npm run check:docs && npm run check:boundaries && npm run check:encoding && npm run check:helpers && npm run check:merge-focus && npm run check:event-review-focus && npm run check:terms && npm run check:cmd-templates && npm run check:release-meta && npm run check:cli && npm run check:e2e && npm run check:schema",
+    "check": "npm run check:skills && npm run check:docs && npm run check:boundaries && npm run check:encoding && npm run check:helpers && npm run check:merge-focus && npm run check:event-review-focus && npm run check:terms && npm run check:cmd-templates && npm run check:wizard && npm run check:release-meta && npm run check:cli && npm run check:e2e && npm run check:schema",
     "check:skills": "node packages/saoshu-harem-review/scripts/quick_validate.mjs packages/saoshu-harem-review && node packages/saoshu-harem-review/scripts/quick_validate.mjs packages/saoshu-term-wiki && node packages/saoshu-harem-review/scripts/quick_validate.mjs packages/saoshu-scan-db && node packages/saoshu-harem-review/scripts/quick_validate.mjs packages/saoshu-orchestrator && node packages/saoshu-harem-review/scripts/quick_validate.mjs packages/saoshu-mcp-enricher-adapter",
     "check:docs": "node packages/saoshu-harem-review/scripts/check_repo_docs.mjs",
     "check:boundaries": "node packages/saoshu-harem-review/scripts/check_repo_boundaries.mjs",
@@ -19,6 +19,7 @@
     "check:event-review-focus": "node packages/saoshu-harem-review/scripts/check_event_review_focus.mjs",
     "check:terms": "node packages/saoshu-harem-review/scripts/check_terminology_consistency.mjs",
     "check:cmd-templates": "node packages/saoshu-harem-review/scripts/check_command_templates.mjs",
+    "check:wizard": "node packages/saoshu-harem-review/scripts/check_manifest_wizard.mjs",
     "check:e2e": "node packages/saoshu-harem-review/scripts/check_e2e_minimal.mjs",
     "check:schema": "node packages/saoshu-harem-review/scripts/check_schema_examples.mjs",
     "check:release-meta": "node packages/saoshu-harem-review/scripts/check_release_meta.mjs",
