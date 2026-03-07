@@ -8,7 +8,7 @@
 - target_defense
 - verdict / rating
 - batch_count
-- pipeline_mode / coverage_mode / coverage_template / serial_status
+- pipeline_mode / coverage_mode / coverage_template / coverage_unit / chapter_detect_used_mode / serial_status
 - sample_mode / sample_level
 - total_batches / selected_batches / coverage_ratio
 - coverage_gap_summary / coverage_gap_risk_types
@@ -104,4 +104,6 @@
 - title（按作品聚合）
 - coverage_mode（sampled / chapter-full / full-book）
 - coverage_template（如 opening-100 / head-tail / head-tail-risk / opening-latest）
+- coverage_unit（chapter / segment）
+- chapter_detect_used_mode（script / assist / segment-fallback）
 - serial_status（unknown / ongoing / completed）

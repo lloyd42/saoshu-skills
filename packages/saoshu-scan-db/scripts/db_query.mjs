@@ -226,6 +226,8 @@ function main() {
       top_relations: topN(relations, "type", 10),
       top_coverage_modes: topN(runs, "coverage_mode", 10),
       top_coverage_templates: topN(runs, "coverage_template", 10),
+      top_coverage_units: topN(runs, "coverage_unit", 10),
+      top_chapter_detect_modes: topN(runs, "chapter_detect_used_mode", 10),
       top_serial_statuses: topN(runs, "serial_status", 10),
       coverage_gap_runs: countCoverageGapRuns(runs),
       promoted_keywords: promotions.slice(-Math.min(args.limit, 10)).reverse(),
@@ -269,6 +271,8 @@ function main() {
     console.log(`Top relations: ${out.top_relations.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
     console.log(`Top coverage modes: ${out.top_coverage_modes.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
     console.log(`Top coverage templates: ${out.top_coverage_templates.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`Top coverage units: ${out.top_coverage_units.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`Top chapter detect modes: ${out.top_chapter_detect_modes.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
     console.log(`Top serial statuses: ${out.top_serial_statuses.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
     console.log(`Coverage-gap runs: ${out.coverage_gap_runs}`);
     console.log(formatModeDiffText(out.mode_diff_overview));

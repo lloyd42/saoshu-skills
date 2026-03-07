@@ -26,7 +26,7 @@
 - 关系候选
 
 ## Coverage 字段说明
-- `runs.jsonl` 当前会保留 `coverage_mode`、`coverage_template`、`serial_status`、`total_batches`、`selected_batches`、`coverage_ratio`、`coverage_gap_summary`、`coverage_gap_risk_types`。
+- `runs.jsonl` 当前会保留 `coverage_mode`、`coverage_template`、`coverage_unit`、`chapter_detect_used_mode`、`serial_status`、`total_batches`、`selected_batches`、`coverage_ratio`、`coverage_gap_summary`、`coverage_gap_risk_types`。
 - 这些字段来自 `merged-report.json` 的 `scan.sampling`，上游再追到 manifest 兼容层与 sampled 模板逻辑。
 - 需要看完整字段合同与适用边界，优先看 `references/db-schema.md`。
 

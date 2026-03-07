@@ -108,6 +108,8 @@ function main() {
     pipeline_mode: report.scan?.sampling?.pipeline_mode || "",
     coverage_mode: report.scan?.sampling?.coverage_mode || "",
     coverage_template: report.scan?.sampling?.coverage_template || "",
+    coverage_unit: report.scan?.sampling?.coverage_unit || "",
+    chapter_detect_used_mode: report.scan?.sampling?.chapter_detect_used_mode || "",
     serial_status: report.scan?.sampling?.serial_status || "",
     sample_mode: report.scan?.sampling?.sample_mode || "",
     sample_level: report.scan?.sampling?.sample_level_effective || "",
