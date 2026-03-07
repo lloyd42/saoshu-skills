@@ -117,8 +117,6 @@ function main() {
     state_started_at: state.started_at || "",
     state_finished_at: state.finished_at || "",
   };
-  appendJsonl(runsFile, run);
-
   for (const t of arr(report.thunder?.items)) {
     appendJsonl(thunderFile, {
       run_id: runId,
@@ -331,6 +329,12 @@ function main() {
   for (const row of uniqBy(relationRows, (item) => `${item.from}|${item.to}|${item.type}|${item.source_kind}|${item.event_id || ""}`)) {
     appendJsonl(relationFile, row);
   }
+
+  run.keyword_candidate_total = uniqBy(keywordRows, (item) => `${item.event_id}|${item.keyword}|${item.source_kind}|${item.chapter_num || 0}|${item.chapter_title || ""}`).length;
+  run.alias_candidate_total = uniqBy(aliasRows, (item) => `${item.event_id}|${item.role}|${item.canonical_name}|${item.alias}`).length;
+  run.risk_question_candidate_total = uniqBy(riskQuestionRows, (item) => `${item.risk}|${item.question}|${item.source_kind}|${item.run_id}`).length;
+  run.relation_candidate_total = uniqBy(relationRows, (item) => `${item.from}|${item.to}|${item.type}|${item.source_kind}|${item.event_id || ""}`).length;
+  appendJsonl(runsFile, run);
 
   console.log(`DB: ${dbDir}`);
   console.log(`Run ID: ${runId}`);

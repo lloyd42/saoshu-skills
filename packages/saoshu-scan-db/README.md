@@ -18,6 +18,13 @@
 - 对比：`scripts/db_compare.mjs`
 - 仪表板：`scripts/db_dashboard.mjs`
 
+`db_compare.mjs` 现在除基础结论/风险/覆盖外，也会输出四类反馈资产活动度均值：
+
+- 关键词候选
+- 别名候选
+- 补证问题候选
+- 关系候选
+
 ## References
 - 数据库结构：`references/db-schema.md`
 

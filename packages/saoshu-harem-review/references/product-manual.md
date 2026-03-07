@@ -145,6 +145,11 @@ node packages/saoshu-scan-db/scripts/db_export_feedback_assets.mjs --db ./scan-d
 node scripts/saoshu_cli.mjs db assets --db ./scan-db --output-dir ./workspace/feedback-assets
 ```
 
+对比分析补充：
+
+- `db_compare.mjs` 现在会输出四类反馈资产活动度均值（关键词/别名/补证问题/关系）
+- `compare_reports.mjs` 现在会比较事件数、补证问题数、关系边差异，帮助判断 economy 是否“省掉了关键判断信息”
+
 Manifest 向导（新手推荐）：
 - 交互式：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie`
 - 非交互：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie --non-interactive --input-txt <txt> --output-dir <dir> --title <name>`

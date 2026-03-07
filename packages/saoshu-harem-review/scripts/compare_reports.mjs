@@ -31,6 +31,8 @@ function arr(v) { return Array.isArray(v) ? v : []; }
 function keyThunder(x) { return `${x.rule}|${x.anchor || ""}`; }
 function keyDep(x) { return `${x.rule}|${x.severity || ""}|${x.min_defense || ""}|${x.anchor || ""}`; }
 function keyRisk(x) { return `${x.risk}|${x.current_evidence || ""}`; }
+function keyEvent(x) { return `${x.rule_candidate}|${x.event_id || ""}|${x.chapter_range || ""}`; }
+function keyRelation(x) { return `${x.from || ""}|${x.to || ""}|${x.type || ""}`; }
 
 function setFrom(items, keyFn) {
   const m = new Map();
@@ -54,11 +56,19 @@ function calc(perf, econ) {
   const eD = setFrom(arr(econ.depression?.items), keyDep);
   const pR = setFrom(arr(perf.risks_unconfirmed), keyRisk);
   const eR = setFrom(arr(econ.risks_unconfirmed), keyRisk);
+  const pE = setFrom(arr(perf.events?.items), keyEvent);
+  const eE = setFrom(arr(econ.events?.items), keyEvent);
+  const pRel = setFrom(arr(perf.metadata_summary?.relationships), keyRelation);
+  const eRel = setFrom(arr(econ.metadata_summary?.relationships), keyRelation);
 
   const onlyPerfDep = [...pD.keys()].filter((k) => !eD.has(k)).map((k) => pD.get(k));
   const onlyEconDep = [...eD.keys()].filter((k) => !pD.has(k)).map((k) => eD.get(k));
   const onlyPerfRisk = [...pR.keys()].filter((k) => !eR.has(k)).map((k) => pR.get(k));
   const onlyEconRisk = [...eR.keys()].filter((k) => !pR.has(k)).map((k) => eR.get(k));
+  const onlyPerfEvents = [...pE.keys()].filter((k) => !eE.has(k)).map((k) => pE.get(k));
+  const onlyEconEvents = [...eE.keys()].filter((k) => !pE.has(k)).map((k) => eE.get(k));
+  const onlyPerfRelations = [...pRel.keys()].filter((k) => !eRel.has(k)).map((k) => pRel.get(k));
+  const onlyEconRelations = [...eRel.keys()].filter((k) => !pRel.has(k)).map((k) => eRel.get(k));
 
   const perfBatches = new Set(arr(perf.scan?.batch_ids));
   const econBatches = new Set(arr(econ.scan?.batch_ids));
@@ -72,6 +82,9 @@ function calc(perf, econ) {
       dep_count: perf.depression?.total ?? arr(perf.depression?.items).length,
       thunder_count: perf.thunder?.total_candidates ?? arr(perf.thunder?.items).length,
       risk_count: arr(perf.risks_unconfirmed).length,
+      event_count: arr(perf.events?.items).length,
+      follow_up_count: arr(perf.follow_up_questions).length,
+      relation_count: arr(perf.metadata_summary?.relationships).length,
     },
     econ_summary: {
       verdict: econ.overall?.verdict || "-",
@@ -80,6 +93,9 @@ function calc(perf, econ) {
       dep_count: econ.depression?.total ?? arr(econ.depression?.items).length,
       thunder_count: econ.thunder?.total_candidates ?? arr(econ.thunder?.items).length,
       risk_count: arr(econ.risks_unconfirmed).length,
+      event_count: arr(econ.events?.items).length,
+      follow_up_count: arr(econ.follow_up_questions).length,
+      relation_count: arr(econ.metadata_summary?.relationships).length,
     },
     coverage: {
       missed_batches_in_economy: missedBatches,
@@ -89,10 +105,14 @@ function calc(perf, econ) {
       only_in_performance: {
         depression: onlyPerfDep,
         risks: onlyPerfRisk,
+        events: onlyPerfEvents,
+        relations: onlyPerfRelations,
       },
       only_in_economy: {
         depression: onlyEconDep,
         risks: onlyEconRisk,
+        events: onlyEconEvents,
+        relations: onlyEconRelations,
       },
     },
   };
@@ -105,6 +125,8 @@ function optimizeHints(diff) {
   if (diff.differences.only_in_performance.depression.length > 20) hints.push("增加分层抽样（开篇/中段/尾段 + 高频风险批次优先）。");
   if (diff.perf_summary.verdict !== diff.econ_summary.verdict) hints.push("结论不一致：economy 仅做初筛，关键决策必须回退 performance。");
   if (diff.perf_summary.risk_count > diff.econ_summary.risk_count + 2) hints.push("在 economy 模式中强制包含高风险关键词最密集批次。");
+  if (diff.perf_summary.follow_up_count > diff.econ_summary.follow_up_count + 1) hints.push("economy 漏掉了部分关键补证问题，建议提高覆盖率或回退 performance。");
+  if (diff.differences.only_in_performance.relations.length > 0) hints.push("economy 缺失部分关系边，长书或人物密集作品建议结合关系图复核。");
   if (hints.length === 0) hints.push("当前两模式结论接近，可维持现有抽样策略。");
   return hints;
 }
@@ -114,8 +136,8 @@ function renderMd(title, diff, hints) {
   lines.push(`# ${title}`);
   lines.push("");
   lines.push("## 总览");
-  lines.push(`- Performance: 结论 ${diff.perf_summary.verdict} / 评分 ${diff.perf_summary.rating} / 批次 ${diff.perf_summary.batch_count} / 郁闷 ${diff.perf_summary.dep_count} / 风险 ${diff.perf_summary.risk_count}`);
-  lines.push(`- Economy: 结论 ${diff.econ_summary.verdict} / 评分 ${diff.econ_summary.rating} / 批次 ${diff.econ_summary.batch_count} / 郁闷 ${diff.econ_summary.dep_count} / 风险 ${diff.econ_summary.risk_count}`);
+  lines.push(`- Performance: 结论 ${diff.perf_summary.verdict} / 评分 ${diff.perf_summary.rating} / 批次 ${diff.perf_summary.batch_count} / 郁闷 ${diff.perf_summary.dep_count} / 风险 ${diff.perf_summary.risk_count} / 事件 ${diff.perf_summary.event_count} / 补证问题 ${diff.perf_summary.follow_up_count} / 关系边 ${diff.perf_summary.relation_count}`);
+  lines.push(`- Economy: 结论 ${diff.econ_summary.verdict} / 评分 ${diff.econ_summary.rating} / 批次 ${diff.econ_summary.batch_count} / 郁闷 ${diff.econ_summary.dep_count} / 风险 ${diff.econ_summary.risk_count} / 事件 ${diff.econ_summary.event_count} / 补证问题 ${diff.econ_summary.follow_up_count} / 关系边 ${diff.econ_summary.relation_count}`);
   lines.push(`- Economy覆盖率: ${(diff.coverage.economy_coverage_ratio * 100).toFixed(1)}%`);
   lines.push(`- Economy未覆盖批次: ${diff.coverage.missed_batches_in_economy.join(", ") || "无"}`);
   lines.push("");
@@ -123,6 +145,8 @@ function renderMd(title, diff, hints) {
   lines.push("## 仅Performance出现");
   lines.push(`- 郁闷点: ${diff.differences.only_in_performance.depression.length}`);
   lines.push(`- 风险: ${diff.differences.only_in_performance.risks.length}`);
+  lines.push(`- 事件: ${diff.differences.only_in_performance.events.length}`);
+  lines.push(`- 关系边: ${diff.differences.only_in_performance.relations.length}`);
   diff.differences.only_in_performance.depression.slice(0, 20).forEach((d) => lines.push(`- [郁闷] ${d.rule} / ${d.anchor || "-"}`));
   diff.differences.only_in_performance.risks.slice(0, 20).forEach((r) => lines.push(`- [风险] ${r.risk} / ${r.current_evidence || "-"}`));
   lines.push("");
@@ -130,6 +154,8 @@ function renderMd(title, diff, hints) {
   lines.push("## 仅Economy出现");
   lines.push(`- 郁闷点: ${diff.differences.only_in_economy.depression.length}`);
   lines.push(`- 风险: ${diff.differences.only_in_economy.risks.length}`);
+  lines.push(`- 事件: ${diff.differences.only_in_economy.events.length}`);
+  lines.push(`- 关系边: ${diff.differences.only_in_economy.relations.length}`);
   diff.differences.only_in_economy.depression.slice(0, 20).forEach((d) => lines.push(`- [郁闷] ${d.rule} / ${d.anchor || "-"}`));
   diff.differences.only_in_economy.risks.slice(0, 20).forEach((r) => lines.push(`- [风险] ${r.risk} / ${r.current_evidence || "-"}`));
   lines.push("");

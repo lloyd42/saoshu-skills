@@ -11,6 +11,7 @@
 - pipeline_mode / sample_mode / sample_level
 - coverage_ratio
 - thunder_total / depression_total / risk_total
+- keyword_candidate_total / alias_candidate_total / risk_question_candidate_total / relation_candidate_total
 - input_txt / output_dir
 - state_started_at / state_finished_at
 

@@ -73,6 +73,10 @@ function groupByDimension(runs, dim, topN) {
           depression_sum: 0,
           risk_sum: 0,
           coverage_sum: 0,
+          keyword_candidate_sum: 0,
+          alias_candidate_sum: 0,
+          risk_question_candidate_sum: 0,
+          relation_candidate_sum: 0,
           verdict_dist: new Map(),
         });
       }
@@ -83,6 +87,10 @@ function groupByDimension(runs, dim, topN) {
       agg.depression_sum += Number(r.depression_total || 0);
       agg.risk_sum += Number(r.risk_total || 0);
       agg.coverage_sum += Number(r.coverage_ratio || 0);
+      agg.keyword_candidate_sum += Number(r.keyword_candidate_total || 0);
+      agg.alias_candidate_sum += Number(r.alias_candidate_total || 0);
+      agg.risk_question_candidate_sum += Number(r.risk_question_candidate_total || 0);
+      agg.relation_candidate_sum += Number(r.relation_candidate_total || 0);
       const verdict = String(r.verdict || "-");
       agg.verdict_dist.set(verdict, (agg.verdict_dist.get(verdict) || 0) + 1);
     }
@@ -96,6 +104,10 @@ function groupByDimension(runs, dim, topN) {
     avg_depression: Number((x.depression_sum / Math.max(1, x.runs)).toFixed(2)),
     avg_risk: Number((x.risk_sum / Math.max(1, x.runs)).toFixed(2)),
     avg_coverage: Number((x.coverage_sum / Math.max(1, x.runs)).toFixed(3)),
+    avg_keyword_candidates: Number((x.keyword_candidate_sum / Math.max(1, x.runs)).toFixed(2)),
+    avg_alias_candidates: Number((x.alias_candidate_sum / Math.max(1, x.runs)).toFixed(2)),
+    avg_risk_questions: Number((x.risk_question_candidate_sum / Math.max(1, x.runs)).toFixed(2)),
+    avg_relations: Number((x.relation_candidate_sum / Math.max(1, x.runs)).toFixed(2)),
     verdict_dist: [...x.verdict_dist.entries()].sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, count })),
   }));
 
@@ -116,11 +128,11 @@ function renderMd(result) {
       lines.push("");
       continue;
     }
-    lines.push("|值|运行数|均分|均雷点|均郁闷|均风险|均覆盖率|结论分布|");
-    lines.push("|---|---:|---:|---:|---:|---:|---:|---|");
+    lines.push("|值|运行数|均分|均雷点|均郁闷|均风险|均覆盖率|均关键词候选|均别名候选|均补证问题|均关系边|结论分布|");
+    lines.push("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|");
     for (const r of block.rows) {
       const vd = r.verdict_dist.map((x) => `${x.name}(${x.count})`).join(" / ");
-      lines.push(`|${r.key}|${r.runs}|${r.avg_rating}|${r.avg_thunder}|${r.avg_depression}|${r.avg_risk}|${(r.avg_coverage * 100).toFixed(1)}%|${vd}|`);
+      lines.push(`|${r.key}|${r.runs}|${r.avg_rating}|${r.avg_thunder}|${r.avg_depression}|${r.avg_risk}|${(r.avg_coverage * 100).toFixed(1)}%|${r.avg_keyword_candidates}|${r.avg_alias_candidates}|${r.avg_risk_questions}|${r.avg_relations}|${vd}|`);
     }
     lines.push("");
   }
@@ -131,9 +143,9 @@ function renderHtml(result) {
   const sections = result.groups.map((b) => {
     const rows = b.rows.map((r) => {
       const vd = r.verdict_dist.map((x) => `${esc(x.name)}(${x.count})`).join(" / ");
-      return `<tr><td>${esc(r.key)}</td><td>${r.runs}</td><td>${r.avg_rating}</td><td>${r.avg_thunder}</td><td>${r.avg_depression}</td><td>${r.avg_risk}</td><td>${(r.avg_coverage * 100).toFixed(1)}%</td><td>${vd}</td></tr>`;
+      return `<tr><td>${esc(r.key)}</td><td>${r.runs}</td><td>${r.avg_rating}</td><td>${r.avg_thunder}</td><td>${r.avg_depression}</td><td>${r.avg_risk}</td><td>${(r.avg_coverage * 100).toFixed(1)}%</td><td>${r.avg_keyword_candidates}</td><td>${r.avg_alias_candidates}</td><td>${r.avg_risk_questions}</td><td>${r.avg_relations}</td><td>${vd}</td></tr>`;
     }).join("");
-    return `<div class="card"><h2>维度：${esc(b.dimension)}</h2><table><thead><tr><th>值</th><th>运行数</th><th>均分</th><th>均雷点</th><th>均郁闷</th><th>均风险</th><th>均覆盖率</th><th>结论分布</th></tr></thead><tbody>${rows || "<tr><td colspan=8>无数据</td></tr>"}</tbody></table></div>`;
+    return `<div class="card"><h2>维度：${esc(b.dimension)}</h2><table><thead><tr><th>值</th><th>运行数</th><th>均分</th><th>均雷点</th><th>均郁闷</th><th>均风险</th><th>均覆盖率</th><th>均关键词候选</th><th>均别名候选</th><th>均补证问题</th><th>均关系边</th><th>结论分布</th></tr></thead><tbody>${rows || "<tr><td colspan=12>无数据</td></tr>"}</tbody></table></div>`;
   }).join("");
 
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>扫书多维对比</title>
