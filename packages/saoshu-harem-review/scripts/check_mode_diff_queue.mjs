@@ -96,6 +96,11 @@ const ledgerLines = fs.readFileSync(ledgerPath, "utf8").trim().split(/\r?\n/u).f
 if (ledgerLines.length === 2) ok("mode_diff_queue_run appends both jobs into ledger");
 else fail(`mode_diff_queue_run should append two ledger entries: ${ledgerLines.length}`);
 
+const mdPath = summaryOut.replace(/\.json$/i, ".md");
+const htmlPath = summaryOut.replace(/\.json$/i, ".html");
+if (fs.existsSync(mdPath) && fs.existsSync(htmlPath)) ok("mode_diff_queue_run writes markdown/html overview pages");
+else fail("mode_diff_queue_run should write markdown/html overview pages");
+
 if (fs.existsSync(path.join(tmpRoot, "mode-diff-summary", "mode-diff-ledger-summary.json")) && fs.existsSync(path.join(dbDir, "compare", "compare.json")) && fs.existsSync(path.join(dbDir, "trends", "trends.json")) && fs.existsSync(path.join(dbDir, "dashboard.html"))) ok("mode_diff_queue_run refreshes summary and db artifacts once batch finishes");
 else fail("mode_diff_queue_run should refresh summary/db artifacts");
 

@@ -12,6 +12,7 @@
 - `db_compare.mjs` 现可按作者 / 标签 / `mode_diff_gain_window` / `mode_diff_band` 聚合灰区率、差距过大率、可接受率与平均 gap 分数，减少靠人工翻台账判断模式差距。
 - 新增 `mode_diff_workflow.mjs` 与 `saoshu_cli.mjs compare record|sync`，把真实样本入账、台账汇总、DB 入库与 compare/trends/dashboard 刷新串成一条低成本工作流。
 - 新增 `mode_diff_queue_run.mjs` 与 `saoshu_cli.mjs compare batch`，支持多本书的 perf/econ 报告批量入账，批量结束后统一刷新 summary/DB 产物。
+- `mode_diff_queue_run.mjs` 现在会同时输出 `queue-summary.json/.md/.html`，方便快速查看批量执行结果与产物位置。
 - 新增 `mode_diff_discover_queue.mjs` 与 `saoshu_cli.mjs compare discover`，可从目录中自动发现常见 `performance/economy`、`perf/econ` 报告配对并生成批量队列。
 
 ## [0.4.0] - 2026-03-07

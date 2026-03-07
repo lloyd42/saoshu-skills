@@ -161,6 +161,7 @@ node scripts/saoshu_cli.mjs db assets --db ./scan-db --output-dir ./workspace/fe
 - 如果只是想重建台账、compare、trends、dashboard，不追加新样本，可运行：`node scripts/saoshu_cli.mjs compare sync --ledger ./workspace/mode-diff-ledger.jsonl --db ./scan-db`
 - 如果报告目录里已经有 `performance/economy` 或 `perf/econ` 成对结果，可先自动发现生成队列：`node scripts/saoshu_cli.mjs compare discover --root ./reports --output ./workspace/mode-diff-queue.json --db ./scan-db`
 - 如果已经准备好一批 perf/econ 报告对，可以把它们写进 `queue.json` 后一次性跑完：`node scripts/saoshu_cli.mjs compare batch --queue ./workspace/mode-diff-queue.json --db ./scan-db`
+- 批量执行结束后，会额外产出 `queue-summary.json`、`queue-summary.md`、`queue-summary.html`，方便直接查看成功/失败与重点输出路径。
 
 Manifest 向导（新手推荐）：
 - 交互式：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie`
