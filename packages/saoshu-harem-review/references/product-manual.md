@@ -138,6 +138,13 @@ node packages/saoshu-scan-db/scripts/db_promote_relation.mjs --db ./scan-db --fr
 node packages/saoshu-scan-db/scripts/db_export_relationship_map.mjs --db ./scan-db --output ./workspace/relationship-map.json
 ```
 
+统一反馈资产导出：
+
+```bash
+node packages/saoshu-scan-db/scripts/db_export_feedback_assets.mjs --db ./scan-db --output-dir ./workspace/feedback-assets
+node scripts/saoshu_cli.mjs db assets --db ./scan-db --output-dir ./workspace/feedback-assets
+```
+
 Manifest 向导（新手推荐）：
 - 交互式：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie`
 - 非交互：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie --non-interactive --input-txt <txt> --output-dir <dir> --title <name>`

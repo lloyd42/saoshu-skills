@@ -13,6 +13,7 @@
 - 补证问题池导出：`scripts/db_export_risk_question_pool.mjs`
 - 关系晋升：`scripts/db_promote_relation.mjs`
 - 关系映射导出：`scripts/db_export_relationship_map.mjs`
+- 统一反馈资产导出：`scripts/db_export_feedback_assets.mjs`
 - 趋势：`scripts/db_trends.mjs`
 - 对比：`scripts/db_compare.mjs`
 - 仪表板：`scripts/db_dashboard.mjs`

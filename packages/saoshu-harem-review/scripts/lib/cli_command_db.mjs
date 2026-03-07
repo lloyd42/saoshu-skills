@@ -33,7 +33,11 @@ export function handleDb(rest, context) {
     pushArg(args, "--manifest", manifest);
     return runNodeScript(path.join(dbRoot, "scripts/db_ingest.mjs"), args);
   }
-  failUsage("db 子命令必须是 overview|trends|dashboard|ingest", "示例：node saoshu_cli.mjs db overview --db ./scan-db");
+  if (sub === "assets") {
+    const outputDir = requireArg(valueOf(rest, "--output-dir"), "db assets 缺少 `--output-dir`", "示例：node saoshu_cli.mjs db assets --db ./scan-db --output-dir ./scan-db/assets");
+    return runNodeScript(path.join(dbRoot, "scripts/db_export_feedback_assets.mjs"), ["--db", db, "--output-dir", outputDir]);
+  }
+  failUsage("db 子命令必须是 overview|trends|dashboard|ingest|assets", "示例：node saoshu_cli.mjs db overview --db ./scan-db");
 }
 
 export function handleCompare(rest, context) {

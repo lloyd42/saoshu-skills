@@ -21,6 +21,8 @@ description: 扫书结果数据库技能。用于把 merged-report/pipeline-stat
 `node scripts/db_ingest.mjs --db ./scan-db --report <merged-report.json> --state <pipeline-state.json> --manifest <manifest.json>`
 - 查询概览：
 `node scripts/db_query.mjs --db ./scan-db --metric overview`
+- 统一导出反馈资产：
+`node scripts/db_export_feedback_assets.mjs --db ./scan-db --output-dir ./scan-db/assets`
 - 生成仪表盘：
 `node scripts/db_dashboard.mjs --db ./scan-db --output ./scan-db/dashboard.html`
 - 多维对比（作者/标签/结论/模式）：
