@@ -207,6 +207,65 @@ function buildNewbieCard(verdict, rating, thunderCount, depressionCount, riskCou
   return { level, label, confidence, headline, bullets };
 }
 
+function buildDecisionSummary({ verdict, rating, newbieCard, coverage, coverageRate, sampleBasis, reviewedEvents, mergedRisks }) {
+  const nextAction = verdict === "劝退"
+    ? "优先按“关键已确认事件”避坑，除非你属于高防读者。"
+    : verdict === "可看"
+      ? "先确认自己是否介意未证实风险，再决定是否继续。"
+      : "先看未证实风险和补证问题，再决定要不要继续投入时间。";
+  return {
+    title: "决策区",
+    verdict,
+    rating,
+    risk_level: String(newbieCard?.label || "谨慎"),
+    confidence: String(newbieCard?.confidence || "中"),
+    headline: String(newbieCard?.headline || ""),
+    coverage,
+    coverage_rate: Number(coverageRate || 0),
+    highlights: [
+      `当前结论：${verdict}；推荐指数 ${rating}/10。`,
+      `已确认关键事件 ${reviewedEvents.length} 项；未证实风险 ${mergedRisks.length} 项。`,
+      `${Array.isArray(sampleBasis) && sampleBasis.length > 0 ? sampleBasis[0] : "当前为全量/当前抽样覆盖结论。"}`,
+    ],
+    next_action: nextAction,
+  };
+}
+
+function buildEvidenceSummary({ reviewedEvents, pendingEvents, mergedRisks, followUpQuestions }) {
+  const keyEvents = reviewedEvents.slice(0, 3).map((event) => ({
+    label: String(event.rule_candidate || "未命名事件"),
+    summary: describeEvent(event),
+    decision: eventDecisionLabel(event),
+  }));
+  const unresolvedRisks = mergedRisks.slice(0, 3).map((risk) => ({
+    risk: String(risk.risk || "未命名风险"),
+    current_evidence: String(risk.current_evidence || ""),
+    missing_evidence: String(risk.missing_evidence || ""),
+  }));
+  const pendingClues = pendingEvents.slice(0, 3).map((event) => ({
+    label: String(event.rule_candidate || "未命名事件"),
+    clue: Array.isArray(event.missing_evidence) && event.missing_evidence.length > 0 ? String(event.missing_evidence[0] || "") : describeEvent(event),
+  }));
+  return {
+    title: "证据区",
+    key_events: keyEvents,
+    unresolved_risks: unresolvedRisks,
+    pending_clues: pendingClues,
+    next_questions: (Array.isArray(followUpQuestions) ? followUpQuestions : []).slice(0, 3),
+  };
+}
+
+function buildDeepDiveSummary({ sampleBasis, selectionReasons, auditSteps, termWiki, relationships }) {
+  return {
+    title: "深入区",
+    sample_basis: Array.isArray(sampleBasis) ? sampleBasis : [],
+    selection_reasons: Array.isArray(selectionReasons) ? selectionReasons : [],
+    audit_steps: Array.isArray(auditSteps) ? auditSteps : [],
+    term_wiki_count: Array.isArray(termWiki) ? termWiki.length : 0,
+    relationship_count: Array.isArray(relationships) ? relationships.length : 0,
+  };
+}
+
 export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = []) {
   const confirmedThunder = merged.thunders.filter((item) => CONFIRMED_LEVELS.has(String(item.evidence_level || "").trim()));
   const hasThunder = confirmedThunder.length > 0;
@@ -277,6 +336,16 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
   const excludedEvents = eventCandidates.filter((item) => String(item.review_decision || "").trim() === "排除");
   const pendingEvents = eventCandidates.filter((item) => !["已确认", "排除"].includes(String(item.review_decision || "").trim()));
   const eventHighlights = reviewedEvents.slice(0, 3).map((event) => `${event.rule_candidate}：${describeEvent(event)}`);
+  const followUpQuestions = buildFollowUpQuestions(merged, riskQuestionPool);
+  const decisionSummary = buildDecisionSummary({ verdict, rating, newbieCard, coverage, coverageRate, sampleBasis, reviewedEvents, mergedRisks: merged.risks });
+  const evidenceSummary = buildEvidenceSummary({ reviewedEvents, pendingEvents, mergedRisks: merged.risks, followUpQuestions });
+  const deepDiveSummary = buildDeepDiveSummary({
+    sampleBasis,
+    selectionReasons: merged.metadata.sample_reasons || [],
+    auditSteps,
+    termWiki,
+    relationships: merged.metadata.relationships || [],
+  });
 
   return {
     report_version: "2.0",
@@ -341,6 +410,9 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
       ],
     },
     newbie_card: newbieCard,
+    decision_summary: decisionSummary,
+    evidence_summary: evidenceSummary,
+    deep_dive_summary: deepDiveSummary,
     view_prefs: {
       default_view: String(meta.reportDefaultView || "newbie"),
     },
@@ -353,7 +425,7 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
       },
     },
     term_wiki: termWiki,
-    follow_up_questions: buildFollowUpQuestions(merged, riskQuestionPool),
+    follow_up_questions: followUpQuestions,
   };
 }
 
@@ -367,6 +439,46 @@ export function renderMarkdown(data) {
     for (const bullet of (data.newbie_card.bullets || [])) lines.push(`- ${bullet}`);
     lines.push("");
   }
+  lines.push("## ✅ 一眼结论");
+  lines.push(`- 结论：${lineOrDash(data.decision_summary?.verdict)}`);
+  lines.push(`- 推荐指数：${lineOrDash(data.decision_summary?.rating)}/10`);
+  lines.push(`- 风险等级：${lineOrDash(data.decision_summary?.risk_level)}`);
+  lines.push(`- 置信度：${lineOrDash(data.decision_summary?.confidence)}`);
+  lines.push(`- 一句话：${lineOrDash(data.decision_summary?.headline)}`);
+  (data.decision_summary?.highlights || []).forEach((item) => lines.push(`- ${item}`));
+  lines.push(`- 下一步建议：${lineOrDash(data.decision_summary?.next_action)}`);
+  lines.push("");
+
+  lines.push("## 🔍 为什么这样判断");
+  if (Array.isArray(data.evidence_summary?.key_events) && data.evidence_summary.key_events.length > 0) {
+    lines.push("- 关键已确认事件：");
+    data.evidence_summary.key_events.forEach((item) => lines.push(`- [${item.label}] ${item.decision} -> ${item.summary}`));
+  } else {
+    lines.push("- 关键已确认事件：无");
+  }
+  if (Array.isArray(data.evidence_summary?.unresolved_risks) && data.evidence_summary.unresolved_risks.length > 0) {
+    lines.push("- 当前最重要的未证实风险：");
+    data.evidence_summary.unresolved_risks.forEach((item) => lines.push(`- [${item.risk}] ${lineOrDash(item.current_evidence)} -> 还缺：${lineOrDash(item.missing_evidence)}`));
+  } else {
+    lines.push("- 当前最重要的未证实风险：无");
+  }
+  lines.push("");
+
+  lines.push("## ❓ 如果还不确定，先补这3个问题");
+  if (Array.isArray(data.evidence_summary?.next_questions) && data.evidence_summary.next_questions.length > 0) {
+    data.evidence_summary.next_questions.forEach((question, index) => lines.push(`${index + 1}. ${question}`));
+  } else {
+    lines.push("1. 当前暂无补证问题。");
+  }
+  lines.push("");
+
+  lines.push("## 🧠 深入查看");
+  lines.push(`- 抽样依据条数：${(data.deep_dive_summary?.sample_basis || []).length}`);
+  lines.push(`- 抽样命中原因条数：${(data.deep_dive_summary?.selection_reasons || []).length}`);
+  lines.push(`- 术语速查条数：${lineOrDash(data.deep_dive_summary?.term_wiki_count)}`);
+  lines.push(`- 关系边条数：${lineOrDash(data.deep_dive_summary?.relationship_count)}`);
+  lines.push("");
+
   lines.push(`小说名称：${data.novel.title}`);
   lines.push(`作者：${data.novel.author}`);
   lines.push(`类型/标签：${data.novel.tags}`);
@@ -500,6 +612,10 @@ export function renderHtml(data) {
   const newbieLevel = String(newbie?.level || "yellow");
   const newbieClass = newbieLevel === "red" ? "risk-red" : (newbieLevel === "green" ? "risk-green" : "risk-yellow");
   const newbieBullets = (Array.isArray(newbie?.bullets) ? newbie.bullets : []).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+  const decisionHighlightsHtml = (data.decision_summary?.highlights || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+  const evidenceEventsHtml = (data.evidence_summary?.key_events || []).map((item) => `<li><b>${escapeHtml(item.label)}</b>：${escapeHtml(item.decision)} → ${escapeHtml(item.summary)}</li>`).join("");
+  const unresolvedRisksHtml = (data.evidence_summary?.unresolved_risks || []).map((item) => `<li><b>${renderTerm(item.risk)}</b>：${escapeHtml(item.current_evidence)} → 还缺：${escapeHtml(item.missing_evidence)}</li>`).join("");
+  const nextQuestionsHtml = (data.evidence_summary?.next_questions || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -558,11 +674,48 @@ body.view-newbie .expert-only{display:none}
       <button class="viewbtn" id="btn-expert" type="button">专家</button>
     </div>
   </div>
-  <div class="section"><h2>事件候选复核</h2><div class="muted">候选总数 ${data.events?.total_candidates || 0}，已确认 ${data.events?.confirmed || 0}，排除 ${data.events?.excluded || 0}，待补证 ${data.events?.pending || 0}</div>
+  <div class="section">
+    <h2>决策区</h2>
+    <div class="grid">
+      <div class="kv"><div class="k">结论</div><div class="v">${escapeHtml(data.decision_summary?.verdict || "-")}</div></div>
+      <div class="kv"><div class="k">风险等级</div><div class="v">${escapeHtml(data.decision_summary?.risk_level || "-")}</div></div>
+      <div class="kv"><div class="k">置信度</div><div class="v">${escapeHtml(data.decision_summary?.confidence || "-")}</div></div>
+    </div>
+    <div style="margin-top:10px"><b>一句话：</b>${escapeHtml(data.decision_summary?.headline || "-")}</div>
+    <ul class="summary" style="margin-top:8px">${decisionHighlightsHtml || "<li>-</li>"}</ul>
+    <div class="muted">下一步建议：${escapeHtml(data.decision_summary?.next_action || "-")}</div>
+  </div>
+
+  <div class="section">
+    <h2>证据区</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div>
+        <h3>关键已确认事件</h3>
+        <ul class="summary">${evidenceEventsHtml || "<li>无</li>"}</ul>
+      </div>
+      <div>
+        <h3>最重要的未证实风险</h3>
+        <ul class="summary">${unresolvedRisksHtml || "<li>无</li>"}</ul>
+      </div>
+    </div>
+    <h3 style="margin-top:10px">如果还不确定，先补这3个问题</h3>
+    <ol>${nextQuestionsHtml || "<li>当前暂无补证问题。</li>"}</ol>
+  </div>
+
+  <div class="section expert-only">
+    <h2>深入查看</h2>
+    <ul class="summary">
+      <li>抽样依据条数：${Number((data.deep_dive_summary?.sample_basis || []).length)}</li>
+      <li>抽样命中原因条数：${Number((data.deep_dive_summary?.selection_reasons || []).length)}</li>
+      <li>术语速查条数：${Number(data.deep_dive_summary?.term_wiki_count || 0)}</li>
+      <li>关系边条数：${Number(data.deep_dive_summary?.relationship_count || 0)}</li>
+    </ul>
+  </div>
+  <div class="section expert-only"><h2>事件候选复核</h2><div class="muted">候选总数 ${data.events?.total_candidates || 0}，已确认 ${data.events?.confirmed || 0}，排除 ${data.events?.excluded || 0}，待补证 ${data.events?.pending || 0}</div>
     <table><thead><tr><th>事件</th><th>事件ID</th><th>复核结论</th><th>主体/对象</th><th>时间线/极性</th><th>解释</th><th>范围</th></tr></thead><tbody>${eventRows || '<tr><td colspan="7">无</td></tr>'}</tbody></table></div>
 
 
-  <div class="section">
+  <div class="section expert-only">
     <h2>抽样信息</h2>
     <ul class="summary">${sampleBasisHtml || "<li>无</li>"}</ul>
     ${selectionReasonsHtml ? `<table style="margin-top:10px"><thead><tr><th>批次</th><th>范围</th><th>标题分</th><th>关键命中</th><th>原因</th></tr></thead><tbody>${selectionReasonsHtml}</tbody></table>` : ""}
@@ -586,21 +739,21 @@ body.view-newbie .expert-only{display:none}
     </div>
   </div>
 
-  <div class="section"><h2>雷点检测</h2><div class="muted">候选雷点 ${data.thunder.total_candidates}，已确认/高概率 ${data.thunder.confirmed_or_probable}</div>
+  <div class="section expert-only"><h2>雷点检测</h2><div class="muted">候选雷点 ${data.thunder.total_candidates}，已确认/高概率 ${data.thunder.confirmed_or_probable}</div>
     <table><thead><tr><th>雷点</th><th>情节摘要</th><th>证据级别</th><th>锚点</th></tr></thead><tbody>${thunderRows || '<tr><td colspan="4">无</td></tr>'}</tbody></table></div>
 
   <div class="section expert-only"><h2>郁闷点清单</h2>
     <table><thead><tr><th>郁闷点</th><th>程度</th><th>最低防御</th><th>证据级别</th><th>摘要</th></tr></thead><tbody>${depressionRows || '<tr><td colspan="5">无</td></tr>'}</tbody></table></div>
 
-  <div class="section"><h2>防御匹配建议</h2>
+  <div class="section expert-only"><h2>防御匹配建议</h2>
     <table><thead><tr><th>防御档位</th><th>建议</th></tr></thead><tbody>${defenseRows}</tbody></table></div>
 
-  <div class="section"><h2>总体评价</h2><ul class="summary">${data.overall.summary_lines.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
+  <div class="section expert-only"><h2>总体评价</h2><ul class="summary">${data.overall.summary_lines.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
 
-  <div class="section"><h2>未证实风险</h2>
+  <div class="section expert-only"><h2>未证实风险</h2>
     <table><thead><tr><th>风险项</th><th>当前证据</th><th>缺失证据</th><th>影响</th></tr></thead><tbody>${riskRows || '<tr><td colspan="4">无</td></tr>'}</tbody></table></div>
 
-  <div class="section"><h2>术语速查</h2>
+  <div class="section expert-only"><h2>术语速查</h2>
     <div class="muted">鼠标悬浮带虚线下划线的术语可查看释义。</div>
     <table><thead><tr><th>术语</th><th>分类</th><th>定义</th><th>影响</th><th>边界</th></tr></thead><tbody>${termRows || '<tr><td colspan="5">无命中术语词典</td></tr>'}</tbody></table></div>
 </div>

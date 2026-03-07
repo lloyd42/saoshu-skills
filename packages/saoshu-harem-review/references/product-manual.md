@@ -62,6 +62,8 @@
 - `merged-report.md`：文本可读。
 - `merged-report.html`：可视化展示，含抽样信息、抽样命中原因、审计面板。
 - `merged-report.pdf`：可选自动导出（本地浏览器 headless 打印）。
+- 报告默认按三层组织：`决策区 -> 证据区 -> 深入区`，降低新手阅读成本。
+- `newbie` 视图优先展示结论、关键证据、补证问题；`expert` 视图再展开事件表、雷点表、术语速查与审计细节。
 
 ### 4.6 术语百科（Wiki）
 - 通过 `saoshu-term-wiki` 提供黑话解释。
