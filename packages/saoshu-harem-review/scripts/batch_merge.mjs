@@ -4,10 +4,23 @@ import path from "node:path";
 import { readJsonFile } from "./lib/json_input.mjs";
 import {
   aggregateEventCandidates,
-  promoteEventToDepression,
-  promoteEventToRisk,
-  promoteEventToThunder,
 } from "./lib/report_events.mjs";
+import {
+  accumulateBatchMetadata,
+  createMergeStats,
+  finalizeMergeStats,
+  recordMergeSignal,
+} from "./lib/report_merge_stats.mjs";
+import {
+  keyOfDep,
+  keyOfRisk,
+  keyOfThunder,
+  mergeEventsIntoSummaryMaps,
+  mergeRiskIntoMap,
+  sortDepressions,
+  sortEventCandidates,
+  sortRisks,
+} from "./lib/report_summary.mjs";
 import {
   buildGlossaryIndex,
   buildReportData,
@@ -104,41 +117,8 @@ function normList(value) {
   return Array.isArray(value) ? value : [];
 }
 
-function keyOfThunder(item) {
-  return `${item.rule || ""}|${item.summary || ""}|${item.anchor || ""}|${item.batch_id || ""}`;
-}
-
-function keyOfDep(item) {
-  return `${item.rule || ""}|${item.summary || ""}|${item.severity || ""}|${item.min_defense || ""}|${item.anchor || ""}|${item.batch_id || ""}`;
-}
-
-function keyOfRisk(item) {
-  return String(item.risk || "").trim() || "unknown_risk";
-}
-
 function keyOfEvent(item) {
   return String(item.event_id || `${item.rule_candidate || ""}|${item.batch_id || ""}|${item.chapter_range || ""}`).trim();
-}
-
-function mergeRiskIntoMap(riskMap, item) {
-  const riskKey = keyOfRisk(item);
-  const existing = riskMap.get(riskKey);
-  if (!existing) riskMap.set(riskKey, item);
-  else {
-    const evidenceSet = new Set([existing.current_evidence, item.current_evidence].filter(Boolean));
-    const missingSet = new Set([existing.missing_evidence, item.missing_evidence].filter(Boolean));
-    existing.current_evidence = [...evidenceSet].join("; ");
-    existing.missing_evidence = [...missingSet].join("; ");
-    if (!existing.impact && item.impact) existing.impact = item.impact;
-  }
-}
-
-function addCount(map, key, amount = 1) {
-  map.set(key, (map.get(key) || 0) + amount);
-}
-
-function topN(map, amount = 12) {
-  return [...map.entries()].sort((left, right) => right[1] - left[1]).slice(0, amount).map(([name, count]) => ({ name, count }));
 }
 
 function mergeBatches(batches) {
@@ -148,49 +128,13 @@ function mergeBatches(batches) {
   const eventMap = new Map();
   const batchIds = [];
   const ranges = [];
-
-  const tagCounts = new Map();
-  const characterCounts = new Map();
-  const signalCounts = new Map();
-  const enrichmentSourceCounts = new Map();
-  const sampleReasonRows = [];
+  const stats = createMergeStats();
 
   for (const batch of batches) {
     const batchId = batch.batch_id || path.basename(batch.__file, ".json");
     batchIds.push(batchId);
     if (batch.range) ranges.push(`${batchId}: ${batch.range}`);
-
-    const meta = batch.metadata || {};
-    const enriched = meta.enriched || null;
-    const topTags = enriched?.top_tags || meta.top_tags || [];
-    const topCharacters = enriched?.top_characters || meta.top_characters || [];
-    const titleScan = meta.chapter_title_scan || {};
-    for (const item of normList(topTags)) addCount(tagCounts, item.name || "", Number(item.count || 1));
-    for (const item of normList(topCharacters)) addCount(characterCounts, item.name || "", Number(item.count || 1));
-    addCount(enrichmentSourceCounts, enriched?.source || meta.source || "unknown");
-
-    const titleHits = normList(titleScan.hits)
-      .slice(0, 3)
-      .map((item) => ({
-        chapter_num: Number(item.chapter_num || 0),
-        chapter_title: String(item.chapter_title || ""),
-        type: String(item.type || ""),
-        rule: String(item.rule || ""),
-        matched: String(item.matched || ""),
-        weight: Number(item.weight || 0),
-        critical: Boolean(item.critical),
-      }))
-      .filter((item) => item.rule || item.chapter_title);
-    if (titleHits.length > 0 || Number(titleScan.score || 0) > 0) {
-      sampleReasonRows.push({
-        batch_id: batchId,
-        range: String(batch.range || ""),
-        title_score: Number(titleScan.score || 0),
-        title_critical: Boolean(titleScan.critical),
-        hit_chapter_count: Number(titleScan.hit_chapter_count || 0),
-        title_hits: titleHits,
-      });
-    }
+    accumulateBatchMetadata(stats, batch, batchId);
 
     for (const thunder of normList(batch.thunder_hits)) {
       const item = {
@@ -201,7 +145,7 @@ function mergeBatches(batches) {
         batch_id: batchId,
       };
       thunderMap.set(keyOfThunder(item), item);
-      addCount(signalCounts, `雷点:${item.rule}`);
+      recordMergeSignal(stats, "雷点", item.rule);
     }
 
     for (const depression of normList(batch.depression_hits)) {
@@ -215,7 +159,7 @@ function mergeBatches(batches) {
         batch_id: batchId,
       };
       depressionMap.set(keyOfDep(item), item);
-      addCount(signalCounts, `郁闷:${item.rule}`);
+      recordMergeSignal(stats, "郁闷", item.rule);
     }
 
     for (const risk of normList(batch.risk_unconfirmed)) {
@@ -226,7 +170,7 @@ function mergeBatches(batches) {
         impact: risk.impact || "",
       };
       mergeRiskIntoMap(riskMap, item);
-      addCount(signalCounts, `风险:${item.risk}`);
+      recordMergeSignal(stats, "风险", item.risk);
     }
 
     for (const event of normList(batch.event_candidates)) {
@@ -255,69 +199,31 @@ function mergeBatches(batches) {
         batch_id: batchId,
       };
       eventMap.set(keyOfEvent(item), item);
-      if (item.review_decision !== "排除") addCount(signalCounts, `事件:${item.rule_candidate}`);
+      if (item.review_decision !== "排除") recordMergeSignal(stats, "事件", item.rule_candidate);
     }
   }
 
   const mergedEvents = aggregateEventCandidates([...eventMap.values()]);
-
-  for (const event of mergedEvents) {
-    const decision = String(event.review_decision || "").trim();
-    if (decision === "已确认") {
-      if (event.category === "depression") {
-        const depressionItem = promoteEventToDepression(event);
-        depressionMap.set(keyOfDep(depressionItem), depressionItem);
-        addCount(signalCounts, `郁闷:${depressionItem.rule}`);
-      } else {
-        const thunderItem = promoteEventToThunder(event);
-        thunderMap.set(keyOfThunder(thunderItem), thunderItem);
-        addCount(signalCounts, `雷点:${thunderItem.rule}`);
-        riskMap.delete(keyOfRisk({ risk: event.rule_candidate }));
-      }
-      continue;
-    }
-    if (decision !== "排除" && event.category !== "depression") {
-      mergeRiskIntoMap(riskMap, promoteEventToRisk(event));
-      addCount(signalCounts, `风险:${event.rule_candidate}`);
-    }
-  }
+  mergeEventsIntoSummaryMaps({
+    mergedEvents,
+    thunderMap,
+    depressionMap,
+    riskMap,
+    recordSignal: (category, name) => recordMergeSignal(stats, category, name),
+  });
 
   const thunders = [...thunderMap.values()].sort((left, right) => left.rule.localeCompare(right.rule, "zh"));
-  const depressions = [...depressionMap.values()].sort((left, right) => {
-    const severityLeft = SEV_RANK.has(left.severity) ? SEV_RANK.get(left.severity) : 99;
-    const severityRight = SEV_RANK.has(right.severity) ? SEV_RANK.get(right.severity) : 99;
-    if (severityLeft !== severityRight) return severityLeft - severityRight;
-    const defenseLeft = DEF_RANK.has(left.min_defense) ? DEF_RANK.get(left.min_defense) : 99;
-    const defenseRight = DEF_RANK.has(right.min_defense) ? DEF_RANK.get(right.min_defense) : 99;
-    if (defenseLeft !== defenseRight) return defenseLeft - defenseRight;
-    return left.rule.localeCompare(right.rule, "zh");
-  });
-
-  const eventDecisionRank = new Map([["已确认", 0], ["待补证", 1], ["", 2], ["排除", 3]]);
-  const eventCandidates = [...mergedEvents].sort((left, right) => {
-    const leftRank = eventDecisionRank.has(left.review_decision) ? eventDecisionRank.get(left.review_decision) : 9;
-    const rightRank = eventDecisionRank.has(right.review_decision) ? eventDecisionRank.get(right.review_decision) : 9;
-    if (leftRank !== rightRank) return leftRank - rightRank;
-    if (right.confidence_score !== left.confidence_score) return right.confidence_score - left.confidence_score;
-    return left.rule_candidate.localeCompare(right.rule_candidate, "zh");
-  });
+  const depressions = sortDepressions(depressionMap, SEV_RANK, DEF_RANK);
+  const eventCandidates = sortEventCandidates(mergedEvents);
 
   return {
     thunders,
     depressions,
     event_candidates: eventCandidates,
-    risks: [...riskMap.values()].sort((left, right) => keyOfRisk(left).localeCompare(keyOfRisk(right), "zh")),
+    risks: sortRisks(riskMap),
     batchIds,
     ranges,
-    metadata: {
-      top_tags: topN(tagCounts, 12),
-      top_characters: topN(characterCounts, 16),
-      top_signals: topN(signalCounts, 16),
-      enrichment_sources: topN(enrichmentSourceCounts, 8),
-      sample_reasons: sampleReasonRows
-        .sort((left, right) => right.title_score - left.title_score || Number(right.title_critical) - Number(left.title_critical) || left.batch_id.localeCompare(right.batch_id, "zh"))
-        .slice(0, 8),
-    },
+    metadata: finalizeMergeStats(stats),
   };
 }
 

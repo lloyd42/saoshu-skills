@@ -40,19 +40,24 @@
 当前 `packages/saoshu-harem-review/scripts/batch_merge.mjs` 同时承担：
 
 - 风险/雷点/郁闷点归并
-- 元数据统计汇总
 - 归并后的中间结构组织
 
 这会导致：
 
 - 单文件认知负担过高
-- 统计逻辑与归并逻辑仍有一定耦合
+- 结论归并逻辑与最终中间结构组织仍有一定耦合
 - 后续再改事件候选链路时，回归成本持续升高
 
-建议拆分方向：
+当前已经完成的拆分：
+
+- `lib/report_events.mjs`：事件聚合、事件排序、跨批次去重
+- `lib/report_output.mjs`：报告数据构建与 Markdown / HTML 渲染
+- `lib/report_merge_stats.mjs`：标签/角色/抽样理由等统计汇总
+
+后续仍可继续的拆分方向：
 
 - `lib/report_summary.mjs`：结论层（雷点 / 郁闷点 / 风险）归并
-- `lib/report_merge_stats.mjs`：标签/角色/抽样理由等统计汇总
+
 
 ### 4. 继续观察外部模板命令的真实使用反馈
 
