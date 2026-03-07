@@ -7,12 +7,25 @@
 ### 新增
 - 增加 `event_candidates` 中间结构，把高价值关键词命中升级为带主体、时间线、否定线索与证据片段的事件候选
 - 增加统一术语映射层，支持在用户可见输出中以中文优先、双语辅助的方式展示高频英文术语
+- 增加事件导向的人工复核链路：`review_contexts.mjs` 输出 `event_id` 复核块，`apply_review_results.mjs` 支持按 `event_id` 回写人工结论
+- 增加跨批次事件归并，重复事件会在最终报告中去重，并保留 `batch_ids` 与 `source_event_ids`
+- 增加 focused regression 检查链：`check:helpers`、`check:merge-focus`、`check:event-review-focus`、`check:terms`
+- 增加维护者文档：`docs/development-workflow.md`、`docs/troubleshooting.md`、`docs/roadmap.md`
 
 ### 改进
 - `scan_txt_batches.mjs` 在批次输出中新增 `event_candidates`，为后续上下文判定与人工复核提供更完整的证据账本入口
 - 端到端回归新增事件候选夹具，覆盖“误会/未遂/主线复归”这类需要上下文判断的场景
 - CLI 帮助与报告展示对 `economy`、`performance`、`fallback`、`dynamic`、`risk-aware` 等术语补充中文说明
 - 去除生产逻辑中的样例专名依赖，避免特定人名污染通用规则
+- 内部脚本执行统一改为 `process.execPath + argv` 方式，减少带空格路径、shell 差异与转义问题
+- `batch_merge.mjs` 完成第一轮职责拆分，事件层与输出层 helper 已分别抽到 `scripts/lib/report_events.mjs` 和 `scripts/lib/report_output.mjs`
+- 文档检查从“文件存在”升级为“文件存在 + 关键文档链路 + 必要章节存在”的 contract check
+- 用户可见术语统一收敛为 `待补证` 与 `未证实风险`，减少 `未知待证` / `高风险未证实` 的对外漂移
+
+### 修复
+- 修复 `apply_review_results.mjs` 在 review block 带 `event_id` 时仍可能回退到 `规则名 + 关键词` 匹配、从而误改同名事件的问题
+- 修复跨批次事件归并中后批次主体/对象退化为占位名时无法并回前批次强身份事件的问题
+- 修复报告与复核文案中 `未知待证` / `高风险未证实` 混用导致的术语不一致问题
 
 ## [0.2.2] - 2026-03-07
 
