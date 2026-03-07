@@ -52,6 +52,7 @@
 6. 将 `Unreleased` 落成正式版本区块，并写发布日期
 7. 打 tag：`git tag vX.Y.Z`
 8. 推送提交与 tag：`git push && git push --tags`
+9. 发版后做一次本地安装 / 干净目录实测，至少验证 CLI 帮助与最小样例主流程
 
 建议额外确认：
 - `README.md` / `CONTRIBUTING.md` / `docs/development-workflow.md` 不存在过期流程
@@ -82,6 +83,7 @@ git push --tags
 6. 复查版本号、tag、changelog 是否一致
 7. 推送提交与 tag
 8. 如需要，再发布 GitHub Release 或其他外部说明
+9. 在干净目录做一次本地安装 / 运行冒烟，确认发布后的真实使用路径没有被当前工作区状态掩盖
 
 ## 回滚
 - 若发布后发现问题，优先新增修复版本，不直接改写已发布 tag

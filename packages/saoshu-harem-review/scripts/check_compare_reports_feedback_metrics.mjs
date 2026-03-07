@@ -70,5 +70,8 @@ else fail(`compare_reports should capture feedback deltas: ${JSON.stringify(diff
 if (Array.isArray(payload.hints) && payload.hints.some((item) => String(item).includes("补证问题")) && payload.hints.some((item) => String(item).includes("关系边"))) ok("compare_reports emits user-facing hints for feedback gaps");
 else fail(`compare_reports should emit feedback-gap hints: ${JSON.stringify(payload.hints)}`);
 
+if (payload.assessment?.gain_window === "too_wide" && payload.assessment?.band === "fallback_to_performance" && String(payload.assessment?.third_mode_advice || "").includes("先增强现有模式")) ok("compare_reports emits user-centric gain-window assessment");
+else fail(`compare_reports should emit gain-window assessment: ${JSON.stringify(payload.assessment)}`);
+
 if (!hasFailure) console.log("Compare reports feedback metrics check passed.");
 else process.exitCode = 1;
