@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-03-08
+
 ### 改进
 - `saoshu-scan-db` 补齐 coverage-first 运行合同：`runs.jsonl` 现记录 `serial_status`、`total_batches`、`selected_batches`、`coverage_gap_summary`、`coverage_gap_risk_types`，`db_query.mjs`、`db_dashboard.mjs`、`db_compare.mjs` 也同步暴露 coverage 维度与未覆盖提示。
 - 修正 `product-manual.md` 尾部残留污染文本，并把 `coverage_mode -> merged-report.scan.sampling -> runs.jsonl` 的 DB 落库链说明写实，减少文档与实现脱节。
