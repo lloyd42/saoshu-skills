@@ -41,6 +41,16 @@ export function handleDb(rest, context) {
 }
 
 export function handleCompare(rest, context) {
+  const sub = rest[0] || "";
+  if (sub === "ledger") {
+    const ledger = requireArg(valueOf(rest, "--ledger"), "compare ledger 缺少 `--ledger`", "示例：node saoshu_cli.mjs compare ledger --ledger ./mode-diff-ledger.jsonl --output-dir ./workspace/mode-diff-summary");
+    const outputDir = requireArg(valueOf(rest, "--output-dir"), "compare ledger 缺少 `--output-dir`", "示例：node saoshu_cli.mjs compare ledger --ledger ./mode-diff-ledger.jsonl --output-dir ./workspace/mode-diff-summary");
+    const title = valueOf(rest, "--title", "mode-diff 台账汇总");
+    const ledgerScript = path.join(getInstalledSkillPath("saoshu-harem-review", context.importMetaUrl), "scripts/mode_diff_ledger.mjs");
+    if (!fs.existsSync(ledgerScript)) failUsage(`未找到台账汇总脚本：${ledgerScript}`);
+    return runNodeScript(ledgerScript, ["--ledger", ledger, "--output-dir", outputDir, "--title", title]);
+  }
+
   const db = requireArg(valueOf(rest, "--db"), "compare 缺少 `--db`", "示例：node saoshu_cli.mjs compare --db ./scan-db");
   const dimensions = valueOf(rest, "--dimensions", "author,tags,verdict,pipeline_mode,target_defense");
   const outputDir = valueOf(rest, "--output-dir", "");

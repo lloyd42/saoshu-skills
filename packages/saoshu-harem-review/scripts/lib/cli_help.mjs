@@ -13,6 +13,7 @@ export function showCliHelp() {
   console.log("  node saoshu_cli.mjs db ingest --db <dir> --report <merged-report.json> [--state <pipeline-state.json>] [--manifest <manifest.json>]");
   console.log("  node saoshu_cli.mjs db assets --db <dir> --output-dir <dir>");
   console.log("  node saoshu_cli.mjs compare --db <dir> [--dimensions author,tags,verdict,pipeline_mode,target_defense] [--output-dir <dir>]");
+  console.log("  node saoshu_cli.mjs compare ledger --ledger <mode-diff-ledger.jsonl> --output-dir <dir> [--title <name>]");
   console.log("");
   console.log("术语说明:");
   console.log("  economy = 节能模式，适合快速初筛");

@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { appendModeDiffLedgerEntry, createModeDiffLedgerEntry } from "./lib/mode_diff_ledger.mjs";
 
 function usage() {
-  console.log("Usage: node compare_reports.mjs --perf <performance-report.json> --econ <economy-report.json> --out-dir <dir> [--title <name>]");
+  console.log("Usage: node compare_reports.mjs --perf <performance-report.json> --econ <economy-report.json> --out-dir <dir> [--title <name>] [--ledger <mode-diff-ledger.jsonl>]");
 }
 
 function parseArgs(argv) {
-  const out = { perf: "", econ: "", outDir: "", title: "模式对比" };
+  const out = { perf: "", econ: "", outDir: "", title: "模式对比", ledger: "" };
   for (let i = 2; i < argv.length; i++) {
     const k = argv[i];
     const v = argv[i + 1];
@@ -15,6 +16,7 @@ function parseArgs(argv) {
     else if (k === "--econ") out.econ = v, i++;
     else if (k === "--out-dir") out.outDir = v, i++;
     else if (k === "--title") out.title = v, i++;
+    else if (k === "--ledger") out.ledger = v, i++;
     else if (k === "--help" || k === "-h") return null;
     else throw new Error(`Unknown arg: ${k}`);
   }
@@ -327,6 +329,12 @@ function main() {
   console.log(`JSON: ${jsonPath}`);
   console.log(`MD:   ${mdPath}`);
   console.log(`HTML: ${htmlPath}`);
+
+  if (args.ledger) {
+    const ledgerEntry = createModeDiffLedgerEntry({ title: args.title, perf, econ, diff, assessment, perfPath: args.perf, econPath: args.econ });
+    const ledgerPath = appendModeDiffLedgerEntry(args.ledger, ledgerEntry);
+    console.log(`Ledger: ${ledgerPath}`);
+  }
 }
 
 try { main(); } catch (err) { console.error(`Error: ${err.message}`); process.exit(1); }

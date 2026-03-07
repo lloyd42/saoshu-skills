@@ -154,6 +154,8 @@ node scripts/saoshu_cli.mjs db assets --db ./scan-db --output-dir ./workspace/fe
 - `compare_reports.mjs` 现在会比较事件数、补证问题数、关系边差异，帮助判断 economy 是否“省掉了关键判断信息”
 - 同时会输出“收益区间评估”，告诉你当前差距是“可接受 / 灰区 / 差距过大”，并明确建议“维持双模式 / 先增强 economy / 回退 performance”
 - 单次 `mode-diff` 不会直接要求新增模式；只有多次对比都稳定落在灰区时，才值得评估中档模式
+- 如果要长期积累样本，可在 `compare_reports.mjs` 里加 `--ledger ./workspace/mode-diff-ledger.jsonl`，让每次对比自动入账
+- 之后可运行 `node scripts/mode_diff_ledger.mjs --ledger ./workspace/mode-diff-ledger.jsonl --output-dir ./workspace/mode-diff-summary`，或 `node scripts/saoshu_cli.mjs compare ledger --ledger ./workspace/mode-diff-ledger.jsonl --output-dir ./workspace/mode-diff-summary` 汇总跨书差异
 
 Manifest 向导（新手推荐）：
 - 交互式：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie`

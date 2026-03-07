@@ -6,6 +6,7 @@
 
 ### 改进
 - `compare_reports.mjs` 增加“收益区间评估”，用用户视角输出当前是“可接受 / 灰区 / 差距过大”，并明确优先“维持双模式 / 增强 economy / 回退 performance”，避免凭单次样本仓促新增第三模式。
+- `compare_reports.mjs` 现在支持 `--ledger` 直接把单本 `mode-diff` 记入 JSONL 台账，`mode_diff_ledger.mjs` / `saoshu_cli.mjs compare ledger` 可汇总跨书差异，帮助基于多样样本判断是否需要中档模式。
 - `VERSIONING.md` 补充发版后本地安装 / 干净目录实测要求，避免只在当前工作区里自洽。
 
 ## [0.4.0] - 2026-03-07
