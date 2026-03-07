@@ -4,6 +4,31 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-03-07
+
+### 新增
+- 增加四条人机协同反馈闭环：关键词、角色别名、未证实风险补证问题池、关系边/关系标签，均支持“候选入库 -> 人工晋升 -> 导出复用”
+- 增加统一反馈资产导出入口 `db_export_feedback_assets.mjs`，可一次性导出关键词规则、别名映射、补证问题池与关系映射，并生成台账摘要
+- 增加 focused regression 检查链：`check:keyword-loop`、`check:alias-loop`、`check:risk-question-loop`、`check:relation-loop`、`check:feedback-assets`
+- 增加 compare 回归检查：`check:db-compare-feedback`、`check:report-compare-feedback`
+- 增加报告视图 focused regression：`check:report-views`、`check:report-priority`
+- 增加统一反馈资产 CLI 入口：`node saoshu_cli.mjs db assets --db <dir> --output-dir <dir>`
+- 增加新手报告阅读指南：`examples/minimal/report-reading-guide.md`
+
+### 改进
+- `scan-db` 现在会持久化四类反馈资产活动度，并支持后续对比分析它们对判断质量的影响
+- `db_compare.mjs` 现在会输出关键词候选、别名候选、补证问题候选、关系候选的活动度均值，帮助观察不同作品/作者/模式下的反馈资产收益
+- `compare_reports.mjs` 现在会比较事件数、补证问题数、关系边差异，并输出更贴近用户判断的 economy/performance 差异提示
+- 报告层按 `决策区 -> 证据区 -> 深入区` 重组，降低新手阅读成本
+- `newbie` 视图默认优先展示结论、关键已确认事件、最重要未证实风险和 3 个最高价值补证问题，复杂表格默认留在 `expert` 视图
+- 未证实风险会按“是否可能改变结论”优先级排序，补证问题会压缩到最关键 3 条，减少用户决策负担
+- README 与最小样例文档链路增加“新手怎么看报告”的入口，降低首次上手成本
+
+### 修复
+- 修复 `scan-db` 在记录反馈资产活动度时 `runs.jsonl` 写入时机过早、导致资产计数可能丢失的问题
+- 修复 `compare_reports.mjs` 在新增补证问题提示时的字符串拼接错误，确保 compare 提示正常生成
+- 修复别名归一化中原始称呼带前缀噪音时的候选保留问题，避免把“说阿梨”这类片段误记成真实别名
+
 ## [0.3.0] - 2026-03-07
 
 ### 新增
