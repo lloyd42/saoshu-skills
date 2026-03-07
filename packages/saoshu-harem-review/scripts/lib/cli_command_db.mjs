@@ -57,6 +57,19 @@ export function handleCompare(rest, context) {
     return runNodeScript(ledgerScript, ["--ledger", ledger, "--output-dir", outputDir, "--title", title]);
   }
 
+  if (sub === "discover") {
+    const root = requireArg(valueOf(rest, "--root"), "compare discover 缺少 `--root`", "示例：node saoshu_cli.mjs compare discover --root ./reports --output ./mode-diff-queue.json");
+    const output = requireArg(valueOf(rest, "--output"), "compare discover 缺少 `--output`", "示例：node saoshu_cli.mjs compare discover --root ./reports --output ./mode-diff-queue.json");
+    const discoverScript = path.join(reviewRoot, "scripts/mode_diff_discover_queue.mjs");
+    if (!fs.existsSync(discoverScript)) failUsage(`未找到 mode-diff 自动发现脚本：${discoverScript}`);
+    const args = ["--root", root, "--output", output];
+    pushArg(args, "--ledger", valueOf(rest, "--ledger", ""));
+    pushArg(args, "--db", valueOf(rest, "--db", ""));
+    pushArg(args, "--summary-dir", valueOf(rest, "--summary-dir", ""));
+    pushArg(args, "--out-root", valueOf(rest, "--out-root", ""));
+    return runNodeScript(discoverScript, args);
+  }
+
   if (sub === "batch") {
     const queue = requireArg(valueOf(rest, "--queue"), "compare batch 缺少 `--queue`", "示例：node saoshu_cli.mjs compare batch --queue ./mode-diff-queue.json");
     const queueScript = path.join(reviewRoot, "scripts/mode_diff_queue_run.mjs");

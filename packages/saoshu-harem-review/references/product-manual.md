@@ -159,6 +159,7 @@ node scripts/saoshu_cli.mjs db assets --db ./scan-db --output-dir ./workspace/fe
 - 如果希望把这类差异长期沉淀到数据库与仪表盘，可继续执行 `node ../saoshu-scan-db/scripts/db_ingest_mode_diff.mjs --db ./scan-db --ledger ./workspace/mode-diff-ledger.jsonl`，之后 `db overview` / `db dashboard` / `db trends` 都会带上 mode-diff 视角
 - 如果希望“记一条真实样本 + 刷新台账/数据库汇总”一步完成，可直接运行：`node scripts/saoshu_cli.mjs compare record --perf ./workspace/performance/merged-report.json --econ ./workspace/economy/merged-report.json --out-dir ./workspace/mode-diff/book-a --ledger ./workspace/mode-diff-ledger.jsonl --db ./scan-db`
 - 如果只是想重建台账、compare、trends、dashboard，不追加新样本，可运行：`node scripts/saoshu_cli.mjs compare sync --ledger ./workspace/mode-diff-ledger.jsonl --db ./scan-db`
+- 如果报告目录里已经有 `performance/economy` 或 `perf/econ` 成对结果，可先自动发现生成队列：`node scripts/saoshu_cli.mjs compare discover --root ./reports --output ./workspace/mode-diff-queue.json --db ./scan-db`
 - 如果已经准备好一批 perf/econ 报告对，可以把它们写进 `queue.json` 后一次性跑完：`node scripts/saoshu_cli.mjs compare batch --queue ./workspace/mode-diff-queue.json --db ./scan-db`
 
 Manifest 向导（新手推荐）：
