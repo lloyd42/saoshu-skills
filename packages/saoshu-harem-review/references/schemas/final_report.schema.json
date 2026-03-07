@@ -34,6 +34,7 @@
     "metadata_summary": {"type": "object"},
     "thunder": {"type": "object"},
     "depression": {"type": "object"},
+    "events": {"type": "object"},
     "defense_recommendation": {"type": "object"},
     "overall": {"type": "object"},
     "newbie_card": {

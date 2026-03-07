@@ -58,6 +58,23 @@
     },
     "depression_hits": {"type": "array", "items": {"type": "object"}},
     "risk_unconfirmed": {"type": "array", "items": {"type": "object"}},
+    "event_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "event_id": {"type": "string"},
+          "rule_candidate": {"type": "string"},
+          "category": {"type": "string"},
+          "status": {"type": "string"},
+          "certainty": {"type": "string"},
+          "confidence_score": {"type": "number"},
+          "review_decision": {"type": "string"},
+          "review_updated_at": {"type": "string"}
+        },
+        "additionalProperties": true
+      }
+    },
     "delta_relation": {"type": "array", "items": {"type": "object"}}
   },
   "additionalProperties": true

@@ -25,7 +25,7 @@
 - `events`：本批关键情节（最多12条）
 - `thunder_hits`：命中雷点（含证据级别）
 - `depression_hits`：命中郁闷点（程度+最低可抗防御+证据级别）
-- `risk_unconfirmed`：高风险未证实条目
+- `risk_unconfirmed`：未证实风险条目（兼容旧称：高风险未证实）
 - `delta_relation`：人物关系变化（尤其女主与男主关系）
 
 ## 4. 证据账本（全局累积）
@@ -119,7 +119,7 @@ node scripts/review_contexts.mjs --input ./assets/novel.txt --batches ./batches 
 建议做法：
 1. 先跑 `scan_txt_batches.mjs` 生成草案。
 2. 再跑 `review_contexts.mjs` 抓证据片段。
-3. 人工把 `未知待证` 改成 `已确认/排除`。
+3. 人工把 `待补证` 改成 `已确认/排除`。
 4. 最后跑 `batch_merge.mjs` 出终稿。
 
 ## 10.1 外部增强优先（MCP/其它工具）
@@ -157,7 +157,7 @@ node scripts/apply_review_results.mjs --batches ./batches --reviews ./review-pac
 说明：
 - `已确认`：对应候选项会提升为已确认证据。
 - `排除`：对应候选项会从批次结果移除。
-- `待补证`：保持未证实状态，继续进入风险池。
+- `待补证`：保持未证实状态，继续进入未证实风险池。
 
 ## 12. 一键编排入口（推荐）
 使用 `scripts/run_pipeline.mjs` 按统一架构执行阶段并记录状态。

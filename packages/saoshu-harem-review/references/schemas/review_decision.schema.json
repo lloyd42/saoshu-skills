@@ -6,8 +6,9 @@
   "required": ["batch_id", "item_kind", "item_name", "decision"],
   "properties": {
     "batch_id": {"type": "string"},
-    "item_kind": {"type": "string", "enum": ["高风险", "雷点候选", "郁闷候选"]},
+    "item_kind": {"type": "string", "enum": ["高风险", "雷点候选", "郁闷候选", "事件候选"]},
     "item_name": {"type": "string"},
+    "event_id": {"type": "string"},
     "keyword": {"type": "string"},
     "decision": {"type": "string", "enum": ["已确认", "排除", "待补证"]},
     "note": {"type": "string"}

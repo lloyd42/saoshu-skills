@@ -46,7 +46,7 @@ function findSuggestedDecision(line) {
 
 function parseReviewFile(content) {
   const sections = [];
-  const re = /^### \[(高风险|雷点候选|郁闷候选)\]\s+(.+)$/gm;
+  const re = /^### \[(高风险|雷点候选|郁闷候选|事件候选)\]\s+(.+)$/gm;
   const matches = [...content.matchAll(re)];
   for (let i = 0; i < matches.length; i++) {
     const m = matches[i];
@@ -60,6 +60,10 @@ function parseReviewFile(content) {
     const km = /-\s*关键词：([^\n\r]+)/.exec(block);
     if (km) keyword = km[1].trim();
 
+    let eventId = "";
+    const em = /-\s*事件ID[:：]([^\n\r]+)/.exec(block);
+    if (em) eventId = em[1].trim();
+
     let decision = "";
     let suggestedDecision = "";
     for (const line of block.split(/\r?\n/)) {
@@ -72,7 +76,7 @@ function parseReviewFile(content) {
       }
     }
 
-    sections.push({ kind, name, keyword, decision, suggestedDecision });
+    sections.push({ kind, name, keyword, eventId, decision, suggestedDecision });
   }
   return sections;
 }
@@ -82,10 +86,33 @@ function includesKeyword(text, keyword) {
   return String(text).includes(keyword);
 }
 
+function eventIncludesKeyword(event, keyword) {
+  if (!keyword) return true;
+  if (Array.isArray(event.signals) && event.signals.some((item) => String(item) === keyword || String(item).includes(keyword))) return true;
+  return Array.isArray(event.evidence) && event.evidence.some((item) => includesKeyword(item.keyword, keyword) || includesKeyword(item.snippet, keyword));
+}
+
 function markConfirmed(item) {
   item.evidence_level = "已确认";
   if (item.summary && !item.summary.includes("人工复核已确认")) {
     item.summary = `${item.summary}；人工复核已确认`;
+  }
+}
+
+function applyEventDecision(event, finalDecision) {
+  event.review_decision = finalDecision;
+  event.review_updated_at = new Date().toISOString();
+  if (finalDecision === "已确认") {
+    event.status = "已确认";
+    event.certainty = "reviewed";
+    event.confidence_score = Math.max(Number(event.confidence_score || 0), 7);
+  } else if (finalDecision === "排除") {
+    event.status = "已排除";
+    event.certainty = "reviewed";
+    event.confidence_score = Math.min(Number(event.confidence_score || 0), 1);
+  } else {
+    event.status = "待补证";
+    if (!event.certainty || event.certainty === "reviewed") event.certainty = "low";
   }
 }
 
@@ -96,12 +123,28 @@ function applySections(batch, sections, acceptSuggested = false) {
   batch.thunder_hits = Array.isArray(batch.thunder_hits) ? batch.thunder_hits : [];
   batch.depression_hits = Array.isArray(batch.depression_hits) ? batch.depression_hits : [];
   batch.risk_unconfirmed = Array.isArray(batch.risk_unconfirmed) ? batch.risk_unconfirmed : [];
+  batch.event_candidates = Array.isArray(batch.event_candidates) ? batch.event_candidates : [];
 
   for (const s of sections) {
     const finalDecision = s.decision === "待补证" && acceptSuggested && s.suggestedDecision && s.suggestedDecision !== "待补证"
       ? s.suggestedDecision
       : s.decision;
     if (!finalDecision) continue;
+
+    if (s.kind === "事件候选") {
+      const idx = batch.event_candidates.findIndex((item) => {
+        if (s.eventId) return String(item.event_id || "").trim() === s.eventId;
+        return String(item.rule_candidate || "").trim() === s.name && eventIncludesKeyword(item, s.keyword);
+      });
+      if (idx >= 0) {
+        applyEventDecision(batch.event_candidates[idx], finalDecision);
+        changed++;
+        if (finalDecision === "已确认") stats.confirmed++;
+        else if (finalDecision === "排除") stats.excluded++;
+        else stats.pending++;
+      }
+      continue;
+    }
 
     if (s.kind === "郁闷候选") {
       const idx = batch.depression_hits.findIndex((x) => x.rule === s.name && (includesKeyword(x.summary, s.keyword) || !s.keyword));
@@ -125,7 +168,6 @@ function applySections(batch, sections, acceptSuggested = false) {
       if (idx >= 0) {
         if (finalDecision === "已确认") {
           markConfirmed(batch.thunder_hits[idx]);
-          // confirmed thunder no longer unconfirmed risk
           batch.risk_unconfirmed = batch.risk_unconfirmed.filter((r) => !(r.risk === s.name && (includesKeyword(r.current_evidence, s.keyword) || !s.keyword)));
           changed++; stats.confirmed++;
         } else if (finalDecision === "排除") {
@@ -164,9 +206,7 @@ function applySections(batch, sections, acceptSuggested = false) {
         }
         changed++; stats.excluded++;
       } else {
-        if (riskIdx >= 0) {
-          // keep as unconfirmed
-        } else {
+        if (riskIdx < 0) {
           batch.risk_unconfirmed.push({
             risk: s.name,
             current_evidence: s.keyword ? `人工标记关键词 ${s.keyword}` : "人工标记",

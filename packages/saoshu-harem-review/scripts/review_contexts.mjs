@@ -98,7 +98,7 @@ function containsAny(text, patterns) {
   return patterns.some((pattern) => text.includes(pattern));
 }
 
-function suggestDecision(item, snippets) {
+function suggestLegacyDecision(item, snippets) {
   const text = normalizeSnippetText(snippets);
   if (!text) return { decision: "待补证", reason: "缺少足够片段" };
 
@@ -132,9 +132,24 @@ function suggestDecision(item, snippets) {
   return { decision: "待补证", reason: "暂无法高置信确认或排除" };
 }
 
-function linesForItem(title, keyword, snippets, suggestion) {
+function suggestEventDecision(event) {
+  const reviewDecision = String(event.review_decision || "").trim();
+  const polarity = String(event.polarity || "").trim();
+  const timeline = String(event.timeline || "mainline").trim();
+  const status = String(event.status || "").trim();
+  if (reviewDecision === "已确认") return { decision: "已确认", reason: "该候选已有人工作出确认结论" };
+  if (reviewDecision === "排除") return { decision: "排除", reason: "该候选已有人工作出排除结论" };
+  if (polarity === "negated") return { decision: "排除", reason: "证据片段中存在明确否定词" };
+  if (timeline !== "mainline") return { decision: "待补证", reason: "候选位于非主线时间线，仍需人工判断是否影响主线" };
+  if (status === "已确认") return { decision: "已确认", reason: "当前候选上下文评分已达已确认阈值" };
+  if (status === "高概率") return { decision: "待补证", reason: "当前仅为高概率，建议人工确认主体与时间线" };
+  return { decision: "待补证", reason: "需人工确认主体、时间线与事件真实性" };
+}
+
+function linesForItem(title, keyword, snippets, suggestion, extraLines = []) {
   const lines = [];
   lines.push(`### ${title}`);
+  lines.push(...extraLines);
   lines.push(`- 关键词：${keyword || "(未解析)"}`);
   if (!snippets.length) {
     lines.push("- 片段：未检出（需人工手动定位）");
@@ -151,44 +166,72 @@ function linesForItem(title, keyword, snippets, suggestion) {
   return lines;
 }
 
+function buildEventReviewLines(event, maxSnippets) {
+  const displayStatus = String(event.status || "未知待证") === "未知待证" ? "待补证" : String(event.status || "待补证");
+  const keyword = Array.isArray(event.signals) && event.signals.length > 0 ? String(event.signals[0] || "") : "";
+  const snippets = (Array.isArray(event.evidence) ? event.evidence : []).slice(0, maxSnippets).map((item) => ({
+    keyword: String(item.keyword || keyword || ""),
+    chapter: String(item.chapter_title || "(未知章节)"),
+    snippet: String(item.snippet || "").trim(),
+  }));
+  const extraLines = [
+    `- 事件ID：${String(event.event_id || "(缺失)")}`,
+    `- 候选类别：${String(event.category || "unknown")}`,
+    `- 主体：${String(event.subject?.name || "未识别角色")} / ${String(event.subject?.role_hint || "未知")}`,
+    `- 对象：${String(event.target?.name || "未识别对象")} / ${String(event.target?.role_hint || "未知")}`,
+    `- 当前状态：${displayStatus}`,
+    `- 当前人工结论：${String(event.review_decision || "未复核")}`,
+    `- 极性 / 时间线：${String(event.polarity || "unknown")} / ${String(event.timeline || "mainline")}`,
+    `- 置信分：${Number(event.confidence_score || 0)}`,
+  ];
+  const counterEvidence = Array.isArray(event.counter_evidence) ? event.counter_evidence.filter(Boolean) : [];
+  if (counterEvidence.length > 0) extraLines.push(`- 反证：${counterEvidence.join("；")}`);
+  const missingEvidence = Array.isArray(event.missing_evidence) ? event.missing_evidence.filter(Boolean) : [];
+  if (missingEvidence.length > 0) extraLines.push(`- 缺失证据：${missingEvidence.join("；")}`);
+  return linesForItem(`[事件候选] ${String(event.rule_candidate || "未命名事件")}`, keyword, snippets, suggestEventDecision(event), extraLines);
+}
+
 function buildBatchReview(batch, text, chapters, opts) {
   const range = parseBatchRange(batch.range);
-  if (!range) return [`# ${batch.batch_id}`, "", "无法解析 range，跳过。", ""];
-
-  const chapterFrom = chapters.find((c) => c.num === range.from);
-  const chapterTo = [...chapters].reverse().find((c) => c.num === range.to);
+  const chapterFrom = range ? chapters.find((c) => c.num === range.from) : null;
+  const chapterTo = range ? [...chapters].reverse().find((c) => c.num === range.to) : null;
   const start = chapterFrom ? chapterFrom.start : 0;
   const end = chapterTo ? chapterTo.end : text.length;
 
   const lines = [];
   lines.push(`# ${batch.batch_id} 复核包`);
-  lines.push(`- 覆盖范围：${batch.range}`);
+  lines.push(`- 覆盖范围：${batch.range || "(未知范围)"}`);
   lines.push(`- 目标：对风险与待证命中做人工复核`);
   lines.push("");
 
-  const items = [];
-  (batch.risk_unconfirmed || []).forEach((x) => items.push({ kind: "高风险", ...x }));
+  const legacyItems = [];
+  (batch.risk_unconfirmed || []).forEach((x) => legacyItems.push({ kind: "高风险", ...x }));
   (batch.thunder_hits || []).forEach((x) => {
-    if ((x.evidence_level || "").includes("未知待证")) items.push({ kind: "雷点候选", ...x });
+    if ((x.evidence_level || "").includes("未知待证")) legacyItems.push({ kind: "雷点候选", ...x });
   });
   (batch.depression_hits || []).forEach((x) => {
-    if ((x.evidence_level || "").includes("未知待证")) items.push({ kind: "郁闷候选", ...x });
+    if ((x.evidence_level || "").includes("未知待证")) legacyItems.push({ kind: "郁闷候选", ...x });
   });
+  const eventItems = (batch.event_candidates || []).filter((item) => !["已确认", "排除"].includes(String(item.review_decision || "").trim()));
 
-  if (items.length === 0) {
+  if (legacyItems.length === 0 && eventItems.length === 0) {
     lines.push("本批无待复核项。\n");
     return lines;
   }
 
-  lines.push(`待复核项：${items.length}`);
+  lines.push(`待复核项：${legacyItems.length + eventItems.length}`);
   lines.push("");
 
-  for (const it of items) {
+  for (const it of legacyItems) {
     const keyword = inferKeyword(it);
     const snippets = collectSnippets(text, start, end, keyword, opts.window, opts.maxSnippets, chapters);
     const title = `[${it.kind}] ${it.risk || it.rule || "未命名项"}`;
-    const suggestion = suggestDecision(it, snippets);
+    const suggestion = suggestLegacyDecision(it, snippets);
     lines.push(...linesForItem(title, keyword, snippets, suggestion));
+  }
+
+  for (const event of eventItems) {
+    lines.push(...buildEventReviewLines(event, opts.maxSnippets));
   }
 
   return lines;
