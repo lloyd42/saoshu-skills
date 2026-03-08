@@ -11,6 +11,7 @@
 - `manifest_wizard.mjs` 现在会优先按 `coverage_mode=sampled|chapter-full|full-book` 生成入口配置，并自动写入兼容的 `pipeline_mode`；非交互模式也支持直接传 `--coverage-mode`、`--coverage-template`、`--serial-status`。
 - `saoshu_cli.mjs --help`、`saoshu-orchestrator` 的 skill 文案与 agent prompt 现在也把 coverage-first 放到第一叙事层，减少用户继续把 `economy / performance` 误读成主入口模式。
 - `run_pipeline.mjs` 传给最终报告与数据库的标签前缀现在也改用 coverage-first 口径：`[SAMPLED]`、`[CHAPTER-FULL]`、`[FULL-BOOK]`，仅保留 `performance` 兼容路径下的中性回退值 `[HIGH-COVERAGE]`。
+- `compare` / `db_compare.mjs` 的默认维度与 `saoshu-scan-db` 示例命令现在也把 `coverage_mode`、`coverage_template` 放到 `pipeline_mode` 前面，减少用户继续按旧执行层别名理解对比入口。
 
 ### 重构
 - 抽出 `scripts/lib/report_relationships.mjs`，集中承接外部 `relationship-map.json` 的加载、归一化与关系边合并逻辑；`batch_merge.mjs` 进一步收敛为编排层。

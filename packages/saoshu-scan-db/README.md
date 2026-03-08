@@ -25,6 +25,10 @@
 - 补证问题候选
 - 关系候选
 
+常见多维对比建议优先按 coverage-first 口径看：
+
+- `node scripts/db_compare.mjs --db ./scan-db --dimensions author,tags,verdict,coverage_mode,coverage_template,pipeline_mode --output-dir ./scan-db/compare`
+
 ## Coverage 字段说明
 - `runs.jsonl` 当前会保留 `coverage_mode`、`coverage_template`、`coverage_unit`、`chapter_detect_used_mode`、`serial_status`、`total_batches`、`selected_batches`、`coverage_ratio`、`coverage_gap_summary`、`coverage_gap_risk_types`。
 - 这些字段来自 `merged-report.json` 的 `scan.sampling`，上游再追到 manifest 兼容层与 sampled 模板逻辑。
@@ -32,4 +36,3 @@
 
 ## References
 - 数据库结构：`references/db-schema.md`
-

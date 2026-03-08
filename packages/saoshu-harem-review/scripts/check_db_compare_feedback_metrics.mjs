@@ -46,6 +46,10 @@ const result = runNode("packages/saoshu-scan-db/scripts/db_compare.mjs", ["--db"
 if (result.status === 0) ok("db_compare feedback metrics run");
 else fail(`db_compare feedback metrics run failed\nSTDERR:\n${result.stderr}`);
 
+const defaultResult = runNode("packages/saoshu-scan-db/scripts/db_compare.mjs", ["--db", dbDir]);
+if (defaultResult.status === 0) ok("db_compare default dimensions run");
+else fail(`db_compare default dimensions run failed\nSTDERR:\n${defaultResult.stderr}`);
+
 const jsonPath = path.join(outDir, "compare.json");
 if (fs.existsSync(jsonPath)) ok("db_compare writes compare.json");
 else fail("db_compare should write compare.json");
@@ -63,6 +67,11 @@ const coverageModeGroup = Array.isArray(payload.groups) ? payload.groups.find((i
 const sampledRow = Array.isArray(coverageModeGroup?.rows) ? coverageModeGroup.rows.find((item) => item.key === "sampled") : null;
 if (sampledRow?.runs === 2 && sampledRow?.avg_coverage === 0.85) ok("db_compare supports coverage_mode dimension");
 else fail(`db_compare should expose coverage_mode dimension: ${JSON.stringify(sampledRow)}`);
+
+const defaultPayload = JSON.parse(defaultResult.stdout || "{}");
+const defaultDimensions = Array.isArray(defaultPayload.groups) ? defaultPayload.groups.map((item) => item.dimension) : [];
+if (JSON.stringify(defaultDimensions.slice(0, 5)) === JSON.stringify(["author", "tags", "verdict", "coverage_mode", "coverage_template"])) ok("db_compare default dimensions prefer coverage-first ordering");
+else fail(`db_compare default dimensions should prefer coverage-first ordering: ${JSON.stringify(defaultDimensions)}`);
 
 const coverageTemplateGroup = Array.isArray(payload.groups) ? payload.groups.find((item) => item.dimension === "coverage_template") : null;
 const headTailRow = Array.isArray(coverageTemplateGroup?.rows) ? coverageTemplateGroup.rows.find((item) => item.key === "head-tail") : null;
