@@ -191,17 +191,17 @@ export function summarizeModeDiffLedger(entries) {
   let recommendation = {
     action: "collect_samples",
     summary: "台账为空，先积累跨作品 mode-diff 样本。",
-    rationale: ["至少先完成 1 本作品的 performance/economy 对比。"],
+    rationale: ["至少先完成 1 本作品的“快速摸底 vs 高覆盖复核”对比。"],
   };
 
   if (safeEntries.length > 0) {
     if (tooWideWorks.length > 0) {
       recommendation = {
         action: "fix_economy_first",
-        summary: "已出现“差距过大”样本，当前重点应是修 economy 质量，而不是新增模式。",
+        summary: "已出现“差距过大”样本，当前重点应是补强快速摸底层质量，而不是新增模式。",
         rationale: [
           `存在 ${tooWideWorks.length} 本作品落入“差距过大”。`,
-          "关键决策应优先回退 performance，先补强 economy 的高风险批次与覆盖率。",
+          "关键决策应优先升级到高覆盖复核，先补强快速摸底层的高风险批次与覆盖率。",
         ],
       };
     } else if (crossGenreGraySignal) {
@@ -216,7 +216,7 @@ export function summarizeModeDiffLedger(entries) {
     } else if (grayWorks.length > 0) {
       recommendation = {
         action: "enhance_economy_and_continue",
-        summary: "已有灰区样本，但证据还不足以支持新增模式，优先增强 economy 并继续积累台账。",
+        summary: "已有灰区样本，但证据还不足以支持新增模式，优先补强快速摸底层并继续积累台账。",
         rationale: [
           `当前灰区作品 ${grayWorkTitles.length} 本。`,
           "先看高风险批次、关系批次、补证问题密集批次的补强效果。",
@@ -225,7 +225,7 @@ export function summarizeModeDiffLedger(entries) {
     } else {
       recommendation = {
         action: "keep_current_modes",
-        summary: "当前样本大多处于可接受区间，现有双模式仍是更稳妥的默认方案。",
+        summary: "当前样本大多处于可接受区间，现有 coverage-first 分层仍是更稳妥的默认方案。",
         rationale: ["暂未看到持续性的灰区或差距过大信号。"],
       };
     }
@@ -266,10 +266,10 @@ function gainWindowLabel(value) {
 }
 
 function actionLabel(value) {
-  if (value === "fix_economy_first") return "先修 economy";
+  if (value === "fix_economy_first") return "先补强快速摸底层";
   if (value === "evaluate_middle_mode") return "评估中档模式";
-  if (value === "enhance_economy_and_continue") return "增强 economy 并继续积累";
-  if (value === "keep_current_modes") return "维持现有双模式";
+  if (value === "enhance_economy_and_continue") return "补强快速摸底层并继续积累";
+  if (value === "keep_current_modes") return "维持现有 coverage-first 分层";
   return "继续积累样本";
 }
 
@@ -285,7 +285,7 @@ export function renderModeDiffLedgerMarkdown(title, summary) {
   lines.push("## 台账概览");
   lines.push(`- 样本数：${summary.total_entries}`);
   lines.push(`- 平均分差信号：${summary.averages?.score ?? 0}`);
-  lines.push(`- 平均 economy 覆盖率：${((toNumber(summary.averages?.coverage_ratio) || 0) * 100).toFixed(1)}%`);
+  lines.push(`- 平均快速摸底覆盖率：${((toNumber(summary.averages?.coverage_ratio) || 0) * 100).toFixed(1)}%`);
   lines.push(`- 可接受 / 灰区 / 差距过大：${summary.gain_window_counts?.acceptable || 0} / ${summary.gain_window_counts?.gray || 0} / ${summary.gain_window_counts?.too_wide || 0}`);
   lines.push("");
   lines.push("## 多样性");

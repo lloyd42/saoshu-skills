@@ -196,7 +196,7 @@ node packages/saoshu-harem-review/scripts/run_pipeline.mjs --manifest examples/m
 - `wiki`：查询术语词典
 - `relation`：生成关系图相关输出
 - `db`：执行数据库相关命令
-- `compare`：对比不同报告或不同扫描模式结果
+- `compare`：对比快速摸底与高覆盖复核的结果差异，以及不同报告之间的决策信息损失
 
 示例：
 

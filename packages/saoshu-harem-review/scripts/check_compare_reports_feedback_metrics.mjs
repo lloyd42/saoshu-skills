@@ -73,5 +73,9 @@ else fail(`compare_reports should emit feedback-gap hints: ${JSON.stringify(payl
 if (payload.assessment?.gain_window === "too_wide" && payload.assessment?.band === "fallback_to_performance" && String(payload.assessment?.third_mode_advice || "").includes("先增强现有模式")) ok("compare_reports emits user-centric gain-window assessment");
 else fail(`compare_reports should emit gain-window assessment: ${JSON.stringify(payload.assessment)}`);
 
+const reportMd = fs.readFileSync(path.join(outDir, "mode-diff.md"), "utf8");
+if (reportMd.includes("高覆盖复核（兼容 performance）") && reportMd.includes("快速摸底（兼容 sampled/economy）")) ok("compare_reports markdown uses coverage-first framing for the two compared layers");
+else fail("compare_reports markdown should use coverage-first framing for the two compared layers");
+
 if (!hasFailure) console.log("Compare reports feedback metrics check passed.");
 else process.exitCode = 1;

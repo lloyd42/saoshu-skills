@@ -110,5 +110,9 @@ else fail(`mode_diff_ledger should aggregate three gray works: ${JSON.stringify(
 if (fs.existsSync(path.join(summaryOutDir, "mode-diff-ledger-summary.md")) && fs.existsSync(path.join(summaryOutDir, "mode-diff-ledger-summary.html"))) ok("mode_diff_ledger writes markdown and html outputs");
 else fail("mode_diff_ledger should write markdown/html outputs");
 
+const summaryMarkdown = fs.readFileSync(path.join(summaryOutDir, "mode-diff-ledger-summary.md"), "utf8");
+if (summaryMarkdown.includes("平均快速摸底覆盖率") && summaryMarkdown.includes("快速摸底少看到 1 条关系边")) ok("mode_diff_ledger markdown uses coverage-first framing");
+else fail("mode_diff_ledger markdown should use coverage-first framing");
+
 if (!hasFailure) console.log("Mode diff ledger check passed.");
 else process.exitCode = 1;

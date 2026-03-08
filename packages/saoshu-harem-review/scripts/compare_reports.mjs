@@ -4,7 +4,7 @@ import path from "node:path";
 import { appendModeDiffLedgerEntry, createModeDiffLedgerEntry } from "./lib/mode_diff_ledger.mjs";
 
 function usage() {
-  console.log("Usage: node compare_reports.mjs --perf <performance-report.json> --econ <economy-report.json> --out-dir <dir> [--title <name>] [--ledger <mode-diff-ledger.jsonl>]");
+  console.log("Usage: node compare_reports.mjs --perf <high-coverage-report.json> --econ <quick-look-report.json> --out-dir <dir> [--title <name>] [--ledger <mode-diff-ledger.jsonl>]");
 }
 
 function parseArgs(argv) {
@@ -65,10 +65,10 @@ function gainWindowLabel(value) {
 }
 
 function bandLabel(value) {
-  if (value === "fallback_to_performance") return "关键决策回退 performance";
-  if (value === "enhance_economy") return "先增强 economy";
+  if (value === "fallback_to_performance") return "关键决策升级高覆盖复核";
+  if (value === "enhance_economy") return "先补强快速摸底层";
   if (value === "observe_before_adding_mode") return "继续观察，再决定是否加模式";
-  return "维持现有双模式";
+  return "维持现有 coverage-first 分层";
 }
 
 function calc(perf, econ) {
@@ -169,21 +169,21 @@ function buildAssessment(diff) {
 
   const reasons = [];
   if (verdictMismatch) reasons.push("两种模式结论不一致");
-  if (coverage < 0.7) reasons.push(`economy 覆盖率仅 ${(coverage * 100).toFixed(1)}%`);
-  if (riskGap >= 2) reasons.push(`economy 少看到 ${riskGap} 个未证实风险`);
-  if (followUpGap >= 2) reasons.push(`economy 少看到 ${followUpGap} 个关键补证问题`);
-  if (relationGap > 0) reasons.push(`economy 少看到 ${relationGap} 条关系边`);
-  if (eventGap >= 3) reasons.push(`economy 少看到 ${eventGap} 个事件`);
+  if (coverage < 0.7) reasons.push(`快速摸底覆盖率仅 ${(coverage * 100).toFixed(1)}%`);
+  if (riskGap >= 2) reasons.push(`快速摸底少看到 ${riskGap} 个未证实风险`);
+  if (followUpGap >= 2) reasons.push(`快速摸底少看到 ${followUpGap} 个关键补证问题`);
+  if (relationGap > 0) reasons.push(`快速摸底少看到 ${relationGap} 条关系边`);
+  if (eventGap >= 3) reasons.push(`快速摸底少看到 ${eventGap} 个事件`);
 
   if (verdictMismatch || score >= 8 || coverage < 0.45 || riskGap >= 4) {
     return {
       gain_window: "too_wide",
       band: "fallback_to_performance",
       score,
-      summary: "当前 economy 与 performance 差距过大，已经超出用户可接受收益区间。",
-      action: "关键决策直接回退 performance，同时优先增强 economy 的高风险批次命中与覆盖率。",
-      next_step: "先补强现有 economy，再看差距是否收敛；不要立刻新增第三模式。",
-      third_mode_advice: "先增强现有模式。单次差距过大更像 economy 质量不足，而不是缺少第三模式。",
+      summary: "当前快速摸底与高覆盖复核差距过大，已经超出用户可接受收益区间。",
+      action: "关键决策直接升级到高覆盖复核，同时优先补强快速摸底层的高风险批次命中与覆盖率。",
+      next_step: "先补强现有快速摸底层，再看差距是否收敛；不要立刻新增第三模式。",
+      third_mode_advice: "先增强现有模式。单次差距过大更像快速摸底层质量不足，而不是缺少第三模式。",
       reasons: reasons.length ? reasons : ["当前差异已经影响最终判断可靠性"],
     };
   }
@@ -193,11 +193,11 @@ function buildAssessment(diff) {
       gain_window: "gray",
       band: "enhance_economy",
       score,
-      summary: "当前 economy 可做初筛，但信息损失已经会影响一部分用户决策。",
-      action: "优先增强 economy：强制包含高风险批次、关键关系批次和补证问题密集批次。",
+      summary: "当前快速摸底可做初筛，但信息损失已经会影响一部分用户决策。",
+      action: "优先补强快速摸底层：强制包含高风险批次、关键关系批次和补证问题密集批次。",
       next_step: "连续观察 3-5 本作品的 mode-diff；若长期停留灰区，再评估是否新增中档模式。",
-      third_mode_advice: "先增强现有 economy；只有在多次增强后仍长期停留灰区，才值得新增中档模式。",
-      reasons: reasons.length ? reasons : ["当前差异还没大到必须放弃 economy，但已经需要有针对性补强"],
+      third_mode_advice: "先增强现有快速摸底层；只有在多次增强后仍长期停留灰区，才值得新增中档模式。",
+      reasons: reasons.length ? reasons : ["当前差异还没大到必须放弃快速摸底，但已经需要有针对性补强"],
     };
   }
 
@@ -206,8 +206,8 @@ function buildAssessment(diff) {
       gain_window: "gray",
       band: "observe_before_adding_mode",
       score,
-      summary: "当前 economy 与 performance 基本接近，但仍有可感知的细节损失。",
-      action: "保留现有双模式，并继续输出 mode-diff 给用户做知情选择。",
+      summary: "当前快速摸底与高覆盖复核基本接近，但仍有可感知的细节损失。",
+      action: "保留现有 coverage-first 分层，并继续输出 mode-diff 给用户做知情选择。",
       next_step: "继续积累对比样本；如果多个不同题材都稳定出现同一类中等缺口，再考虑中档模式。",
       third_mode_advice: "暂不新增模式，先用对比结果验证用户是否真的需要第三档。",
       reasons: reasons.length ? reasons : ["当前差异落在可观察灰区，适合继续积累样本再决策"],
@@ -218,8 +218,8 @@ function buildAssessment(diff) {
     gain_window: "acceptable",
     band: "keep_current_modes",
     score,
-    summary: "当前 economy 与 performance 收益接近，双模式已经覆盖主要用户场景。",
-    action: "维持现有双模式，把复杂度留在 compare 与补证提示。",
+    summary: "当前快速摸底与高覆盖复核收益接近，现有 coverage-first 分层已经覆盖主要用户场景。",
+    action: "维持现有 coverage-first 分层，把复杂度留在 compare 与补证提示。",
     next_step: "继续监控样本，但暂无新增模式必要。",
     third_mode_advice: "不需要新增模式。",
     reasons: reasons.length ? reasons : ["当前差异处于可接受范围"],
@@ -229,15 +229,15 @@ function buildAssessment(diff) {
 function optimizeHints(diff, assessment) {
   const hints = [];
   const cov = diff.coverage.economy_coverage_ratio;
-  if (cov < 0.6) hints.push("提高 economy sample_count（建议 9-11），降低漏检。");
+  if (cov < 0.6) hints.push("提高快速摸底覆盖率（例如增加 sampled 批次数到 9-11），降低漏检。");
   if (diff.differences.only_in_performance.depression.length > 20) hints.push("增加分层抽样（开篇/中段/尾段 + 高频风险批次优先）。");
-  if (diff.perf_summary.verdict !== diff.econ_summary.verdict) hints.push("结论不一致：economy 仅做初筛，关键决策必须回退 performance。");
-  if (diff.perf_summary.risk_count > diff.econ_summary.risk_count + 2) hints.push("在 economy 模式中强制包含高风险关键词最密集批次。");
-  if (diff.perf_summary.follow_up_count > diff.econ_summary.follow_up_count + 1) hints.push("economy 漏掉了部分关键补证问题，建议提高覆盖率或回退 performance。");
-  if (diff.differences.only_in_performance.relations.length > 0) hints.push("economy 缺失部分关系边，长书或人物密集作品建议结合关系图复核。");
-  if (assessment.band === "enhance_economy") hints.push("先增强现有 economy，再决定是否真的需要第三模式。");
+  if (diff.perf_summary.verdict !== diff.econ_summary.verdict) hints.push("结论不一致：快速摸底仅做初筛，关键决策应升级到高覆盖复核。");
+  if (diff.perf_summary.risk_count > diff.econ_summary.risk_count + 2) hints.push("在快速摸底层中强制包含高风险关键词最密集批次。");
+  if (diff.perf_summary.follow_up_count > diff.econ_summary.follow_up_count + 1) hints.push("快速摸底漏掉了部分关键补证问题，建议提高覆盖率或升级到高覆盖复核。");
+  if (diff.differences.only_in_performance.relations.length > 0) hints.push("快速摸底缺失部分关系边，长书或人物密集作品建议结合关系图复核。");
+  if (assessment.band === "enhance_economy") hints.push("先补强现有快速摸底层，再决定是否真的需要第三模式。");
   if (assessment.band === "observe_before_adding_mode") hints.push("先继续积累 mode-diff 样本，再决定是否新增中档模式。");
-  if (assessment.band === "fallback_to_performance") hints.push("当前收益区间过大，关键决策不要只看 economy。先补强现有模式，不要仓促新增第三模式。");
+  if (assessment.band === "fallback_to_performance") hints.push("当前收益区间过大，关键决策不要只看快速摸底。先补强现有模式，不要仓促新增第三模式。");
   if (hints.length === 0) hints.push("当前两模式结论接近，可维持现有抽样策略。");
   return hints;
 }
@@ -258,13 +258,13 @@ function renderMd(title, diff, assessment, hints) {
   lines.push("");
 
   lines.push("## 总览");
-  lines.push(`- Performance: 结论 ${diff.perf_summary.verdict} / 评分 ${diff.perf_summary.rating} / 批次 ${diff.perf_summary.batch_count} / 雷点 ${diff.perf_summary.thunder_count} / 郁闷 ${diff.perf_summary.dep_count} / 风险 ${diff.perf_summary.risk_count} / 事件 ${diff.perf_summary.event_count} / 补证问题 ${diff.perf_summary.follow_up_count} / 关系边 ${diff.perf_summary.relation_count}`);
-  lines.push(`- Economy: 结论 ${diff.econ_summary.verdict} / 评分 ${diff.econ_summary.rating} / 批次 ${diff.econ_summary.batch_count} / 雷点 ${diff.econ_summary.thunder_count} / 郁闷 ${diff.econ_summary.dep_count} / 风险 ${diff.econ_summary.risk_count} / 事件 ${diff.econ_summary.event_count} / 补证问题 ${diff.econ_summary.follow_up_count} / 关系边 ${diff.econ_summary.relation_count}`);
-  lines.push(`- Economy覆盖率: ${(diff.coverage.economy_coverage_ratio * 100).toFixed(1)}%`);
-  lines.push(`- Economy未覆盖批次: ${diff.coverage.missed_batches_in_economy.join(", ") || "无"}`);
+  lines.push(`- 高覆盖复核（兼容 performance）: 结论 ${diff.perf_summary.verdict} / 评分 ${diff.perf_summary.rating} / 批次 ${diff.perf_summary.batch_count} / 雷点 ${diff.perf_summary.thunder_count} / 郁闷 ${diff.perf_summary.dep_count} / 风险 ${diff.perf_summary.risk_count} / 事件 ${diff.perf_summary.event_count} / 补证问题 ${diff.perf_summary.follow_up_count} / 关系边 ${diff.perf_summary.relation_count}`);
+  lines.push(`- 快速摸底（兼容 sampled/economy）: 结论 ${diff.econ_summary.verdict} / 评分 ${diff.econ_summary.rating} / 批次 ${diff.econ_summary.batch_count} / 雷点 ${diff.econ_summary.thunder_count} / 郁闷 ${diff.econ_summary.dep_count} / 风险 ${diff.econ_summary.risk_count} / 事件 ${diff.econ_summary.event_count} / 补证问题 ${diff.econ_summary.follow_up_count} / 关系边 ${diff.econ_summary.relation_count}`);
+  lines.push(`- 快速摸底覆盖率: ${(diff.coverage.economy_coverage_ratio * 100).toFixed(1)}%`);
+  lines.push(`- 快速摸底未覆盖批次: ${diff.coverage.missed_batches_in_economy.join(", ") || "无"}`);
   lines.push("");
 
-  lines.push("## 仅Performance出现");
+  lines.push("## 仅高覆盖复核出现");
   lines.push(`- 雷点: ${diff.differences.only_in_performance.thunder.length}`);
   lines.push(`- 郁闷点: ${diff.differences.only_in_performance.depression.length}`);
   lines.push(`- 风险: ${diff.differences.only_in_performance.risks.length}`);
@@ -274,7 +274,7 @@ function renderMd(title, diff, assessment, hints) {
   diff.differences.only_in_performance.risks.slice(0, 20).forEach((r) => lines.push(`- [风险] ${r.risk} / ${r.current_evidence || "-"}`));
   lines.push("");
 
-  lines.push("## 仅Economy出现");
+  lines.push("## 仅快速摸底出现");
   lines.push(`- 雷点: ${diff.differences.only_in_economy.thunder.length}`);
   lines.push(`- 郁闷点: ${diff.differences.only_in_economy.depression.length}`);
   lines.push(`- 风险: ${diff.differences.only_in_economy.risks.length}`);
@@ -297,8 +297,8 @@ function renderHtml(title, diff, assessment, hints) {
 body{font:14px/1.5 "Microsoft YaHei",sans-serif;background:#f4f1ea;color:#222;margin:0}.wrap{max-width:1100px;margin:22px auto;padding:0 16px}.card{background:#fff;border:1px solid #e6dccd;border-radius:12px;padding:14px;margin-bottom:12px}h1,h2{margin:0 0 10px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.pill{display:inline-block;background:#fbe7d9;padding:4px 8px;border-radius:999px;margin-right:6px}.pill.warn{background:#fff3cd}.pill.bad{background:#f8d7da}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #eee;padding:7px;text-align:left}ul{margin:8px 0 0 18px;padding:0}
 </style></head><body><div class="wrap">
 <div class="card"><h1>${escapeHtml(title)}</h1><p><span class="pill${assessment.gain_window === "too_wide" ? " bad" : (assessment.gain_window === "gray" ? " warn" : "")}">${escapeHtml(gainWindowLabel(assessment.gain_window))}</span><span class="pill">${escapeHtml(bandLabel(assessment.band))}</span><span class="pill">分数 ${escapeHtml(assessment.score)}</span></p><div>${escapeHtml(assessment.summary)}</div><div style="margin-top:8px"><b>处理建议：</b>${escapeHtml(assessment.action)}</div><div style="margin-top:6px"><b>下一步：</b>${escapeHtml(assessment.next_step)}</div><div style="margin-top:6px"><b>模式策略：</b>${escapeHtml(assessment.third_mode_advice)}</div><ul>${assessment.reasons.map((reason)=>`<li>${escapeHtml(reason)}</li>`).join("")}</ul></div>
-<div class="card"><div class="grid"><div><b>Performance</b><div>结论：${escapeHtml(perf.verdict)}</div><div>评分：${perf.rating}</div><div>批次：${perf.batch_count}</div><div>雷点：${perf.thunder_count}</div><div>郁闷：${perf.dep_count}</div><div>风险：${perf.risk_count}</div><div>事件：${perf.event_count}</div><div>补证问题：${perf.follow_up_count}</div><div>关系边：${perf.relation_count}</div></div><div><b>Economy</b><div>结论：${escapeHtml(econ.verdict)}</div><div>评分：${econ.rating}</div><div>批次：${econ.batch_count}</div><div>雷点：${econ.thunder_count}</div><div>郁闷：${econ.dep_count}</div><div>风险：${econ.risk_count}</div><div>事件：${econ.event_count}</div><div>补证问题：${econ.follow_up_count}</div><div>关系边：${econ.relation_count}</div></div></div><p><span class="pill">覆盖率 ${(diff.coverage.economy_coverage_ratio*100).toFixed(1)}%</span><span class="pill">未覆盖 ${escapeHtml(diff.coverage.missed_batches_in_economy.join(', ') || '无')}</span></p></div>
-<div class="card"><h2>仅Performance出现</h2><div>雷点 ${diff.differences.only_in_performance.thunder.length} / 郁闷 ${diff.differences.only_in_performance.depression.length} / 风险 ${diff.differences.only_in_performance.risks.length} / 事件 ${diff.differences.only_in_performance.events.length} / 关系边 ${diff.differences.only_in_performance.relations.length}</div><table><thead><tr><th>类型</th><th>名称</th><th>锚点/证据</th></tr></thead><tbody>
+<div class="card"><div class="grid"><div><b>高覆盖复核（兼容 performance）</b><div>结论：${escapeHtml(perf.verdict)}</div><div>评分：${perf.rating}</div><div>批次：${perf.batch_count}</div><div>雷点：${perf.thunder_count}</div><div>郁闷：${perf.dep_count}</div><div>风险：${perf.risk_count}</div><div>事件：${perf.event_count}</div><div>补证问题：${perf.follow_up_count}</div><div>关系边：${perf.relation_count}</div></div><div><b>快速摸底（兼容 sampled/economy）</b><div>结论：${escapeHtml(econ.verdict)}</div><div>评分：${econ.rating}</div><div>批次：${econ.batch_count}</div><div>雷点：${econ.thunder_count}</div><div>郁闷：${econ.dep_count}</div><div>风险：${econ.risk_count}</div><div>事件：${econ.event_count}</div><div>补证问题：${econ.follow_up_count}</div><div>关系边：${econ.relation_count}</div></div></div><p><span class="pill">快速摸底覆盖率 ${(diff.coverage.economy_coverage_ratio*100).toFixed(1)}%</span><span class="pill">未覆盖 ${escapeHtml(diff.coverage.missed_batches_in_economy.join(', ') || '无')}</span></p></div>
+<div class="card"><h2>仅高覆盖复核出现</h2><div>雷点 ${diff.differences.only_in_performance.thunder.length} / 郁闷 ${diff.differences.only_in_performance.depression.length} / 风险 ${diff.differences.only_in_performance.risks.length} / 事件 ${diff.differences.only_in_performance.events.length} / 关系边 ${diff.differences.only_in_performance.relations.length}</div><table><thead><tr><th>类型</th><th>名称</th><th>锚点/证据</th></tr></thead><tbody>
 ${diff.differences.only_in_performance.depression.slice(0,30).map((d)=>`<tr><td>郁闷</td><td>${escapeHtml(d.rule)}</td><td>${escapeHtml(d.anchor||'-')}</td></tr>`).join('')}
 ${diff.differences.only_in_performance.risks.slice(0,30).map((r)=>`<tr><td>风险</td><td>${escapeHtml(r.risk)}</td><td>${escapeHtml(r.current_evidence||'-')}</td></tr>`).join('')}
 </tbody></table></div>

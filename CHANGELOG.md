@@ -13,6 +13,7 @@
 - `run_pipeline.mjs` 传给最终报告与数据库的标签前缀现在也改用 coverage-first 口径：`[SAMPLED]`、`[CHAPTER-FULL]`、`[FULL-BOOK]`，仅保留 `performance` 兼容路径下的中性回退值 `[HIGH-COVERAGE]`。
 - `compare` / `db_compare.mjs` 的默认维度与 `saoshu-scan-db` 示例命令现在也把 `coverage_mode`、`coverage_template` 放到 `pipeline_mode` 前面，减少用户继续按旧执行层别名理解对比入口。
 - `merged-report.html` 头部卡片与 `db_dashboard.mjs` 的“最近运行”表现在也把 `coverage_mode` 放到 `pipeline_mode` 前面展示；`pipeline_mode` 的用户标签已降为“兼容执行层”。
+- `compare_reports.mjs` 与 `mode_diff_ledger.mjs` 的用户可见摘要、建议、Markdown/HTML 标题现在也改成 coverage-first 第一叙事：优先说“快速摸底 / 高覆盖复核”，把 `economy / performance` 降为兼容说明。
 
 ### 重构
 - 抽出 `scripts/lib/report_relationships.mjs`，集中承接外部 `relationship-map.json` 的加载、归一化与关系边合并逻辑；`batch_merge.mjs` 进一步收敛为编排层。
