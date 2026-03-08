@@ -175,8 +175,8 @@ node scripts/run_pipeline.mjs --manifest references/architecture/manifest.exampl
 - `merge`
 
 模式建议：
-- `pipeline_mode=performance`：全批次。
-- `pipeline_mode=economy`：抽样批次。
+- 用户优先看 `coverage_mode`：`sampled` 用于快速摸底，`chapter-full` 用于章节级尽量完整，`full-book` 用于整书最终确认。
+- `pipeline_mode=performance|economy` 仍只作为兼容执行层保留：`sampled -> economy`，`chapter-full / full-book -> performance`。
 - `sample_strategy=risk-aware`：优先包含高风险密度批次（推荐）。
 - `sample_strategy=uniform`：等距抽样（对照实验用）。
 

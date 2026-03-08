@@ -113,33 +113,18 @@ node packages/saoshu-harem-review/scripts/run_pipeline.mjs --manifest examples/m
 
 ## 扫描模式
 
-### 当前基线：`economy` / `performance`
+### 当前 coverage-first 用户口径
 
-#### `economy`
+- `sampled`：**已可对外使用** 的快速摸底入口，当前可继续细分 `coverage_template`
+- `chapter-full`：**已进入 chapter-full v1**，面向章节级尽量完整；无章节文本时会自动退化为分段级全文扫描
+- `full-book`：**已进入 full-book v1**，面向整书最终确认；默认按整书连续分段做全文扫描，不依赖章节识别
 
-- 面向快速初筛
-- 使用抽样批次生成结论
-- 适合成本敏感或大体量文本的快速判断
+### 当前兼容执行层
 
-#### `performance`
+- `economy`：当前抽样执行基线，对应 `sampled`
+- `performance`：当前高覆盖执行基线，对应 `chapter-full / full-book`
 
-- 面向完整复核
-- 使用全批次生成结论
-- 适合关键决策、争议文本或需要更高覆盖率的场景
-
-### 下一阶段：转向 coverage-first
-
-项目下一阶段会把重点从“继续打磨抽样置信度”转到“提升正文覆盖层级”。
-
-当前 manifest 的稳定字段仍是 `pipeline_mode=economy|performance`；运行时已经接受 `coverage_mode=sampled|chapter-full|full-book` 作为兼容口径，便于后续逐步迁移入口文案与批处理配置。`manifest_wizard.mjs` 现在也会优先按 `coverage_mode` 生成配置，并自动补齐兼容的 `pipeline_mode`。
-
-#### 当前状态卡
-
-- `economy`：**已独立落地** 的执行模式，当前用于快速摸底
-- `performance`：**已独立落地** 的执行模式，当前用于高覆盖复核
-- `sampled`：**已可对外使用** 的 coverage-first 用户口径，当前实现映射到 `economy`，并可继续细分 `coverage_template`
-- `chapter-full`：**已进入 chapter-full v1**，当前仍复用 `performance` 主链，但在无章节文本上会自动退化为分段级全文扫描
-- `full-book`：**已进入 full-book v1**，当前仍复用 `performance` 后链，但默认按整书连续分段做全文扫描，不依赖章节识别
+项目当前主线已经转向 coverage-first：重点不再是“继续打磨抽样置信度”，而是逐步提升正文覆盖层级。当前 manifest 的稳定执行字段仍是 `pipeline_mode=economy|performance`；运行时已经接受 `coverage_mode=sampled|chapter-full|full-book` 作为用户入口口径，`manifest_wizard.mjs` 现在也会优先按 `coverage_mode` 生成配置，并自动补齐兼容的 `pipeline_mode`。
 
 #### 用户概念 -> 当前实现
 

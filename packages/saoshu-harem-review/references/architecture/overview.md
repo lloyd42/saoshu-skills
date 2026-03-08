@@ -55,13 +55,17 @@ workspace/
 4. `apply`：把复核结论回填到 `Bxx.json`
 5. `merge`：归并并输出三格式报告
 
-## 5.1 运行模式
-- `performance`（性能模式）：全批次处理，结论最完整，耗时更高。
-- `economy`（节能模式）：抽样批次处理，快速初判，需在报告中标注采样性质。
-- `economy` 抽样前会先全量扫描章节标题，优先挑选标题含高风险/高郁闷信号的批次，再用正文风险补足覆盖。
+## 5.1 覆盖模式（用户入口）
+- `sampled`：快速摸底，当前默认入口；运行时通常映射到兼容执行层 `pipeline_mode=economy`，需在报告中标注抽查性质。
+- `chapter-full`：章节级尽量完整；优先按章节做高覆盖扫描，章节识别失败时自动退化为分段级全文扫描。当前兼容映射到 `pipeline_mode=performance`。
+- `full-book`：整书最终确认；当前按整书连续分段做全文扫描，不依赖章节识别。当前兼容映射到 `pipeline_mode=performance`。
+- `economy / performance` 仍保留为执行层兼容字段，用于旧 manifest、脚本参数与数据库维度；面向用户的第一叙事应优先使用 `sampled / chapter-full / full-book`。
+- 当前 `sampled` / 兼容 `economy` 路径在抽查前会先全量扫描章节标题，优先挑选标题含高风险/高郁闷信号的批次，再用正文风险补足覆盖。
 
 manifest 字段：
-- `pipeline_mode`: `economy|performance`
+- `coverage_mode`: `sampled|chapter-full|full-book`
+- `coverage_template`: `opening-100|head-tail|head-tail-risk|opening-latest`（仅 `sampled` 可选）
+- `pipeline_mode`: `economy|performance`（兼容执行层）
 - `sample_mode`: `fixed|dynamic`
 - `sample_count`: `fixed` 模式抽样批次数（>=3）
 - `sample_level`: `dynamic` 模式档位 `auto|low|medium|high`
@@ -122,10 +126,10 @@ PDF 导出：
 - `P2-1` 增强：角色名归一化、弱边剪枝、前端可交互筛选（角色-角色/角色-信号/最小权重）。
 
 报告标签建议附加：
-- `coverage_mode=sampled` 或兼容 `economy`: `[SAMPLED]`
+- `coverage_mode=sampled`；若旧配置仍仅写 `pipeline_mode=economy`，也归入 `[SAMPLED]`
 - `coverage_mode=chapter-full`: `[CHAPTER-FULL]`
 - `coverage_mode=full-book`: `[FULL-BOOK]`
-- 仅有兼容 `performance` 且未显式声明覆盖口径时：`[HIGH-COVERAGE]`
+- 仅有兼容 `pipeline_mode=performance` 且未显式声明 `coverage_mode` 时：`[HIGH-COVERAGE]`
 
 ## 6. 变更治理（必须遵守）
 - 任何新增字段先更新 schema，再改脚本。

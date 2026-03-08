@@ -15,23 +15,28 @@
 ```mermaid
 flowchart TD
   A[输入: manifest + txt] --> B[chunk: scan_txt_batches]
-  B --> C{pipeline_mode}
-  C -->|performance| D[batches-all]
-  C -->|economy| E[sample_batches]
-  E --> F[batches-sampled]
-  D --> G[enrich_batches]
-  F --> G
-  G --> H[review_contexts]
-  H --> I[apply_review_results]
-  I --> J[batch_merge]
-  J --> K[merged-report.json/md/html]
-  K --> L{db_mode}
-  L -->|none| M[结束]
-  L -->|local| N[saoshu-scan-db/db_ingest]
-  L -->|external| O[db_ingest_cmd]
-  N --> P[scan-db统计/仪表盘]
-  O --> P
+  B --> C{coverage_mode}
+  C -->|sampled| D[sample_batches]
+  D --> E[batches-sampled]
+  C -->|chapter-full| F[batches-all\n章节优先 / 失败时 segment-fallback]
+  C -->|full-book| G[batches-all\nsegment-full-book]
+  E --> H[enrich_batches]
+  F --> H
+  G --> H
+  H --> I[review_contexts]
+  I --> J[apply_review_results]
+  J --> K[batch_merge]
+  K --> L[merged-report.json/md/html]
+  L --> M{db_mode}
+  M -->|none| N[结束]
+  M -->|local| O[saoshu-scan-db/db_ingest]
+  M -->|external| P[db_ingest_cmd]
+  O --> Q[scan-db统计/仪表盘]
+  P --> Q
 ```
+
+- 用户入口优先理解 `coverage_mode=sampled|chapter-full|full-book`。
+- `pipeline_mode=economy|performance` 仍保留为兼容执行层：`sampled -> economy`，`chapter-full / full-book -> performance`。
 
 ## 3. 架构图（能力拆分）
 ```mermaid
@@ -82,8 +87,8 @@ flowchart LR
 5. 运行状态记录（`pipeline-state.json`）。
 
 ### 4.2 强烈建议功能（默认应开）
-1. economy/performance 双模式。
-2. dynamic 抽样与 auto 档位推荐。
+1. `sampled / chapter-full / full-book` 三档 coverage-first 入口；`economy / performance` 仅作为兼容执行层保留。
+2. `sampled` 路径的 dynamic 抽查与 auto 档位推荐。
 3. 报告审计面板（过程可追溯）。
 4. 术语百科接入（新人可读性）。
 
@@ -126,6 +131,7 @@ flowchart LR
 ## 8. 推荐默认配置（面向普通用户）
 ```json
 {
+  "coverage_mode": "sampled",
   "pipeline_mode": "economy",
   "sample_mode": "dynamic",
   "sample_level": "auto",
@@ -135,6 +141,9 @@ flowchart LR
   "db_path": "./scan-db"
 }
 ```
+
+- 普通用户默认先按 `coverage_mode=sampled` 理解；`pipeline_mode=economy` 是当前兼容执行层映射。
+- 需要更高覆盖时，优先升级到 `chapter-full`；需要最终确认或绕开章节前置时，再升级到 `full-book`。
 
 ## 9. 最小操作路径（新人）
 1. 准备 manifest（可复制示例改 5 个字段）。

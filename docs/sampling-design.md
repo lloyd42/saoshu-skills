@@ -196,9 +196,9 @@ sampled(template)
 
 ## 模板与现有能力的关系
 
-### 与 `economy`
+### 与当前兼容执行层
 
-当前可以把这些模板理解为未来 `economy` / `sampled` 的内部演化方向，而不是与 `economy` 平级的新模式。
+当前可以把这些模板理解为 `sampled` 的内部实现演化方向；兼容执行层里它们仍主要落在 `economy` 路径，而不是与 `sampled` 平级的新模式。
 
 ### 与 `risk-aware`
 
