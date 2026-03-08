@@ -367,6 +367,9 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
   if (meta.serialStatus) {
     sampleBasis.push(formatUiKeyValue("serial_status", lineOrDash(meta.serialStatus), { bilingual: true }));
   }
+  if (meta.pipelineMode) {
+    sampleBasis.push(formatUiKeyValue("pipeline_mode", lineOrDash(meta.pipelineMode), { bilingual: true }));
+  }
   if (String(meta.pipelineMode) === "economy") {
     sampleBasis.push(formatUiKeyValue("sample_mode", lineOrDash(meta.sampleMode), { bilingual: true }));
     sampleBasis.push(formatUiKeyValue("sample_strategy", lineOrDash(meta.sampleStrategy), { bilingual: true }));
@@ -391,10 +394,9 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
         summarizeSelectionWindows(sampleReasons).forEach((item) => sampleBasis.push(`模板区间：${item}`));
       }
     }
-    if (coverageGap.summary) sampleBasis.push(`未覆盖提醒：${coverageGap.summary}`);
-    if (coverageGap.riskTypes.length > 0) sampleBasis.push(`保守关注：${coverageGap.riskTypes.join("、")}`);
+      if (coverageGap.summary) sampleBasis.push(`未覆盖提醒：${coverageGap.summary}`);
+      if (coverageGap.riskTypes.length > 0) sampleBasis.push(`保守关注：${coverageGap.riskTypes.join("、")}`);
   } else {
-    sampleBasis.push(`扫描模式：${formatUiTerm("performance", { bilingual: true })}`);
     if (meta.coverageUnit) sampleBasis.push(formatUiKeyValue("coverage_unit", lineOrDash(meta.coverageUnit), { bilingual: true }));
     if (meta.chapterDetectUsedMode) sampleBasis.push(formatUiKeyValue("chapter_detect_used_mode", lineOrDash(meta.chapterDetectUsedMode), { bilingual: true }));
     if (meta.coverageMode === "chapter-full" && meta.coverageUnit === "segment") sampleBasis.push("执行说明：章节识别失败后，当前已退化为分段级全文扫描");
@@ -763,7 +765,8 @@ body.view-newbie .expert-only{display:none}
       <div class="kv"><div class="k">目标防御</div><div class="v">${escapeHtml(data.novel.target_defense)}</div></div>
       <div class="kv"><div class="k">扫描批次</div><div class="v">${data.scan.batch_count}</div></div>
       <div class="kv"><div class="k">结论 / 评分</div><div class="v"><span class="badge">${escapeHtml(data.overall.verdict)} · ${data.overall.rating}/10</span></div></div>
-      <div class="kv"><div class="k">运行模式</div><div class="v">${escapeHtml(formatUiTerm(sampling.pipeline_mode || "-", { bilingual: true }))}</div></div>
+      <div class="kv"><div class="k">覆盖口径</div><div class="v">${escapeHtml(formatUiTerm(sampling.coverage_mode && sampling.coverage_mode !== "-" ? sampling.coverage_mode : "-", { bilingual: true }))}</div></div>
+      <div class="kv"><div class="k">兼容执行层</div><div class="v">${escapeHtml(formatUiTerm(sampling.pipeline_mode || "-", { bilingual: true }))}</div></div>
       ${sampling.coverage_template && sampling.coverage_template !== "-" ? `<div class="kv"><div class="k">覆盖模板</div><div class="v">${escapeHtml(formatUiTerm(sampling.coverage_template || "-", { bilingual: true }))}</div></div>` : ""}
       ${sampling.coverage_unit && sampling.coverage_unit !== "-" ? `<div class="kv"><div class="k">覆盖单元</div><div class="v">${escapeHtml(formatUiTerm(sampling.coverage_unit || "-", { bilingual: true }))}</div></div>` : ""}
       ${sampling.chapter_detect_used_mode && sampling.chapter_detect_used_mode !== "-" ? `<div class="kv"><div class="k">章节识别路径</div><div class="v">${escapeHtml(formatUiTerm(sampling.chapter_detect_used_mode || "-", { bilingual: true }))}</div></div>` : ""}

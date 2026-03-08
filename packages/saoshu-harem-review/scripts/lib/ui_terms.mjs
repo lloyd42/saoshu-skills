@@ -28,7 +28,7 @@ const UI_TERM_LABELS = {
   event_candidates: "事件候选",
   selection_reasons: "抽样原因",
   pipeline_state: "流程状态",
-  pipeline_mode: "扫描模式",
+  pipeline_mode: "兼容执行层",
   coverage_mode: "覆盖口径",
   coverage_template: "覆盖模板",
   coverage_unit: "覆盖单元",

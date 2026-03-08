@@ -109,6 +109,10 @@ const dashboard = runNode("packages/saoshu-scan-db/scripts/db_dashboard.mjs", ["
 if (dashboard.status === 0 && fs.existsSync(dashboardPath)) ok("db_dashboard renders mode-diff aware dashboard");
 else fail(`db_dashboard failed\nSTDERR:\n${dashboard.stderr}`);
 
+const dashboardHtml = fs.readFileSync(dashboardPath, "utf8");
+if (dashboardHtml.includes("覆盖口径") && dashboardHtml.includes("兼容执行层") && dashboardHtml.indexOf("覆盖口径") < dashboardHtml.indexOf("兼容执行层")) ok("db_dashboard recent-runs table prefers coverage-first column ordering");
+else fail("db_dashboard recent-runs table should prefer coverage-first column ordering");
+
 const trendsDir = path.join(tmpRoot, "trends");
 const trends = runNode("packages/saoshu-scan-db/scripts/db_trends.mjs", ["--db", dbDir, "--output-dir", trendsDir]);
 if (trends.status === 0 && fs.existsSync(path.join(trendsDir, "trends.json"))) ok("db_trends renders mode-diff aware trends outputs");

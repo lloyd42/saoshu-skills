@@ -74,6 +74,8 @@ const result = runNode("packages/saoshu-harem-review/scripts/batch_merge.mjs", [
   "--author", "Codex",
   "--tags", "测试",
   "--target-defense", "布甲",
+  "--pipeline-mode", "economy",
+  "--coverage-mode", "sampled",
   "--report-default-view", "newbie",
 ]);
 
@@ -90,6 +92,9 @@ else fail("html should render decision/evidence/deep-dive sections");
 
 if (html.includes("body.view-newbie .expert-only{display:none}") && html.includes(">事件候选复核<") && html.includes("expert-only")) ok("html keeps expert sections collapsible in newbie view");
 else fail("html should keep detailed sections hidden in newbie view");
+
+if (html.includes(">覆盖口径<") && html.includes(">兼容执行层<") && html.indexOf(">覆盖口径<") < html.indexOf(">兼容执行层<")) ok("html hero shows coverage-first wording before compatibility layer");
+else fail("html hero should show coverage-first wording before compatibility layer");
 
 if (!hasFailure) console.log("Report view structure check passed.");
 else process.exitCode = 1;
