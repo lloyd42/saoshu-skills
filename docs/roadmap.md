@@ -223,6 +223,9 @@ npm run check
 
 前提是不要破坏现有入口路径；可以先内部整理，再逐步兼容。
 
+`scripts/checks/` 已先落地：顶层 `check_*.mjs` 继续保留薄 wrapper，真实实现已迁到 `packages/saoshu-harem-review/scripts/checks/`；这一步先解决目录拥挤，不强迫外部调用立即改路径。
+
+
 当前已先走了一步轻量分层：`run_pipeline.mjs` 的覆盖推荐/模板推荐辅助已抽到 `scripts/lib/pipeline_coverage.mjs`，term-wiki / scan-db 的路径发现与外部入库命令拼装已抽到 `scripts/lib/pipeline_integrations.mjs`，后续可继续沿这条方向拆编排入口。
 
 ### 9. 评估是否需要引入更细的自动化质量门
