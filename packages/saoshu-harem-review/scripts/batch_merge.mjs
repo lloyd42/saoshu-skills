@@ -12,6 +12,10 @@ import {
   recordMergeSignal,
 } from "./lib/report_merge_stats.mjs";
 import {
+  loadRelationshipRows,
+  mergeRelationshipRows,
+} from "./lib/report_relationships.mjs";
+import {
   keyOfDep,
   keyOfRisk,
   keyOfThunder,
@@ -249,38 +253,6 @@ function writeFile(target, content) {
   return filePath;
 }
 
-function loadRelationshipMap(filePath) {
-  if (!filePath) return [];
-  const absolutePath = path.resolve(filePath);
-  if (!fs.existsSync(absolutePath)) return [];
-  try {
-    const payload = readJsonFile(absolutePath);
-    const rows = Array.isArray(payload) ? payload : (Array.isArray(payload.relationships) ? payload.relationships : []);
-    return rows
-      .map((item) => ({
-        from: String(item.from || "").trim(),
-        to: String(item.to || "").trim(),
-        type: String(item.type || item.label || "关系").trim(),
-        weight: Number(item.weight || 1),
-        evidence: String(item.evidence || "relationship_map").trim(),
-        source: String(item.source || "human_promoted").trim(),
-      }))
-      .filter((item) => item.from && item.to);
-  } catch {
-    return [];
-  }
-}
-
-function mergeRelationshipRows(baseRows, extraRows) {
-  const relationMap = new Map();
-  for (const row of [...normList(baseRows), ...normList(extraRows)]) {
-    const key = `${row.from}|${row.to}|${row.type}`;
-    if (!relationMap.has(key)) relationMap.set(key, { ...row });
-    else relationMap.get(key).weight = Number(relationMap.get(key).weight || 0) + Number(row.weight || 0);
-  }
-  return [...relationMap.values()].sort((left, right) => Number(right.weight || 0) - Number(left.weight || 0)).slice(0, 80);
-}
-
 function main() {
   const args = parseArgs(process.argv);
   if (!args) return usage();
@@ -299,7 +271,7 @@ function main() {
   args.glossaryRows = loadGlossary(args.wikiDict);
   args.glossaryIndex = buildGlossaryIndex(args.glossaryRows);
   args.riskQuestionRows = loadRiskQuestionPool(args.riskQuestionPool);
-  args.relationshipRows = loadRelationshipMap(args.relationshipMap);
+  args.relationshipRows = loadRelationshipRows(args.relationshipMap);
 
   const merged = mergeBatches(batches);
   merged.metadata.relationships = mergeRelationshipRows(merged.metadata.relationships, args.relationshipRows);
