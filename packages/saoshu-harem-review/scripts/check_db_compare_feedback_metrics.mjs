@@ -33,8 +33,8 @@ const dbDir = path.join(tmpRoot, "scan-db");
 const outDir = path.join(tmpRoot, "compare");
 
 writeJsonl(path.join(dbDir, "runs.jsonl"), [
-  { title: "A", author: "甲", tags: "后宫/玄幻", verdict: "慎入", rating: 5, thunder_total: 1, depression_total: 2, risk_total: 3, coverage_mode: "sampled", coverage_template: "opening-100", serial_status: "ongoing", coverage_ratio: 0.8, keyword_candidate_total: 4, alias_candidate_total: 2, risk_question_candidate_total: 3, relation_candidate_total: 1 },
-  { title: "B", author: "甲", tags: "后宫/都市", verdict: "可看", rating: 7, thunder_total: 0, depression_total: 1, risk_total: 1, coverage_mode: "sampled", coverage_template: "head-tail", serial_status: "completed", coverage_ratio: 0.9, keyword_candidate_total: 6, alias_candidate_total: 4, risk_question_candidate_total: 2, relation_candidate_total: 5 },
+  { title: "A", author: "甲", tags: "后宫/玄幻", verdict: "慎入", rating: 5, thunder_total: 1, depression_total: 2, risk_total: 3, coverage_mode: "sampled", coverage_template: "opening-100", coverage_decision_action: "upgrade-chapter-full", coverage_decision_confidence: "cautious", serial_status: "ongoing", coverage_ratio: 0.8, keyword_candidate_total: 4, alias_candidate_total: 2, risk_question_candidate_total: 3, relation_candidate_total: 1 },
+  { title: "B", author: "甲", tags: "后宫/都市", verdict: "可看", rating: 7, thunder_total: 0, depression_total: 1, risk_total: 1, coverage_mode: "sampled", coverage_template: "head-tail", coverage_decision_action: "keep-sampled", coverage_decision_confidence: "stable", serial_status: "completed", coverage_ratio: 0.9, keyword_candidate_total: 6, alias_candidate_total: 4, risk_question_candidate_total: 2, relation_candidate_total: 5 },
 ]);
 
 writeJsonl(path.join(dbDir, "mode_diff_entries.jsonl"), [
@@ -42,7 +42,7 @@ writeJsonl(path.join(dbDir, "mode_diff_entries.jsonl"), [
   { title: "B", author: "甲", tags: ["后宫", "都市"], gain_window: "too_wide", band: "fallback_to_performance", score: 8.2, coverage_ratio: 0.4 },
 ]);
 
-const result = runNode("packages/saoshu-scan-db/scripts/db_compare.mjs", ["--db", dbDir, "--dimensions", "author,tags,coverage_mode,coverage_template,serial_status,mode_diff_gain_window", "--output-dir", outDir]);
+const result = runNode("packages/saoshu-scan-db/scripts/db_compare.mjs", ["--db", dbDir, "--dimensions", "author,tags,coverage_mode,coverage_template,coverage_decision_action,serial_status,mode_diff_gain_window", "--output-dir", outDir]);
 if (result.status === 0) ok("db_compare feedback metrics run");
 else fail(`db_compare feedback metrics run failed\nSTDERR:\n${result.stderr}`);
 
@@ -70,13 +70,18 @@ else fail(`db_compare should expose coverage_mode dimension: ${JSON.stringify(sa
 
 const defaultPayload = JSON.parse(defaultResult.stdout || "{}");
 const defaultDimensions = Array.isArray(defaultPayload.groups) ? defaultPayload.groups.map((item) => item.dimension) : [];
-if (JSON.stringify(defaultDimensions.slice(0, 5)) === JSON.stringify(["author", "tags", "verdict", "coverage_mode", "coverage_template"])) ok("db_compare default dimensions prefer coverage-first ordering");
+if (JSON.stringify(defaultDimensions.slice(0, 6)) === JSON.stringify(["author", "tags", "verdict", "coverage_mode", "coverage_template", "coverage_decision_action"])) ok("db_compare default dimensions prefer coverage-first ordering");
 else fail(`db_compare default dimensions should prefer coverage-first ordering: ${JSON.stringify(defaultDimensions)}`);
 
 const coverageTemplateGroup = Array.isArray(payload.groups) ? payload.groups.find((item) => item.dimension === "coverage_template") : null;
 const headTailRow = Array.isArray(coverageTemplateGroup?.rows) ? coverageTemplateGroup.rows.find((item) => item.key === "head-tail") : null;
 if (headTailRow?.runs === 1 && headTailRow?.avg_coverage === 0.9) ok("db_compare supports coverage_template dimension");
 else fail(`db_compare should expose coverage_template dimension: ${JSON.stringify(headTailRow)}`);
+
+const coverageDecisionGroup = Array.isArray(payload.groups) ? payload.groups.find((item) => item.dimension === "coverage_decision_action") : null;
+const upgradeRow = Array.isArray(coverageDecisionGroup?.rows) ? coverageDecisionGroup.rows.find((item) => item.key === "upgrade-chapter-full") : null;
+if (upgradeRow?.runs === 1 && upgradeRow?.avg_coverage === 0.8) ok("db_compare supports coverage_decision_action dimension");
+else fail(`db_compare should expose coverage_decision_action dimension: ${JSON.stringify(upgradeRow)}`);
 
 const serialStatusGroup = Array.isArray(payload.groups) ? payload.groups.find((item) => item.dimension === "serial_status") : null;
 const completedRow = Array.isArray(serialStatusGroup?.rows) ? serialStatusGroup.rows.find((item) => item.key === "completed") : null;

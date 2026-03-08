@@ -5,13 +5,13 @@ import { getModeDiffDbFile, readJsonl, splitTags, toNumber } from "./lib/mode_di
 import { writeUtf8File, writeUtf8Json } from "../../saoshu-harem-review/scripts/lib/text_output.mjs";
 
 function usage() {
-  console.log("Usage: node db_compare.mjs --db <dir> [--dimensions author,tags,verdict,coverage_mode,coverage_template,pipeline_mode,coverage_unit,chapter_detect_used_mode,serial_status,target_defense,title,mode_diff_gain_window,mode_diff_band] [--top 20] [--output-dir <dir>]");
+  console.log("Usage: node db_compare.mjs --db <dir> [--dimensions author,tags,verdict,coverage_mode,coverage_template,coverage_decision_action,coverage_decision_confidence,pipeline_mode,coverage_unit,chapter_detect_used_mode,serial_status,target_defense,title,mode_diff_gain_window,mode_diff_band] [--top 20] [--output-dir <dir>]");
 }
 
 function parseArgs(argv) {
   const out = {
     db: "",
-    dimensions: "author,tags,verdict,coverage_mode,coverage_template,pipeline_mode,target_defense",
+    dimensions: "author,tags,verdict,coverage_mode,coverage_template,coverage_decision_action,pipeline_mode,target_defense",
     top: 20,
     outputDir: "",
   };

@@ -13,7 +13,7 @@ export function showCliHelp() {
   console.log("  node saoshu_cli.mjs db ingest --db <dir> --report <merged-report.json> [--state <pipeline-state.json>] [--manifest <manifest.json>]");
   console.log("  node saoshu_cli.mjs db ingest-mode-diff --db <dir> --ledger <mode-diff-ledger.jsonl>");
   console.log("  node saoshu_cli.mjs db assets --db <dir> --output-dir <dir>");
-  console.log("  node saoshu_cli.mjs compare --db <dir> [--dimensions author,tags,verdict,coverage_mode,coverage_template,pipeline_mode,target_defense,title,mode_diff_gain_window,mode_diff_band] [--output-dir <dir>]");
+  console.log("  node saoshu_cli.mjs compare --db <dir> [--dimensions author,tags,verdict,coverage_mode,coverage_template,coverage_decision_action,coverage_decision_confidence,pipeline_mode,target_defense,title,mode_diff_gain_window,mode_diff_band] [--output-dir <dir>]");
   console.log("  node saoshu_cli.mjs compare ledger --ledger <mode-diff-ledger.jsonl> --output-dir <dir> [--title <name>]");
   console.log("  node saoshu_cli.mjs compare discover --root <dir> --output <queue.json> [--db <dir>]");
   console.log("  node saoshu_cli.mjs compare record --perf <perf.json> --econ <econ.json> --out-dir <dir> --ledger <mode-diff-ledger.jsonl> [--db <dir>]");

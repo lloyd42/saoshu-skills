@@ -123,7 +123,7 @@ export function handleCompare(rest, context) {
   }
 
   const db = requireArg(valueOf(rest, "--db"), "compare 缺少 `--db`", "示例：node saoshu_cli.mjs compare --db ./scan-db");
-  const dimensions = valueOf(rest, "--dimensions", "author,tags,verdict,coverage_mode,coverage_template,pipeline_mode,target_defense");
+  const dimensions = valueOf(rest, "--dimensions", "author,tags,verdict,coverage_mode,coverage_template,coverage_decision_action,pipeline_mode,target_defense");
   const outputDir = valueOf(rest, "--output-dir", "");
   const top = valueOf(rest, "--top", "20");
   const compareScript = path.join(getInstalledSkillPath("saoshu-scan-db", context.importMetaUrl), "scripts/db_compare.mjs");

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { writeUtf8File, writeUtf8Json } from "./lib/text_output.mjs";
+import { writeUtf8File, writeUtf8Json, writeUtf8Jsonl } from "./lib/text_output.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const tmpRoot = path.join(repoRoot, ".tmp", "check-db-mode-diff-integration");
@@ -63,6 +63,7 @@ fs.rmSync(tmpRoot, { recursive: true, force: true });
 fs.mkdirSync(tmpRoot, { recursive: true });
 const ledgerPath = path.join(tmpRoot, "mode-diff-ledger.jsonl");
 const dbDir = path.join(tmpRoot, "scan-db");
+writeUtf8Jsonl(path.join(dbDir, "runs.jsonl"), [{ ingested_at: "2026-03-08T09:00:00Z", title: "仪表盘夹具", verdict: "慎入", rating: 5, coverage_mode: "sampled", coverage_template: "opening-latest", coverage_decision_action: "upgrade-chapter-full", coverage_decision_confidence: "cautious", pipeline_mode: "economy", coverage_unit: "chapter", chapter_detect_used_mode: "script", serial_status: "ongoing", coverage_ratio: 0.5, coverage_gap_summary: "中后段仍未完整覆盖" }]);
 
 const cases = [
   { title: "玄幻样本", author: "作者甲", tags: ["玄幻", "多女主"] },
@@ -112,6 +113,9 @@ else fail(`db_dashboard failed\nSTDERR:\n${dashboard.stderr}`);
 const dashboardHtml = fs.readFileSync(dashboardPath, "utf8");
 if (dashboardHtml.includes("覆盖口径") && dashboardHtml.includes("兼容执行层") && dashboardHtml.indexOf("覆盖口径") < dashboardHtml.indexOf("兼容执行层")) ok("db_dashboard recent-runs table prefers coverage-first column ordering");
 else fail("db_dashboard recent-runs table should prefer coverage-first column ordering");
+
+if (dashboardHtml.includes("升级建议") && dashboardHtml.includes("建议把握") && dashboardHtml.includes("升级到 chapter-full") && dashboardHtml.includes("谨慎")) ok("db_dashboard surfaces coverage decision defaults");
+else fail("db_dashboard should surface coverage decision defaults");
 
 const trendsDir = path.join(tmpRoot, "trends");
 const trends = runNode("packages/saoshu-scan-db/scripts/db_trends.mjs", ["--db", dbDir, "--output-dir", trendsDir]);

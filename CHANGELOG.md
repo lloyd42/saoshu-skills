@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### 改进
+- `db_compare.mjs` 默认维度现在会带上 `coverage_decision_action`，CLI/README/skill 示例也同步到这条覆盖升级建议视角。
+- `db_dashboard.mjs` 首页和“最近运行”现在会默认展示升级建议与建议把握，帮助直接判断哪些作品更常需要升到 `chapter-full` / `full-book`。
+
 ## [0.5.2] - 2026-03-08
 
 ### 改进

@@ -27,11 +27,12 @@
 
 常见多维对比建议优先按 coverage-first 口径看：
 
-- `node scripts/db_compare.mjs --db ./scan-db --dimensions author,tags,verdict,coverage_mode,coverage_template,pipeline_mode --output-dir ./scan-db/compare`
+- `node scripts/db_compare.mjs --db ./scan-db --dimensions author,tags,verdict,coverage_mode,coverage_template,coverage_decision_action,pipeline_mode --output-dir ./scan-db/compare`
 
 ## Coverage 字段说明
 - `runs.jsonl` 当前会保留 `coverage_mode`、`coverage_template`、`coverage_unit`、`chapter_detect_used_mode`、`serial_status`、`total_batches`、`selected_batches`、`coverage_ratio`、`coverage_gap_summary`、`coverage_gap_risk_types`、`coverage_decision_action`、`coverage_decision_confidence`、`coverage_decision_reasons`。
-- 这些字段来自 `merged-report.json` 的 `scan.sampling`，上游再追到 manifest 兼容层与 sampled 模板逻辑。
+- 这些字段来自 `merged-report.json` 的 `scan.sampling` 与 `scan.coverage_decision`，上游再追到 manifest 兼容层、sampled 模板逻辑与升级建议合同。
+- 默认 compare 现在也会按 `coverage_decision_action` 分块，dashboard 的“最近运行”会直接展示升级建议与建议把握。
 - 需要看完整字段合同与适用边界，优先看 `references/db-schema.md`。
 
 ## References

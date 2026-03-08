@@ -26,7 +26,7 @@ description: 扫书结果数据库技能。用于把 merged-report/pipeline-stat
 - 生成仪表盘：
 `node scripts/db_dashboard.mjs --db ./scan-db --output ./scan-db/dashboard.html`
 - 多维对比（作者/标签/结论/覆盖口径优先，内部执行层兼容保留）：
-`node scripts/db_compare.mjs --db ./scan-db --dimensions author,tags,verdict,coverage_mode,coverage_template,pipeline_mode --output-dir ./scan-db/compare`
+`node scripts/db_compare.mjs --db ./scan-db --dimensions author,tags,verdict,coverage_mode,coverage_template,coverage_decision_action,pipeline_mode --output-dir ./scan-db/compare`
 - 趋势报告（日期/作者/标签）：
 `node scripts/db_trends.mjs --db ./scan-db --output-dir ./scan-db/trends`
 
