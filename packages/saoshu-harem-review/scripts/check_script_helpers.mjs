@@ -33,7 +33,7 @@ import path from "node:path";
 const output = process.argv[2];
 const payload = { args: process.argv.slice(3) };
 fs.mkdirSync(path.dirname(output), { recursive: true });
-fs.writeFileSync(output, JSON.stringify(payload, null, 2), "utf8");
+await fs.promises.writeFile(output, Buffer.from(JSON.stringify(payload, null, 2), "utf8"));
 `);
 
 const args = [];
