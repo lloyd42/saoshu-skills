@@ -26,10 +26,16 @@ export function pipelineModeForCoverageMode(coverageMode) {
   return "performance";
 }
 
+export function legacyCoverageModeForPipelineMode(pipelineMode) {
+  if (pipelineMode === "economy") return "sampled";
+  if (pipelineMode === "performance") return "chapter-full";
+  return "";
+}
+
 function resolveCoverageCompatibility(manifest) {
-  const coverageMode = String(manifest.coverage_mode || "").trim();
-  if (coverageMode) {
-    assertEnum(coverageMode, COVERAGE_MODES, "coverage_mode");
+  const explicitCoverageMode = String(manifest.coverage_mode || "").trim();
+  if (explicitCoverageMode) {
+    assertEnum(explicitCoverageMode, COVERAGE_MODES, "coverage_mode");
   }
 
   const explicitPipelineMode = String(manifest.pipeline_mode || "").trim();
@@ -37,8 +43,8 @@ function resolveCoverageCompatibility(manifest) {
     assertEnum(explicitPipelineMode, ["performance", "economy"], "pipeline_mode");
   }
 
-  if (coverageMode && explicitPipelineMode) {
-    const expectedPipelineMode = pipelineModeForCoverageMode(coverageMode);
+  if (explicitCoverageMode && explicitPipelineMode) {
+    const expectedPipelineMode = pipelineModeForCoverageMode(explicitCoverageMode);
     if (explicitPipelineMode !== expectedPipelineMode) {
       pipelineUsage(
         "coverage_mode 与 pipeline_mode 冲突",
@@ -46,6 +52,8 @@ function resolveCoverageCompatibility(manifest) {
       );
     }
   }
+
+  const coverageMode = explicitCoverageMode || legacyCoverageModeForPipelineMode(explicitPipelineMode);
 
   return {
     coverageMode,

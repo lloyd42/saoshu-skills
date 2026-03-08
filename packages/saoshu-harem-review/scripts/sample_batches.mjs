@@ -71,6 +71,10 @@ function pickIndexes(n, k) {
   return [...set].sort((a, b) => a - b);
 }
 
+function sortedIndexes(indexes) {
+  return [...indexes].sort((a, b) => a - b);
+}
+
 function readJson(p) {
   return JSON.parse(fs.readFileSync(p, "utf8"));
 }
@@ -119,6 +123,83 @@ function hasCriticalSignal(batch) {
   return false;
 }
 
+function buildCoverageGaps(total, chosen) {
+  const sorted = sortedIndexes(chosen);
+  const gaps = [];
+  let previous = -1;
+  for (const current of [...sorted, total]) {
+    const start = previous + 1;
+    const end = current - 1;
+    if (end >= start) {
+      gaps.push({
+        start,
+        end,
+        length: end - start + 1,
+      });
+    }
+    previous = current;
+  }
+  return gaps;
+}
+
+function gapRescuePriority(row, total) {
+  const laterBias = total > 1 ? (row.i / (total - 1)) * 6 : 0;
+  const criticalBonus = row.titleCritical ? 18 : (row.critical ? 6 : 0);
+  return row.combinedScore + criticalBonus + laterBias;
+}
+
+function hasMeaningfulSignal(row) {
+  return row.titleCritical || row.critical || row.titleScore > 0 || row.score > 0 || row.combinedScore > 0;
+}
+
+function pickGapRescueIndexes(meta, chosenSet, targetCount, options = {}) {
+  const selected = new Set(chosenSet);
+  const picks = [];
+  const total = meta.length;
+  const minGapLength = Number.isFinite(Number(options.minGapLength)) ? Number(options.minGapLength) : 2;
+  const preferLater = options.preferLater !== false;
+
+  while (selected.size < targetCount) {
+    const gaps = buildCoverageGaps(total, selected).filter((gap) => gap.length >= minGapLength);
+    if (gaps.length === 0) break;
+
+    const candidates = gaps.map((gap) => {
+      const laterHalfStart = preferLater && gap.length >= 4
+        ? Math.max(gap.start, Math.ceil((gap.start + gap.end) / 2))
+        : gap.start;
+      const laterPool = meta.filter((row) => row.i >= laterHalfStart && row.i <= gap.end && !selected.has(row.i) && hasMeaningfulSignal(row));
+      const fullPool = laterPool.length > 0
+        ? laterPool
+        : meta.filter((row) => row.i >= gap.start && row.i <= gap.end && !selected.has(row.i));
+      if (fullPool.length === 0) return null;
+
+      const best = [...fullPool].sort((left, right) => {
+        const scoreGap = gapRescuePriority(right, total) - gapRescuePriority(left, total);
+        if (scoreGap !== 0) return scoreGap;
+        return right.i - left.i;
+      })[0];
+      const gapCenter = total > 1 ? ((gap.start + gap.end) / 2) / (total - 1) : 0;
+      return {
+        gap,
+        row: best,
+        gapPriority: gap.length * 10 + gapCenter * 5,
+      };
+    }).filter(Boolean);
+
+    if (candidates.length === 0) break;
+    candidates.sort((left, right) => {
+      if (right.gapPriority !== left.gapPriority) return right.gapPriority - left.gapPriority;
+      return gapRescuePriority(right.row, total) - gapRescuePriority(left.row, total);
+    });
+
+    const picked = candidates[0].row;
+    selected.add(picked.i);
+    picks.push(picked.i);
+  }
+
+  return picks;
+}
+
 function pickRiskAware(files, inputDir, k, prebuiltMeta = null) {
   const n = files.length;
   if (k >= n) return files.map((_, i) => i);
@@ -135,6 +216,12 @@ function pickRiskAware(files, inputDir, k, prebuiltMeta = null) {
     .sort((a, b) => b.titleScore - a.titleScore || b.score - a.score)
     .map((x) => x.i);
   for (const idx of titleCriticalIdx) {
+    if (chosen.size >= k) break;
+    chosen.add(idx);
+  }
+
+  const gapRescueIdx = pickGapRescueIndexes(meta, chosen, k, { preferLater: true, minGapLength: 2 });
+  for (const idx of gapRescueIdx) {
     if (chosen.size >= k) break;
     chosen.add(idx);
   }
@@ -253,11 +340,25 @@ function pickTemplateSelection(meta, templateName, targetCount, serialStatus) {
     addIndexes(tailIndexes, "尾部窗口", "覆盖尾部100章附近，优先防结局翻车与后期反转", 2, "tail-window");
     const scored = [...meta].sort((a, b) => b.combinedScore - a.combinedScore || b.titleScore - a.titleScore || b.score - a.score);
     const expectedCount = Math.max(targetCount, chosen.size);
+    const gapRescueIndexes = pickGapRescueIndexes(meta, chosen, expectedCount, { preferLater: true, minGapLength: 2 });
+    for (const idx of gapRescueIndexes) {
+      if (chosen.size >= expectedCount) break;
+      if (chosen.has(idx)) continue;
+      chosen.add(idx);
+      addNote(noteMap, idx, noteForWindow("覆盖补位", "在未覆盖的大空档中补入代表批次，优先压缩中后段漏检", 3, "coverage-rescue"));
+    }
+    const tailSingletonRescueIndexes = pickGapRescueIndexes(meta, chosen, expectedCount, { preferLater: true, minGapLength: 1 });
+    for (const idx of tailSingletonRescueIndexes) {
+      if (chosen.size >= expectedCount) break;
+      if (chosen.has(idx)) continue;
+      chosen.add(idx);
+      addNote(noteMap, idx, noteForWindow("覆盖补位", "继续补齐后半段零散漏口，尽量少留单点盲区", 3, "coverage-rescue"));
+    }
     for (const row of scored) {
       if (chosen.size >= expectedCount) break;
       if (chosen.has(row.i)) continue;
       chosen.add(row.i);
-      addNote(noteMap, row.i, noteForWindow("热点补刀", "补入高风险/高标题信号批次，降低关键风险漏检", 3, "risk-hotspot"));
+      addNote(noteMap, row.i, noteForWindow("热点补刀", "补入高风险/高标题信号批次，降低关键风险漏检", 4, "risk-hotspot"));
     }
   } else if (templateName === "opening-latest") {
     addIndexes(headIndexes, "开篇窗口", "覆盖前100章附近，优先确认开篇质量与设定起手", 1, "opening-window");
@@ -331,7 +432,12 @@ function resolveDynamicCount(total, level, meta, minCountArg, maxCountArg) {
   const minCount = Math.max(3, minCountArg > 0 ? minCountArg : profile.minCount);
   const maxCount = maxCountArg > 0 ? maxCountArg : Number.POSITIVE_INFINITY;
   const rawCount = Math.round(total * targetRate);
-  const count = clamp(rawCount, Math.min(minCount, total), Math.min(maxCount, total));
+  let rescueFloor = minCount;
+  if (level === "medium" && riskPressure >= 0.72) {
+    if (total >= 11 && total <= 12) rescueFloor = Math.max(rescueFloor, 8);
+    else if (total >= 13 && total <= 15) rescueFloor = Math.max(rescueFloor, 9);
+  }
+  const count = clamp(Math.max(rawCount, rescueFloor), Math.min(minCount, total), Math.min(maxCount, total));
 
   return {
     count,

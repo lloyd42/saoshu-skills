@@ -23,6 +23,21 @@ function createBatch(dir, index, options = {}) {
   const start = 1 + (index - 1) * stride;
   const end = start + 79;
   const batchId = `B${String(index).padStart(2, "0")}`;
+  const thunderHits = Array.isArray(options.thunderRules)
+    ? options.thunderRules.map((rule, offset) => ({ rule, anchor: `第${start + offset}章` }))
+    : [];
+  const depressionHits = Array.from({ length: Number(options.depressionCount || 0) }, (_, offset) => ({
+    rule: `夹具郁闷${offset + 1}`,
+    summary: `夹具郁闷 ${offset + 1}`,
+    severity: "中等",
+    min_defense: "布甲",
+    evidence_level: "未知待证",
+    anchor: `第${start + offset}章`,
+    batch_id: batchId,
+  }));
+  const riskUnconfirmed = Array.isArray(options.riskRules)
+    ? options.riskRules.map((risk, offset) => ({ risk, current_evidence: `夹具风险${offset + 1}` }))
+    : [];
   writeJson(path.join(dir, `${batchId}.json`), {
     batch_id: batchId,
     range: `第${start}-${end}章`,
@@ -46,18 +61,24 @@ function createBatch(dir, index, options = {}) {
         }] : [],
       },
     },
-    thunder_hits: [],
-    depression_hits: [],
-    risk_unconfirmed: [],
+    thunder_hits: thunderHits,
+    depression_hits: depressionHits,
+    risk_unconfirmed: riskUnconfirmed,
     event_candidates: [],
     delta_relation: [],
   });
 }
 
-function createFixture(batchDir) {
+function createFixture(batchDir, fixture = {}) {
   ensureCleanDir(batchDir);
-  for (let index = 1; index <= 12; index += 1) {
-    createBatch(batchDir, index, index === 6 ? { titleScore: 9, titleCritical: true, titleRule: "送女", titleMatched: "送女" } : {});
+  const batchCount = Number(fixture.batchCount || 12);
+  const commonOptions = fixture.commonOptions && typeof fixture.commonOptions === "object" ? fixture.commonOptions : {};
+  const overrides = fixture.overrides && typeof fixture.overrides === "object" ? fixture.overrides : {};
+  for (let index = 1; index <= batchCount; index += 1) {
+    const perBatch = overrides[index] && typeof overrides[index] === "object"
+      ? overrides[index]
+      : (index === 6 && batchCount >= 6 ? { titleScore: 9, titleCritical: true, titleRule: "送女", titleMatched: "送女" } : {});
+    createBatch(batchDir, index, { ...commonOptions, ...perBatch });
   }
 }
 
@@ -127,8 +148,77 @@ function runHeadTailRiskScenario() {
   else fail(`head-tail-risk should include hotspot batch B06: ${JSON.stringify(selected)}`);
   const hotspot = readJson(path.join(outputDir, "B06.json"));
   const note = Array.isArray(hotspot.metadata?.sample_selection?.notes) ? hotspot.metadata.sample_selection.notes[0] : null;
-  if (note?.selection_label === "热点补刀") ok("head-tail-risk annotates hotspot fill note");
-  else fail(`head-tail-risk should annotate hotspot fill note: ${JSON.stringify(hotspot.metadata?.sample_selection || {})}`);
+  if (["热点补刀", "覆盖补位"].includes(note?.selection_label)) ok("head-tail-risk annotates a mid-book rescue note");
+  else fail(`head-tail-risk should annotate a mid-book rescue note: ${JSON.stringify(hotspot.metadata?.sample_selection || {})}`);
+}
+
+function runHeadTailRiskDynamicRescueScenario() {
+  const batchDir = path.join(tmpRoot, "head-tail-risk-dynamic-rescue", "batches-all");
+  const outputDir = path.join(tmpRoot, "head-tail-risk-dynamic-rescue", "batches-sampled");
+  createFixture(batchDir, {
+    batchCount: 13,
+    commonOptions: { riskRules: ["虐主"], depressionCount: 1 },
+    overrides: {
+      3: { titleScore: 4, depressionCount: 3 },
+      4: { titleScore: 3, depressionCount: 5 },
+      5: { titleScore: 12, titleCritical: true, titleRule: "送女", titleMatched: "送女", depressionCount: 2 },
+      6: { depressionCount: 6 },
+      7: { depressionCount: 7 },
+      9: { depressionCount: 4 },
+      10: { depressionCount: 2 },
+    },
+  });
+  ok("prepared dynamic head-tail-risk rescue fixture");
+  const result = runNode("packages/saoshu-harem-review/scripts/sample_batches.mjs", [
+    "--input", batchDir,
+    "--output", outputDir,
+    "--mode", "dynamic",
+    "--level", "medium",
+    "--strategy", "risk-aware",
+    "--coverage-template", "head-tail-risk",
+  ]);
+  expectSuccess(result, "dynamic head-tail-risk rescue run");
+  const selected = listSelectedBatchIds(outputDir);
+  if (selected.length === 9) ok("dynamic medium head-tail-risk lifts high-risk 13-batch fixture to nine samples");
+  else fail(`dynamic medium head-tail-risk should select 9 batches on high-risk 13-batch fixture: ${JSON.stringify(selected)}`);
+  if (selected.includes("B09")) ok("head-tail-risk coverage rescue reaches later middle corridor instead of only early hotspots");
+  else fail(`head-tail-risk should include later corridor batch B09: ${JSON.stringify(selected)}`);
+  const rescue = readJson(path.join(outputDir, "B09.json"));
+  const rescueNote = Array.isArray(rescue.metadata?.sample_selection?.notes)
+    ? rescue.metadata.sample_selection.notes.find((item) => item.selection_label === "覆盖补位")
+    : null;
+  if (rescueNote?.selection_role === "coverage-rescue") ok("head-tail-risk annotates coverage rescue note on later corridor fill");
+  else fail(`head-tail-risk should annotate coverage rescue note on B09: ${JSON.stringify(rescue.metadata?.sample_selection || {})}`);
+}
+
+function runHeadTailRiskDynamicCount11Scenario() {
+  const batchDir = path.join(tmpRoot, "head-tail-risk-dynamic-11", "batches-all");
+  const outputDir = path.join(tmpRoot, "head-tail-risk-dynamic-11", "batches-sampled");
+  createFixture(batchDir, {
+    batchCount: 11,
+    commonOptions: { riskRules: ["虐主"], depressionCount: 1 },
+    overrides: {
+      2: { titleScore: 10, titleCritical: true, titleRule: "送女", titleMatched: "送女" },
+      4: { titleScore: 3, depressionCount: 4 },
+      6: { depressionCount: 6 },
+      7: { depressionCount: 5 },
+      9: { depressionCount: 4 },
+      10: { depressionCount: 6 },
+    },
+  });
+  ok("prepared 11-batch dynamic head-tail-risk fixture");
+  const result = runNode("packages/saoshu-harem-review/scripts/sample_batches.mjs", [
+    "--input", batchDir,
+    "--output", outputDir,
+    "--mode", "dynamic",
+    "--level", "medium",
+    "--strategy", "risk-aware",
+    "--coverage-template", "head-tail-risk",
+  ]);
+  expectSuccess(result, "dynamic 11-batch head-tail-risk run");
+  const selected = listSelectedBatchIds(outputDir);
+  if (selected.length === 8) ok("dynamic medium head-tail-risk lifts high-risk 11-batch fixture to eight samples");
+  else fail(`dynamic medium head-tail-risk should select 8 batches on high-risk 11-batch fixture: ${JSON.stringify(selected)}`);
 }
 
 function runOpeningLatestScenario() {
@@ -182,6 +272,8 @@ function main() {
   runOpening100Scenario();
   runHeadTailScenario();
   runHeadTailRiskScenario();
+  runHeadTailRiskDynamicRescueScenario();
+  runHeadTailRiskDynamicCount11Scenario();
   runOpeningLatestScenario();
   runOpeningLatestCompletedScenario();
   if (!hasFailures()) console.log("Sampling template check passed.");

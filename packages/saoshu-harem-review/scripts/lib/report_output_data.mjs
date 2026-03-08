@@ -1,4 +1,10 @@
 import { formatUiKeyValue } from "./ui_terms.mjs";
+import {
+  buildEventContextReferences,
+  buildRuleContextReferences,
+  buildSummaryOnlyContextReferences,
+  pickTopContextReferences,
+} from "./report_context_references.mjs";
 import { describeEvent, eventDecisionLabel } from "./report_events.mjs";
 import {
   CONFIRMED_LEVELS,
@@ -16,8 +22,17 @@ import {
   score,
 } from "./report_output_common.mjs";
 
-function buildCoverageDecision({ meta, coverageGap, coverageRate, mergedRisks, pendingEvents, followUpQuestions }) {
+function resolveEffectiveCoverageMode(meta) {
   const coverageMode = String(meta.coverageMode || "").trim();
+  if (coverageMode) return coverageMode;
+  const pipelineMode = String(meta.pipelineMode || "").trim();
+  if (pipelineMode === "economy") return "sampled";
+  if (pipelineMode === "performance") return "chapter-full";
+  return "";
+}
+
+function buildCoverageDecision({ meta, coverageGap, coverageRate, mergedRisks, pendingEvents, followUpQuestions }) {
+  const coverageMode = resolveEffectiveCoverageMode(meta);
   const coverageTemplate = String(meta.coverageTemplate || "").trim();
   const serialStatus = String(meta.serialStatus || "").trim();
   const chapterDetectUsedMode = String(meta.chapterDetectUsedMode || "").trim();
@@ -130,7 +145,7 @@ function buildCoverageDecision({ meta, coverageGap, coverageRate, mergedRisks, p
     upgrade_benefit: upgradeBenefit,
   };
 }
-function buildDecisionSummary({ verdict, rating, newbieCard, coverage, coverageRate, sampleBasis, reviewedEvents, mergedRisks, coverageDecision, coverageMode }) {
+function buildDecisionSummary({ verdict, rating, newbieCard, coverage, coverageRate, sampleBasis, reviewedEvents, mergedRisks, coverageDecision, coverageMode, supportingReferences }) {
   const nextAction = describeCoverageDecisionNextAction(coverageDecision, coverageMode, verdict);
   return {
     title: "决策区",
@@ -147,23 +162,27 @@ function buildDecisionSummary({ verdict, rating, newbieCard, coverage, coverageR
       `${Array.isArray(sampleBasis) && sampleBasis.length > 0 ? sampleBasis[0] : "当前为全量/当前抽样覆盖结论。"}`,
     ],
     next_action: nextAction,
+    supporting_references: Array.isArray(supportingReferences) ? supportingReferences : [],
   };
 }
 
-function buildEvidenceSummary({ reviewedEvents, pendingEvents, mergedRisks, followUpQuestions }) {
+function buildEvidenceSummary({ reviewedEvents, pendingEvents, riskItems, followUpQuestions }) {
   const keyEvents = reviewedEvents.slice(0, 3).map((event) => ({
     label: String(event.rule_candidate || "未命名事件"),
     summary: describeEvent(event),
     decision: eventDecisionLabel(event),
+    context_references: Array.isArray(event.context_references) ? event.context_references.slice(0, 2) : [],
   }));
-  const unresolvedRisks = mergedRisks.slice(0, 3).map((risk) => ({
+  const unresolvedRisks = riskItems.slice(0, 3).map((risk) => ({
     risk: String(risk.risk || "未命名风险"),
     current_evidence: String(risk.current_evidence || ""),
     missing_evidence: String(risk.missing_evidence || ""),
+    context_references: Array.isArray(risk.context_references) ? risk.context_references.slice(0, 2) : [],
   }));
   const pendingClues = pendingEvents.slice(0, 3).map((event) => ({
     label: String(event.rule_candidate || "未命名事件"),
     clue: Array.isArray(event.missing_evidence) && event.missing_evidence.length > 0 ? String(event.missing_evidence[0] || "") : describeEvent(event),
+    context_references: Array.isArray(event.context_references) ? event.context_references.slice(0, 2) : [],
   }));
   return {
     title: "证据区",
@@ -229,7 +248,64 @@ function buildCoverageGapHints(meta, totalBatches, selectedBatches) {
 }
 
 export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = []) {
-  const confirmedThunder = merged.thunders.filter((item) => CONFIRMED_LEVELS.has(String(item.evidence_level || "").trim()));
+  const effectiveCoverageMode = resolveEffectiveCoverageMode(meta);
+  const eventCandidates = Array.isArray(merged.event_candidates) ? merged.event_candidates.map((event) => {
+    const contextReferences = buildEventContextReferences(event, { limit: 3 });
+    return {
+      ...event,
+      context_references: contextReferences.length > 0
+        ? contextReferences
+        : buildSummaryOnlyContextReferences({
+          refId: `${String(event.event_id || event.rule_candidate || "event")}:summary`,
+          batch_id: event.batch_id,
+          anchor: event.chapter_range,
+          keyword: Array.isArray(event.signals) && event.signals.length > 0 ? String(event.signals[0] || "") : "",
+          snippet: describeEvent(event),
+        }),
+    };
+  }) : [];
+  const reviewedEvents = eventCandidates.filter((item) => String(item.review_decision || "").trim() === "已确认");
+  const excludedEvents = eventCandidates.filter((item) => String(item.review_decision || "").trim() === "排除");
+  const pendingEvents = eventCandidates.filter((item) => !["已确认", "排除"].includes(String(item.review_decision || "").trim()));
+  const thunderItems = merged.thunders.map((item) => ({
+    ...item,
+    context_references: buildRuleContextReferences({
+      ruleName: item.rule,
+      events: reviewedEvents,
+      decisions: ["已确认"],
+      fallbackText: item.summary,
+      fallbackAnchor: item.anchor,
+      fallbackBatchId: item.batch_id,
+      refId: `thunder:${String(item.rule || "unknown")}:${String(item.batch_id || "merged")}`,
+      limit: 3,
+    }),
+  }));
+  const depressionItems = merged.depressions.map((item) => ({
+    ...item,
+    context_references: buildRuleContextReferences({
+      ruleName: item.rule,
+      category: "depression",
+      events: reviewedEvents,
+      decisions: ["已确认"],
+      fallbackText: item.summary,
+      fallbackAnchor: item.anchor,
+      fallbackBatchId: item.batch_id,
+      refId: `depression:${String(item.rule || "unknown")}:${String(item.batch_id || "merged")}`,
+      limit: 3,
+    }),
+  }));
+  const riskSourceEvents = eventCandidates.filter((event) => !["排除", "已排除"].includes(String(event.review_decision || event.status || "").trim()));
+  const riskItems = merged.risks.map((item) => ({
+    ...item,
+    context_references: buildRuleContextReferences({
+      ruleName: item.risk,
+      events: riskSourceEvents,
+      fallbackText: item.current_evidence,
+      refId: `risk:${String(item.risk || "unknown")}`,
+      limit: 3,
+    }),
+  }));
+  const confirmedThunder = thunderItems.filter((item) => CONFIRMED_LEVELS.has(String(item.evidence_level || "").trim()));
   const hasThunder = confirmedThunder.length > 0;
   const recommendations = defenseRecommendation(merged.thunders, merged.depressions);
   const verdict = inferVerdict(recommendations, meta.targetDefense, hasThunder);
@@ -243,8 +319,8 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
   const coverageGap = buildCoverageGapHints(meta, totalBatches || merged.batchIds.length, selectedBatches || merged.batchIds.length);
 
   const sampleBasis = [];
-  if (meta.coverageMode) {
-    sampleBasis.push(formatUiKeyValue("coverage_mode", lineOrDash(meta.coverageMode), { bilingual: true }));
+  if (effectiveCoverageMode) {
+    sampleBasis.push(formatUiKeyValue("coverage_mode", lineOrDash(effectiveCoverageMode), { bilingual: true }));
   }
   if (meta.coverageTemplate) {
     sampleBasis.push(formatUiKeyValue("coverage_template", lineOrDash(meta.coverageTemplate), { bilingual: true }));
@@ -290,8 +366,8 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
   } else {
     if (meta.coverageUnit) sampleBasis.push(formatUiKeyValue("coverage_unit", lineOrDash(meta.coverageUnit), { bilingual: true }));
     if (meta.chapterDetectUsedMode) sampleBasis.push(formatUiKeyValue("chapter_detect_used_mode", lineOrDash(meta.chapterDetectUsedMode), { bilingual: true }));
-    if (meta.coverageMode === "chapter-full" && meta.coverageUnit === "segment") sampleBasis.push("执行说明：章节识别失败后，当前已退化为分段级全文扫描");
-    if (meta.coverageMode === "full-book" && meta.coverageUnit === "segment") sampleBasis.push("执行说明：当前按整书连续分段做全文扫描，不依赖章节识别");
+    if (effectiveCoverageMode === "chapter-full" && meta.coverageUnit === "segment") sampleBasis.push("执行说明：章节识别失败后，当前已退化为分段级全文扫描");
+    if (effectiveCoverageMode === "full-book" && meta.coverageUnit === "segment") sampleBasis.push("执行说明：当前按整书连续分段做全文扫描，不依赖章节识别");
     sampleBasis.push(`覆盖：${selectedBatches || merged.batchIds.length}/${totalBatches || merged.batchIds.length} (100%)`);
   }
 
@@ -321,22 +397,44 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
     .slice(0, 40);
 
   const newbieCard = buildNewbieCard(verdict, rating, merged.thunders.length, merged.depressions.length, merged.risks.length, coverageRate);
-  const eventCandidates = Array.isArray(merged.event_candidates) ? merged.event_candidates : [];
-  const reviewedEvents = eventCandidates.filter((item) => String(item.review_decision || "").trim() === "已确认");
-  const excludedEvents = eventCandidates.filter((item) => String(item.review_decision || "").trim() === "排除");
-  const pendingEvents = eventCandidates.filter((item) => !["已确认", "排除"].includes(String(item.review_decision || "").trim()));
   const eventHighlights = reviewedEvents.slice(0, 3).map((event) => `${event.rule_candidate}：${describeEvent(event)}`);
   const followUpQuestions = buildFollowUpQuestions(merged, riskQuestionPool);
   const coverageDecision = buildCoverageDecision({
     meta,
     coverageGap,
     coverageRate,
-    mergedRisks: merged.risks,
+    mergedRisks: riskItems,
     pendingEvents,
     followUpQuestions,
   });
-  const decisionSummary = buildDecisionSummary({ verdict, rating, newbieCard, coverage, coverageRate, sampleBasis, reviewedEvents, mergedRisks: merged.risks, coverageDecision, coverageMode: meta.coverageMode });
-  const evidenceSummary = buildEvidenceSummary({ reviewedEvents, pendingEvents, mergedRisks: merged.risks, followUpQuestions });
+  const coverageContextReferences = coverageDecision.action && coverageDecision.action.startsWith("upgrade")
+    ? pickTopContextReferences([
+      ...pendingEvents.flatMap((event) => event.context_references || []),
+      ...riskItems.flatMap((item) => item.context_references || []),
+    ], 3)
+    : pickTopContextReferences([
+      ...reviewedEvents.flatMap((event) => event.context_references || []),
+      ...riskItems.flatMap((item) => item.context_references || []),
+    ], 3);
+  coverageDecision.context_references = coverageContextReferences;
+  const decisionSummary = buildDecisionSummary({
+    verdict,
+    rating,
+    newbieCard,
+    coverage,
+    coverageRate,
+    sampleBasis,
+    reviewedEvents,
+    mergedRisks: riskItems,
+    coverageDecision,
+    coverageMode: effectiveCoverageMode,
+    supportingReferences: pickTopContextReferences([
+      ...reviewedEvents.flatMap((event) => event.context_references || []),
+      ...riskItems.flatMap((item) => item.context_references || []),
+      ...pendingEvents.flatMap((event) => event.context_references || []),
+    ], 3),
+  });
+  const evidenceSummary = buildEvidenceSummary({ reviewedEvents, pendingEvents, riskItems, followUpQuestions });
   const deepDiveSummary = buildDeepDiveSummary({
     sampleBasis,
     selectionReasons: merged.metadata.sample_reasons || [],
@@ -363,7 +461,7 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
       coverage_decision: coverageDecision,
       sampling: {
         pipeline_mode: lineOrDash(meta.pipelineMode),
-        coverage_mode: lineOrDash(meta.coverageMode),
+        coverage_mode: lineOrDash(effectiveCoverageMode),
         coverage_template: lineOrDash(meta.coverageTemplate),
         coverage_unit: lineOrDash(meta.coverageUnit),
         chapter_detect_used_mode: lineOrDash(meta.chapterDetectUsedMode),
@@ -387,13 +485,13 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
     },
     metadata_summary: merged.metadata,
     thunder: {
-      total_candidates: merged.thunders.length,
+      total_candidates: thunderItems.length,
       confirmed_or_probable: confirmedThunder.length,
-      items: merged.thunders,
+      items: thunderItems,
     },
     depression: {
-      total: merged.depressions.length,
-      items: merged.depressions,
+      total: depressionItems.length,
+      items: depressionItems,
     },
     events: {
       total_candidates: eventCandidates.length,
@@ -408,11 +506,11 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
       verdict,
       rating,
       summary_lines: [
-        `已归并 ${merged.batchIds.length} 个批次，雷点 ${merged.thunders.length} 项，郁闷点 ${merged.depressions.length} 项。`,
+        `已归并 ${merged.batchIds.length} 个批次，雷点 ${thunderItems.length} 项，郁闷点 ${depressionItems.length} 项。`,
         `事件候选 ${eventCandidates.length} 项，其中人工已确认 ${reviewedEvents.length} 项，排除 ${excludedEvents.length} 项。`,
         `${eventHighlights.length > 0 ? `关键复核事件：${eventHighlights[0]}` : `当前结论基于覆盖范围：${coverage}。`}`,
         `当前结论基于覆盖范围：${coverage}。`,
-        `${merged.risks.length > 0 ? "仍存在未证实风险，建议继续补证。" : "未发现关键未证实风险。"}`,
+        `${riskItems.length > 0 ? "仍存在未证实风险，建议继续补证。" : "未发现关键未证实风险。"}`,
       ],
     },
     newbie_card: newbieCard,
@@ -422,7 +520,7 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
     view_prefs: {
       default_view: String(meta.reportDefaultView || "newbie"),
     },
-    risks_unconfirmed: merged.risks,
+    risks_unconfirmed: riskItems,
     audit: {
       pipeline_state: {
         started_at: lineOrDash(pipelineState.started_at || ""),

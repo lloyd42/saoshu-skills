@@ -2,6 +2,25 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "saoshu/final_report",
   "title": "Final Report",
+  "$defs": {
+    "contextReference": {
+      "type": "object",
+      "properties": {
+        "ref_id": {"type": "string"},
+        "source_kind": {"type": "string"},
+        "source_label": {"type": "string"},
+        "batch_id": {"type": "string"},
+        "anchor": {"type": "string"},
+        "chapter_num": {"type": "integer"},
+        "offset_hint": {"type": ["integer", "null"]},
+        "chapter_title": {"type": "string"},
+        "keyword": {"type": "string"},
+        "snippet": {"type": "string"},
+        "note": {"type": "string"}
+      },
+      "additionalProperties": true
+    }
+  },
   "type": "object",
   "required": ["report_version", "novel", "scan", "thunder", "depression", "overall"],
   "properties": {
@@ -44,7 +63,8 @@
             "reason_lines": {"type": "array", "items": {"type": "string"}},
             "current_conclusion": {"type": "string"},
             "risk_if_not_upgraded": {"type": "string"},
-            "upgrade_benefit": {"type": "string"}
+            "upgrade_benefit": {"type": "string"},
+            "context_references": {"type": "array", "items": {"$ref": "#/$defs/contextReference"}}
           },
           "additionalProperties": true
         }
@@ -52,11 +72,100 @@
       "additionalProperties": true
     },
     "metadata_summary": {"type": "object"},
-    "thunder": {"type": "object"},
-    "depression": {"type": "object"},
-    "events": {"type": "object"},
+    "thunder": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "context_references": {"type": "array", "items": {"$ref": "#/$defs/contextReference"}}
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "depression": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "context_references": {"type": "array", "items": {"$ref": "#/$defs/contextReference"}}
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "events": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "context_references": {"type": "array", "items": {"$ref": "#/$defs/contextReference"}}
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
     "defense_recommendation": {"type": "object"},
     "overall": {"type": "object"},
+    "decision_summary": {
+      "type": "object",
+      "properties": {
+        "supporting_references": {"type": "array", "items": {"$ref": "#/$defs/contextReference"}}
+      },
+      "additionalProperties": true
+    },
+    "evidence_summary": {
+      "type": "object",
+      "properties": {
+        "key_events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "context_references": {"type": "array", "items": {"$ref": "#/$defs/contextReference"}}
+            },
+            "additionalProperties": true
+          }
+        },
+        "unresolved_risks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "context_references": {"type": "array", "items": {"$ref": "#/$defs/contextReference"}}
+            },
+            "additionalProperties": true
+          }
+        },
+        "pending_clues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "context_references": {"type": "array", "items": {"$ref": "#/$defs/contextReference"}}
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "deep_dive_summary": {"type": "object"},
     "newbie_card": {
       "type": "object",
       "properties": {
@@ -75,7 +184,16 @@
       },
       "additionalProperties": true
     },
-    "risks_unconfirmed": {"type": "array"},
+    "risks_unconfirmed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "context_references": {"type": "array", "items": {"$ref": "#/$defs/contextReference"}}
+        },
+        "additionalProperties": true
+      }
+    },
     "audit": {
       "type": "object",
       "properties": {
@@ -121,4 +239,3 @@
   },
   "additionalProperties": true
 }
-

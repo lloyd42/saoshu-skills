@@ -152,6 +152,44 @@ function prepareChapterFullScenario(batchDir) {
   });
 }
 
+function prepareSampledKeepScenario(batchDir) {
+  createBatch(batchDir, "B01.json", {
+    batch_id: "B01",
+    range: "第1-60章",
+    metadata: {
+      sample_selection: {
+        coverage_template: "head-tail",
+        serial_status: "completed",
+        notes: [{ selection_label: "开篇窗口", selection_detail: "首段重点确认", selection_priority: 1, selection_role: "opening-window" }],
+      },
+    },
+  });
+
+  createBatch(batchDir, "B02.json", {
+    batch_id: "B02",
+    range: "第301-360章",
+    metadata: {
+      sample_selection: {
+        coverage_template: "head-tail",
+        serial_status: "completed",
+        notes: [{ selection_label: "结尾窗口", selection_detail: "结尾重点确认", selection_priority: 2, selection_role: "ending-window" }],
+      },
+    },
+  });
+}
+
+function prepareChapterFullKeepScenario(batchDir) {
+  createBatch(batchDir, "B01.json", {
+    batch_id: "B01",
+    range: "第1-80章",
+  });
+
+  createBatch(batchDir, "B02.json", {
+    batch_id: "B02",
+    range: "第81-160章",
+  });
+}
+
 function prepareFullBookScenario(batchDir) {
   createBatch(batchDir, "B01.json", {
     batch_id: "B01",
@@ -192,6 +230,30 @@ function assertChapterFullScenario({ report, markdown, html }) {
   expect(html.includes("建议动作：升级到 full-book"), "chapter-full: html renders full-book upgrade text", "chapter-full: html should render full-book upgrade text");
 }
 
+function assertSampledKeepScenario({ report, markdown, html }) {
+  const coverageDecision = report.scan?.coverage_decision || {};
+  const reasonCodes = Array.isArray(coverageDecision.reason_codes) ? coverageDecision.reason_codes : [];
+  expect(coverageDecision.action === "keep-sampled", "sampled-keep: action keeps sampled", `sampled-keep: expected keep-sampled, got ${JSON.stringify(coverageDecision)}`);
+  expect(coverageDecision.confidence === "stable", "sampled-keep: confidence is stable", `sampled-keep: expected stable confidence, got ${JSON.stringify(coverageDecision)}`);
+  expect(reasonCodes.length === 0, "sampled-keep: no reason codes are emitted", `sampled-keep: expected no reason codes, got ${JSON.stringify(reasonCodes)}`);
+  expect(report.decision_summary?.next_action === "当前快速摸底已够用，先确认自己是否介意未证实风险。", "sampled-keep: next action keeps quick-look wording", `sampled-keep: unexpected next_action ${JSON.stringify(report.decision_summary?.next_action)}`);
+  expect(markdown.includes("建议动作：继续保持 sampled"), "sampled-keep: markdown renders keep-sampled wording", "sampled-keep: markdown should render keep-sampled wording");
+  expect(html.includes("建议动作：继续保持 sampled"), "sampled-keep: html renders keep-sampled wording", "sampled-keep: html should render keep-sampled wording");
+  expect(!markdown.includes("建议动作：升级到 chapter-full"), "sampled-keep: markdown avoids upgrade wording", "sampled-keep: markdown should not upgrade to chapter-full");
+}
+
+function assertChapterFullKeepScenario({ report, markdown, html }) {
+  const coverageDecision = report.scan?.coverage_decision || {};
+  const reasonCodes = Array.isArray(coverageDecision.reason_codes) ? coverageDecision.reason_codes : [];
+  expect(coverageDecision.action === "keep-current", "chapter-full-keep: action keeps current layer", `chapter-full-keep: expected keep-current, got ${JSON.stringify(coverageDecision)}`);
+  expect(coverageDecision.confidence === "stable", "chapter-full-keep: confidence is stable", `chapter-full-keep: expected stable confidence, got ${JSON.stringify(coverageDecision)}`);
+  expect(reasonCodes.length === 0, "chapter-full-keep: no reason codes are emitted", `chapter-full-keep: expected no reason codes, got ${JSON.stringify(reasonCodes)}`);
+  expect(report.decision_summary?.next_action === "当前 chapter-full 已足够，可直接基于当前结果继续判断。", "chapter-full-keep: next action keeps chapter-full wording", `chapter-full-keep: unexpected next_action ${JSON.stringify(report.decision_summary?.next_action)}`);
+  expect(markdown.includes("建议动作：继续保持 chapter-full"), "chapter-full-keep: markdown renders keep-current wording", "chapter-full-keep: markdown should render keep-current chapter-full wording");
+  expect(html.includes("建议动作：继续保持 chapter-full"), "chapter-full-keep: html renders keep-current wording", "chapter-full-keep: html should render keep-current chapter-full wording");
+  expect(!markdown.includes("建议动作：升级到 full-book"), "chapter-full-keep: markdown avoids full-book upgrade wording", "chapter-full-keep: markdown should not upgrade to full-book");
+}
+
 function assertFullBookScenario({ report, markdown, html }) {
   const coverageDecision = report.scan?.coverage_decision || {};
   expect(coverageDecision.action === "keep-current", "full-book: action keeps current coverage", `full-book: expected keep-current, got ${JSON.stringify(coverageDecision)}`);
@@ -225,6 +287,24 @@ function main() {
   });
 
   runScenario({
+    scenarioKey: "sampled-keep-sampled",
+    title: "升级建议聚焦：sampled-keep",
+    extraArgs: [
+      "--coverage-mode", "sampled",
+      "--coverage-template", "head-tail",
+      "--serial-status", "completed",
+      "--sample-mode", "dynamic",
+      "--sample-level", "auto",
+      "--sample-level-effective", "medium",
+      "--total-batches", "2",
+      "--selected-batches", "2",
+      "--sample-coverage-rate", "1",
+    ],
+    prepareBatches: prepareSampledKeepScenario,
+    assertReport: assertSampledKeepScenario,
+  });
+
+  runScenario({
     scenarioKey: "chapter-full-upgrade",
     title: "升级建议聚焦：chapter-full",
     extraArgs: [
@@ -237,6 +317,21 @@ function main() {
     ],
     prepareBatches: prepareChapterFullScenario,
     assertReport: assertChapterFullScenario,
+  });
+
+  runScenario({
+    scenarioKey: "chapter-full-keep-current",
+    title: "升级建议聚焦：chapter-full-keep",
+    extraArgs: [
+      "--coverage-mode", "chapter-full",
+      "--coverage-unit", "chapter",
+      "--chapter-detect-used-mode", "script",
+      "--total-batches", "2",
+      "--selected-batches", "2",
+      "--sample-coverage-rate", "1",
+    ],
+    prepareBatches: prepareChapterFullKeepScenario,
+    assertReport: assertChapterFullKeepScenario,
   });
 
   runScenario({
