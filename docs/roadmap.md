@@ -31,10 +31,18 @@
 - `chapter-full v1` 已具备真实执行差异：章节识别失败时会自动退化到分段级全文扫描
 - `full-book v1` 已具备真实执行差异：默认按整书连续分段做全文扫描，不把章节识别当成硬前置
 - 报告、DB、compare、dashboard、CLI、wizard、产品文档都已统一到 coverage-first 叙事层
+- 覆盖升级建议合同已打通：`merged-report.json` 的 `scan.coverage_decision`、Markdown/HTML 的“覆盖升级建议”、`scan-db` 的 `coverage_decision_*` 字段，以及 compare / dashboard 默认展示已经对齐
+- 上下文引用合同已落到主要产物：报告 JSON 的 `context_references`、Markdown/HTML 的 top 引用展示、复核包里的引用行，以及 scan-db 入库时的 `*_context_references` / `primary_context_reference`
+- `scan-db` 现在还能直接复看这些引用：`db_query.mjs --metric context-reference-overview` 会汇总来源/反证/offset 提示，dashboard 也新增了“上下文引用概览 / 最近关键引用”区块
+- `scan-db` 的第二阶段上下文校准也已落地：`db_compare.mjs` 现在支持 `has_counter_evidence` / `has_offset_hints` / `context_reference_source_kind` 这些运行级对比维度，但默认维度仍保持 coverage-first 主线不变
+- 为了降低使用门槛，`db_compare.mjs` / `saoshu_cli compare` 现在也支持 `--preset default|context-audit|context-source`；preset 主要服务专家校准入口，不改变默认 compare 维度行为
+- dashboard 侧现在会优先补齐缺失的 compare 详情页；若对应目录已有现成结果，则直接显示“点击查看详情”链接，不覆盖已有产物。只有自动补齐失败时才回退为命令提示
+- `db_mode=local` 的 pipeline 现在也会在 merge 后自动刷新 `scan-db/dashboard.html`，让 skill 用户跑完主流程就有可点击入口
 - 仓库读写基线已明确为 `UTF-8 without BOM` + `LF`
 - 运行时与大部分 fixture 文本输出已收敛到共享 helper `scripts/lib/text_output.mjs`
 - `npm run check` 现已内置 no-BOM 输出回归门：`check:text-output`
 - 已安装 skill 镜像同步链已稳定：`sync:installed-skills` + `check:installed-skill-sync`
+- 脚本层已完成两步轻量分层：`scripts/checks/` 承载检查实现，`scripts/dev/` 承载开发辅助实现，顶层 `scripts/` 只保留用户入口与必要兼容 wrapper
 
 ### 3. 当前未完与风险
 
@@ -42,17 +50,17 @@
 
 - `sampled / chapter-full / full-book` 虽然已经是稳定用户口径，但底层仍共享 `economy / performance` 执行主链，并不是三套完全独立引擎
 - `sampled` 的目标不是无限逼近全文，而是做更像人类扫书习惯的“决策导向快速摸底”层
-- “什么时候该从 `sampled` 升到 `chapter-full` / `full-book`” 还没有被正式产品化成稳定升级规则
-- mode-diff、DB compare、trends 已经能提供证据，但还没有被收口成明确的用户升级建议卡或默认产品策略
+- “什么时候该从 `sampled` 升到 `chapter-full` / `full-book`” 已有稳定合同与默认展示，但首批原因码、阈值与文案仍主要基于启发式，需要继续拿真实样本校准
+- mode-diff、DB compare、dashboard 已能消费升级建议字段，但还缺持续回看节奏与更大样本上的阈值沉淀
 - 反馈闭环资产很完整，但仍应保持辅助层定位，避免重新把主叙事拉回“规则系统”或“抽取系统”
 
 ### 4. 下一轮建议起点
 
 如果下一轮正式回到产品主线，建议按下面顺序启动：
 
-1. 先把“升级决策规则”产品化：明确什么信号触发 `sampled -> chapter-full -> full-book`
-2. 再把这些规则落到报告首页/摘要区，而不是只留在 compare 或 DB 里
-3. 然后再决定是继续补 `sampled` 模板体验，还是优先补 `chapter-full / full-book` 的边界与收益说明
+1. 先用真实样本继续校准“升级决策规则”：重点回看 `keep-sampled / upgrade-chapter-full / upgrade-full-book / keep-current`
+2. 再决定是继续补 `sampled` 模板体验，还是优先补 `chapter-full / full-book` 的边界与收益说明
+3. 维护侧只在确有收益时再评估 `scripts/commands/` 等更细目录，不急着为了分层而分层
 
 建议开工前先读：
 
@@ -80,43 +88,52 @@ npm run check
 
 ## Now
 
-### 0. 从 sampling-first 转向 coverage-first
+### 0. 用真实样本继续校准 coverage 升级建议
 
-当前真实样本已经证明，继续围绕 `economy` 的关键词命中率、抽样档位和启发式置信度做细抠，边际收益正在下降。
+coverage-first 与升级建议合同已经落地，当前不再是“先把规则写进产品面”的阶段，而是“继续证明这些规则稳不稳”的阶段。
 
 下一阶段主线改为：
 
-- 保留当前 `economy` / `performance` 兼容基线
-- 新增统一的 coverage 口径：`sampled` / `chapter-full` / `full-book`
-- 把“覆盖到哪里”放到“抽样调得多聪明”之前
+- 保留当前 `sampled / chapter-full / full-book` 稳定用户口径与 `economy / performance` 兼容执行层
+- 继续围绕真实样本校准升级原因、升级阈值与首页文案，而不是继续发散更多模式
+- 优先证明“何时该升层、何时该保持当前层”足够稳，再考虑额外体验扩展
 
-具体落地方向：
+当前优先回看的重点：
 
-- 有章节时，优先按章节做全文扫描
-- 无章节时，退化为按分段单元做全文扫描
-- 关键词、别名、补证问题、关系映射继续保留，但角色下调为热点提示、人工 review 排序、反馈闭环资产
-- 现有 `sample_*` 字段后续优先通过兼容层映射，而不是继续扩字段堆复杂度
+- `sampled -> chapter-full`：未覆盖风险区、连载最新进度不确定、待补证/未证实风险过多时是否应更积极升层
+- `chapter-full -> full-book`：章节边界不稳、证据冲突、高防御档位样本时是否需要更强证据
+- `chapter-full / full-book`：`keep-current` 文案是否足够稳定，避免自我升级或过度惊吓
+- mode-diff、compare、dashboard 继续作为证据回看面，而不是重新变成主叙事入口
 
-这条路线的目标不是再造一个“更聪明的 economy”，而是建立一个可从抽样平滑升级到章节级/整书级扫描的统一覆盖架构。
+2026-03-08 的最新真实样本复跑也已经给出一轮更具体的校准事实：
 
-当前 Now 里最先要补上的收口不是新模式，而是把“何时升级覆盖、为什么升级、升级后减少什么误判”沉淀成统一产品契约：
+- 当前主线复跑 `economy/sample` manifest 时，已经会自动带上 `coverage_template=head-tail-risk`，所以早先那批无模板 real-batch economy 结果只适合作为历史基线，不应再直接当作“当前抽样主线”理解
+- `sample_batches.mjs` 现已补上两层更保守的模板抽样修正：`head-tail-risk` 会先补“大空档代表批次”，再补“后半段零散漏口”；`medium` 档高风险小长书也会把 `11` 批抬到 `8`、`13` 批抬到 `9`
+- 在这条新主线上，`丹药大亨` 已从旧基线的 `too_wide / 8.046 / 事件差 63` 收敛到 `gray / 7.431 / 事件差 47`
+- `要被培养成绝色尤物了怎么办` 也从旧基线的 `gray / 6.155 / 事件差 55` 收敛到 `gray / 5.791 / 事件差 44`
+- 第二轮校准又暴露了一个比抽样更根的兼容问题：旧 manifest 只写 `pipeline_mode=economy/performance` 时，运行态曾把 `coverage_mode` 留空，导致 sampled 报告误走 `keep-current` 文案；这条兼容推断现在已经补齐，legacy `economy -> sampled`、legacy `performance -> chapter-full`，`check_e2e_minimal.mjs` 也已锁住默认 economy manifest 的 coverage-first 推断
+- 修掉这条兼容问题后，`要被培养成绝色尤物了怎么办` 的 `heuristic-v1`、`11 -> 9`、`11 -> 10` 三组实验报告都稳定回到 `coverage_mode=sampled` 且 `coverage_decision.action=upgrade-chapter-full`，不再把 `gray` 样本错误表述成“当前已够用”
+- 下一轮若继续校准，优先继续压“后半段单点漏口 / 零标题但事件密集批次”的选择质量，而不是再做更粗暴的 blanket count 提升；当前连 `11 -> 10` 都仍是 `gray / 4.814`，说明这本书更像稳定的 `sampled -> chapter-full` 升层样本，而不是值得继续把 sampled 硬压到 acceptable 的目标样本
 
-- 结构化真源建议优先落在 `merged-report.json` 的 `scan.coverage_decision`
-- 报告首页仍可继续沿用 `decision_summary.next_action` 作为单行摘要，但不再让它承担完整契约语义
-- 首批升级原因建议先收敛为 `late_risk_uncovered`、`latest_progress_uncertain`、`evidence_conflict`、`too_many_unverified`、`chapter_boundary_unstable`、`high_defense_needs_more_evidence`
-- `mode-diff`、`coverage_gap_summary`、`coverage_gap_risk_types`、`target_defense` 与现有“待补证 / 未证实风险”应优先被收口成升级建议卡，而不是继续散落在 compare、DB 与报告细节里
-- `scan-db` 落库也应同步准备 `coverage_decision_action`、`coverage_decision_confidence`、`coverage_decision_reasons` 这类扁平字段，方便后续 compare / dashboard / trends 直接消费
+这条路线的目标不是再造一个“更聪明的 economy”，而是把已经落地的覆盖升级合同继续打磨成可长期复用的稳定基线。
 
-### 1. 先把覆盖层重构方案文档化并与入口对齐
+当前 Now 里最先要补上的，不是新增模式，而是把真实样本持续反哺回现有升级契约：
 
-在正式改代码前，先把以下内容同步清楚：
+- 优先用真实书样本复核 `coverage_decision.reason_codes` 是否够稳，尤其是 `late_risk_uncovered`、`latest_progress_uncertain`、`chapter_boundary_unstable`、`high_defense_needs_more_evidence`
+- 继续核对 `decision_summary.next_action` 与“覆盖升级建议”区块文案是否一致，避免首页一句话和结构化真源漂移
+- 继续观察 compare / dashboard 默认维度是否已经足够支撑回看，如果不够，再补最小必要字段，而不是重新堆概念
+- 保持 `keep-current` / `keep-sampled` 与真正升级动作的边界清晰，不把稳定结论重新写成“建议升级”
 
-- `README.md`：当前双模式基线 + 下一阶段 coverage-first 方向
-- 产品手册：当前实现、迁移口径、兼容约束
-- manifest 字段策略：旧字段兼容，新字段如何落地
-- CLI / wizard 文案：让用户按“快速摸底 / 章节级尽量完整 / 整书最终确认”理解模式，而不是只看到抽样参数
+### 1. 继续保持入口文档与脚本分层同步
 
-当前已补一部分入口对齐：`manifest_wizard.mjs` 现在会优先按 `sampled / chapter-full / full-book` 生成配置，并自动写回兼容的 `pipeline_mode`。后续仍可继续观察其他 CLI/批处理入口是否还有旧口径泄漏。
+当前这部分已经不是“先对齐再改代码”，而是“每次改完就立刻把入口与维护文档跟上”。
+
+- `README.md` / 产品手册 / `docs/roadmap.md`：保证“现在已经落地到哪”与“下一轮最值得做什么”不打架
+- 顶层 `scripts/` 继续只留用户入口与必要兼容 wrapper；检查实现放 `scripts/checks/`，开发辅助实现放 `scripts/dev/`
+- 会影响已安装 skill 对外表现的改动，继续通过 `sync:installed-skills` 把仓库内容镜像到本机安装副本
+- 共享逻辑继续下沉到 `scripts/lib/`，避免在 wrapper、主入口和开发脚本里重复拼路径或复制文案
+
+当前已落地：`manifest_wizard.mjs` 会优先按 `sampled / chapter-full / full-book` 生成配置；`scripts/checks/` 与 `scripts/dev/` 也都已经开始承接真实实现。后续仍可继续观察其他 CLI/批处理入口是否还有旧口径泄漏。
 
 ### 2. 给章节失败场景准备稳定退化路径
 
@@ -207,7 +224,7 @@ npm run check
 - 是否在对外文案里改用 coverage-first 命名
 - 是否把 `sample_level` / `sample_strategy` 降级为高级参数，而不是主入口概念
 
-### 8. 把维护脚本分层
+### 8. 继续维持脚本分层清晰
 
 当前 `packages/saoshu-harem-review/scripts/` 同时放了：
 
@@ -215,18 +232,18 @@ npm run check
 - 校验脚本
 - 开发辅助脚本
 
-后续可以考虑按职责拆成：
+当前已落地的分层：
 
-- `scripts/commands/`
 - `scripts/checks/`
 - `scripts/dev/`
+- `scripts/`（用户入口 + 必要兼容 wrapper）
 
-前提是不要破坏现有入口路径；可以先内部整理，再逐步兼容。
+前提仍是不破坏现有入口路径；因此 `check_*.mjs` 与少量开发脚本顶层路径继续保留薄 wrapper。
 
-`scripts/checks/` 已先落地：顶层 `check_*.mjs` 继续保留薄 wrapper，真实实现已迁到 `packages/saoshu-harem-review/scripts/checks/`；这一步先解决目录拥挤，不强迫外部调用立即改路径。
+`scripts/checks/` 已承载回归实现；`scripts/dev/` 也已开始承载 `quick_validate.mjs`、`sync_installed_skills.mjs`、`generate_openai_yaml.mjs` 这类开发辅助真实实现；顶层 `scripts/` 继续保留兼容入口。
 
 
-当前已先走了一步轻量分层：`run_pipeline.mjs` 的覆盖推荐/模板推荐辅助已抽到 `scripts/lib/pipeline_coverage.mjs`，term-wiki / scan-db 的路径发现与外部入库命令拼装已抽到 `scripts/lib/pipeline_integrations.mjs`，后续可继续沿这条方向拆编排入口。
+当前仍建议继续沿“入口变薄、共享逻辑下沉”的方向前进：`run_pipeline.mjs` 的覆盖推荐/模板推荐辅助已抽到 `scripts/lib/pipeline_coverage.mjs`，term-wiki / scan-db 的路径发现与外部入库命令拼装已抽到 `scripts/lib/pipeline_integrations.mjs`；只有在顶层用户入口继续明显变多时，再评估单独的 `scripts/commands/`。
 
 ### 9. 评估是否需要引入更细的自动化质量门
 

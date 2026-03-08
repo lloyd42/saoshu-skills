@@ -20,6 +20,15 @@ export function resolveLocalDbIngestScript({ projectRoot, home }) {
   ]);
 }
 
+export function resolveLocalDbDashboardScript({ projectRoot, home }) {
+  return findFirstExisting([
+    process.env.SAOSHU_DB_DASHBOARD_SCRIPT || "",
+    path.join(projectRoot, "saoshu-scan-db", "scripts", "db_dashboard.mjs"),
+    process.env.CODEX_HOME ? path.join(process.env.CODEX_HOME, "skills", "saoshu-scan-db", "scripts", "db_dashboard.mjs") : "",
+    home ? path.join(home, ".codex", "skills", "saoshu-scan-db", "scripts", "db_dashboard.mjs") : "",
+  ]);
+}
+
 export function buildExternalDbIngestCommand(template, { reportPath, statePath, manifestPath, dbPath }) {
   return String(template || "")
     .replaceAll("{report}", String(reportPath || "").replaceAll("\\", "/"))

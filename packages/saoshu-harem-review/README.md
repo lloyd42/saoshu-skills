@@ -5,7 +5,7 @@
 ## Main Entry
 - CLI 聚合入口：`scripts/saoshu_cli.mjs`
 - 主流水线：`scripts/run_pipeline.mjs`
-- 提交前校验：`scripts/quick_validate.mjs`
+- 提交前校验：`scripts/dev/quick_validate.mjs`
 
 ## Input Compatibility
 - 正文输入采用“兼容读取 + 统一归一化”策略

@@ -20,7 +20,12 @@ import {
   recommendCoverageTemplate,
   recommendSampleLevelByBatchCount,
 } from "./lib/pipeline_coverage.mjs";
-import { buildExternalDbIngestCommand, resolveDefaultWikiPath, resolveLocalDbIngestScript } from "./lib/pipeline_integrations.mjs";
+import {
+  buildExternalDbIngestCommand,
+  resolveDefaultWikiPath,
+  resolveLocalDbDashboardScript,
+  resolveLocalDbIngestScript,
+} from "./lib/pipeline_integrations.mjs";
 
 function usage() {
   console.log("Usage: node run_pipeline.mjs --manifest <novel_manifest.json> [--stage all|chunk|enrich|review|apply|merge]");
@@ -321,12 +326,30 @@ function main() {
         const dbCmd = formatCommand(process.execPath, [path.resolve(localIngestScript), ...dbArgs.map((item) => String(item))]);
         runNodeScript(localIngestScript, dbArgs);
         mark("db_ingest", "done", dbCmd);
+        const localDashboardScript = resolveLocalDbDashboardScript({ projectRoot, home });
+        runOptionalStage({
+          enabled: Boolean(localDashboardScript && fs.existsSync(path.resolve(localDashboardScript))),
+          stepName: "db_dashboard",
+          skippedDetail: "local dashboard script not found: saoshu-scan-db/scripts/db_dashboard.mjs",
+          mark,
+          run: () => {
+            const dashboardPath = path.join(dbPath, "dashboard.html");
+            const dashboardArgs = ["--db", dbPath, "--output", dashboardPath];
+            const detail = formatCommand(process.execPath, [path.resolve(localDashboardScript), ...dashboardArgs.map((item) => String(item))]);
+            return {
+              detail,
+              execute: () => runNodeScript(localDashboardScript, dashboardArgs),
+            };
+          },
+        });
       } else {
         mark("db_ingest", "skipped", "local ingest script not found: saoshu-scan-db/scripts/db_ingest.mjs");
+        mark("db_dashboard", "skipped", "db_ingest skipped, dashboard not refreshed");
       }
     } else if (dbMode === "external") {
       if (!dbIngestCmd) {
         mark("db_ingest", "skipped", "db_mode=external but db_ingest_cmd empty");
+        mark("db_dashboard", "skipped", "db_mode=external but db_ingest_cmd empty");
       } else {
         const ext = buildExternalDbIngestCommand(dbIngestCmd, {
           reportPath: js,
@@ -336,9 +359,11 @@ function main() {
         });
         runShellCommand(ext);
         mark("db_ingest", "done", ext);
+        mark("db_dashboard", "skipped", "db_mode=external; dashboard refresh delegated to external db flow");
       }
     } else {
       mark("db_ingest", "skipped", "db_mode=none");
+      mark("db_dashboard", "skipped", "db_mode=none");
     }
 
     state.finished_at = now();

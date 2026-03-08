@@ -2,7 +2,7 @@
   "ledger": "./workspace/mode-diff-ledger.jsonl",
   "db": "./scan-db",
   "summary_dir": "./workspace/mode-diff-summary",
-  "db_compare_dimensions": "author,tags,mode_diff_gain_window,mode_diff_band",
+  "db_compare_dimensions": "author,tags,coverage_mode,coverage_template,coverage_decision_action,coverage_decision_confidence,coverage_decision_reason,serial_status,target_defense,mode_diff_gain_window,mode_diff_band",
   "jobs": [
     {
       "name": "作品A",

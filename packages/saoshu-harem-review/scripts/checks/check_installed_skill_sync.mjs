@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const scriptPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "sync_installed_skills.mjs");
+const scriptPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "dev", "sync_installed_skills.mjs");
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "saoshu-installed-skills-"));
 const destRoot = path.join(tempRoot, "skills");

@@ -24,6 +24,7 @@
 - 真源：`merged-report.json`
 - 文本：`merged-report.md`
 - 可视：`merged-report.html`（可打印为 PDF，头部展示抽样模式与覆盖依据，并内置术语速查/悬浮释义）
+- 真源中的关键结论、覆盖升级建议、事件/雷点/郁闷点/未证实风险应尽量携带 `context_references`；来源过多时按固定规则取 top，方便后续审查与二次消费。
 
 ## 3. 统一数据契约
 - `references/schemas/novel_manifest.schema.json`

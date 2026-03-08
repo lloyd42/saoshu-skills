@@ -73,6 +73,7 @@
 - `merged-report.html`：可视化展示，含抽样信息、抽样命中原因、审计面板。
 - `merged-report.pdf`：可选自动导出（本地浏览器 headless 打印）。
 - 报告默认按三层组织：`决策区 -> 证据区 -> 深入区`，降低新手阅读成本。
+- 现在结论层、覆盖升级建议、事件/雷点/郁闷点/未证实风险都会附带 `context_references`，优先保留带章节号/标题/关键词/片段的上下文引用；来源过多时按条件取 top，方便后续人工审查。
 - HTML 报告头部与数据库仪表板当前优先展示 `coverage_mode`（覆盖口径）；`pipeline_mode` 仅作为“兼容执行层”保留，避免旧执行层别名继续压过 coverage-first 主叙事。
 - `newbie` 视图优先展示结论、关键证据、补证问题；`expert` 视图再展开事件表、雷点表、术语速查与审计细节。
 - `newbie` 视图中的补证问题会压缩到最关键 3 条，并优先展示“可能改变结论”的未证实风险。
@@ -86,6 +87,7 @@
   - `confidence`: `stable|cautious|insufficient`
   - `reason_codes`: 结构化原因码数组
   - `reason_lines`: 面向报告首页的中文原因行
+  - `context_references`: 支撑当前升级/保持动作的 top 上下文引用
   - `current_conclusion`: 当前已能交付到什么程度
   - `risk_if_not_upgraded`: 如果不升级，最可能漏掉什么
   - `upgrade_benefit`: 升级后主要减少什么误判/漏判
@@ -195,6 +197,8 @@ node scripts/saoshu_cli.mjs db assets --db ./scan-db --output-dir ./workspace/fe
 - 如果只是想重建台账、compare、trends、dashboard，不追加新样本，可运行：`node scripts/saoshu_cli.mjs compare sync --ledger ./workspace/mode-diff-ledger.jsonl --db ./scan-db`
 - 如果报告目录里已经有 `performance/economy` 或 `perf/econ` 成对结果，可先自动发现生成队列：`node scripts/saoshu_cli.mjs compare discover --root ./reports --output ./workspace/mode-diff-queue.json --db ./scan-db`
 - 如果已经准备好一批 perf/econ 报告对，可以把它们写进 `queue.json` 后一次性跑完：`node scripts/saoshu_cli.mjs compare batch --queue ./workspace/mode-diff-queue.json --db ./scan-db`
+- 真实样本队列默认建议把 `coverage_decision_action`、`coverage_decision_confidence`、`coverage_decision_reason` 与 `mode_diff_gain_window` 一起放进 compare 维度，先看“为什么建议升层/保持当前层”，再看模式差距是否持续扩大。
+- 如果只是常规 `db_mode=local` 流程，跑完 `run_pipeline.mjs --stage all` 后会自动刷新 `scan-db/dashboard.html`；dashboard 渲染时还会补齐缺失的基础 compare 详情页，不要求再额外记 compare 命令。
 - 批量执行结束后，会额外产出 `queue-summary.json`、`queue-summary.md`、`queue-summary.html`，方便直接查看成功/失败与重点输出路径。
 - 可以直接参考：`examples/minimal/mode-diff-queue.real-sample.template.json` 与 `examples/minimal/real-sample-batch-checklist.md`
 
@@ -241,6 +245,7 @@ Manifest 向导（新手推荐）：
 - `db_mode`: `none|local|external`
 - `db_path`: 本地数据库目录（local）
 - `db_ingest_cmd`: 外部入库命令（external）
+- 当 `db_mode=local` 时，merge 后会自动刷新 `<db>/dashboard.html`；若基础 compare 详情页缺失，也会在 dashboard 渲染时自动补齐，但不会覆盖已有 compare 结果。
 - `report_pdf`: 是否在 merge 后自动导出 PDF
 - `report_pdf_output`: PDF 输出路径
 - `report_pdf_engine_cmd`: 自定义导出引擎命令（可选）
@@ -371,7 +376,7 @@ Q4：报告里全是“待补证”
 A：需要运行 `review + apply`，并补充人工复核证据。
 
 Q5：如何做跨书统计？  
-A：开启 `db_mode=local` 入库后，使用 `saoshu-scan-db/scripts/db_query.mjs` 或 `db_dashboard.mjs`。
+A：开启 `db_mode=local` 入库后，使用 `saoshu-scan-db/scripts/db_query.mjs` 或 `db_dashboard.mjs`。如果要直接复看正文证据 / 反证线索 / `offset_hint` 定位，可优先跑 `db_query.mjs --metric context-reference-overview`、`counter-evidence-candidates`，或者直接下钻 `context-references --format json`。
 
 ## 12. 版本治理建议
 - 任何新增字段先改 schema，再改脚本。

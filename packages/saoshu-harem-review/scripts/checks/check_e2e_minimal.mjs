@@ -38,6 +38,10 @@ function runIntegratedOptionalScenario() {
   const reportHtml = path.join(fixture.outputDir, "merged-report.html");
   const statePath = path.join(fixture.outputDir, "pipeline-state.json");
   const dbRuns = path.join(fixture.outputDir, "scan-db", "runs.jsonl");
+  const dbDashboard = path.join(fixture.outputDir, "scan-db", "dashboard.html");
+  const dbCompare = path.join(fixture.outputDir, "scan-db", "compare", "compare.html");
+  const dbCompareContext = path.join(fixture.outputDir, "scan-db", "compare-context", "compare.html");
+  const dbCompareContextKinds = path.join(fixture.outputDir, "scan-db", "compare-context-kinds", "compare.html");
 
   assertExists(reportJson, "integrated merged-report.json");
   assertExists(reportMd, "integrated merged-report.md");
@@ -45,15 +49,27 @@ function runIntegratedOptionalScenario() {
   assertExists(statePath, "integrated pipeline-state.json");
   assertExists(path.join(fixture.outputDir, "review-pack"), "integrated review-pack");
   assertExists(dbRuns, "integrated scan-db runs.jsonl");
+  assertExists(dbDashboard, "integrated scan-db dashboard.html");
+  assertExists(dbCompare, "integrated scan-db compare.html");
+  assertExists(dbCompareContext, "integrated scan-db compare-context html");
+  assertExists(dbCompareContextKinds, "integrated scan-db compare-context-kinds html");
   assertStep(statePath, "db_ingest", "done");
+  assertStep(statePath, "db_dashboard", "done");
 
   const report = readJson(reportJson);
+  const state = readJson(statePath);
   if (report?.novel?.title === "最小样例-E2E") ok("integrated report metadata looks correct");
   else fail("integrated report metadata title mismatch");
   if (report?.novel?.harem_validity && report.novel.harem_validity !== "合法 / 不合法（原因）") ok("integrated report harem_validity is no longer a placeholder");
   else fail("integrated report harem_validity should not be a placeholder");
   if (report?.audit?.pipeline_state?.finished_at && report.audit.pipeline_state.finished_at !== "-") ok("integrated report audit finished_at is finalized");
   else fail("integrated report audit finished_at should be finalized");
+  if (report.scan?.sampling?.coverage_mode === "sampled") ok("legacy economy manifest is inferred as sampled coverage mode");
+  else fail(`legacy economy manifest should infer sampled coverage mode: ${JSON.stringify(report.scan?.sampling || {})}`);
+  if (String(report.novel?.tags || "").includes("[SAMPLED]")) ok("legacy economy manifest uses sampled coverage-first tag");
+  else fail(`legacy economy manifest should use sampled tag: ${JSON.stringify(report.novel || {})}`);
+  if (state.coverage_mode === "sampled") ok("legacy economy manifest writes inferred sampled coverage mode into pipeline state");
+  else fail(`legacy economy manifest should write sampled coverage mode into pipeline state: ${JSON.stringify(state)}`);
 
   const dbOverview = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["--db", path.join(fixture.outputDir, "scan-db"), "--metric", "overview", "--format", "text"]);
   expectSuccess(dbOverview, "integrated db overview query");

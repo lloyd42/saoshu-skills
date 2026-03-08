@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### 改进
+- `db_dashboard.mjs` 现在在默认流程下优先展示可点击的 compare 详情入口：缺失或过期的详情页会自动补齐，已有自定义 compare 产物会被保留，仅在自动补齐失败或显式 `--skip-compare` 时才回退为命令兜底。
+- `saoshu_cli.mjs db dashboard` 已透传 `--compare-presets`、`--compare-top`、`--skip-compare`；`saoshu_cli.mjs compare` 也补齐返回链，确保 skill 内外的 compare / dashboard 自动化入口保持一致。
+
 ## [0.5.3] - 2026-03-08
 
 ### 改进
