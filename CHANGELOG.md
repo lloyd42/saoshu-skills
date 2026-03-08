@@ -15,6 +15,7 @@
 - `merged-report.html` 头部卡片与 `db_dashboard.mjs` 的“最近运行”表现在也把 `coverage_mode` 放到 `pipeline_mode` 前面展示；`pipeline_mode` 的用户标签已降为“兼容执行层”。
 - `compare_reports.mjs` 与 `mode_diff_ledger.mjs` 的用户可见摘要、建议、Markdown/HTML 标题现在也改成 coverage-first 第一叙事：优先说“快速摸底 / 高覆盖复核”，把 `economy / performance` 降为兼容说明。
 - `README.md`、`community-alignment.md`、`sampling-design.md`、`references/product-manual.md`、`references/long-book.md`、`references/architecture/overview.md`、`references/architecture/system-blueprint.md` 里残留的旧 `economy / performance` 主叙事也已降为兼容说明；当前文档统一把 `sampled / chapter-full / full-book` 放在用户第一视角，把旧双模式保留为兼容执行层映射。
+- 仓库编码基线现在明确收紧为 `UTF-8 without BOM` + `LF`：`.editorconfig` / `.gitattributes` 的说明、`README.md`、`docs/development-workflow.md`、`docs/troubleshooting.md`、`CONTRIBUTING.md` 与 `check_repo_encoding.mjs` 的文案都已统一到这条硬要求，避免 Windows / PowerShell 下反复出现 BOM 写回问题。
 - 新增 sync_installed_skills.mjs 与 check_installed_skill_sync.mjs：前者可把 packages/* 下的 skill 包镜像到本机 $CODEX_HOME/skills/ 并按需补跑 quick_validate.mjs，后者在临时目录验证这条同步链路；package.json、docs/development-workflow.md 与 CONTRIBUTING.md 也已同步这套本地镜像闭环。
 
 ### 重构

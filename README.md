@@ -51,7 +51,8 @@
 ### 环境要求
 
 - Node.js `20+`
-- 建议使用 UTF-8 文本环境
+- 建议使用 `UTF-8 without BOM` 文本读写环境
+- 仓库内文档、脚本、JSON 与默认生成输出都以 `UTF-8 without BOM` + `LF` 为基线
 - 在仓库根目录执行命令
 - Windows PowerShell 如看到中文乱码，先执行 `chcp 65001 > $null`，并优先用 `Get-Content -Encoding utf8` 判断是不是终端显示问题
 
@@ -61,7 +62,7 @@
 - 当前主流程可自动兼容常见正文编码：`UTF-8`、`UTF-8 BOM`、`GBK`、`GB18030`
 - 读入后会统一归一化为内部字符串表示，再进入切批、复核与归并阶段
 - `manifest.json` 等 JSON 输入兼容 `UTF-8 BOM`，避免 Windows 环境下因 BOM 导致的解析失败
-- 输出文件统一写为标准 `UTF-8`
+- 仓库与输出侧统一写为标准 `UTF-8 without BOM`
 
 ### 章节标题兼容
 

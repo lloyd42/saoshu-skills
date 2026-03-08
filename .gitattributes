@@ -1,3 +1,4 @@
+# Text files stay LF in Git; UTF-8 BOM is blocked by repo encoding checks.
 * text=auto eol=lf
 
 *.png binary

@@ -44,13 +44,13 @@ for (const filePath of files) {
   const normalized = path.relative(repoRoot, filePath).replaceAll("\\", "/");
   const buf = fs.readFileSync(filePath);
   const text = buf.toString("utf8");
-  if (hasUtf8Bom(buf)) fail(`BOM found in ${normalized}`);
+  if (hasUtf8Bom(buf)) fail(`UTF-8 BOM found in ${normalized}; repository baseline is UTF-8 without BOM + LF`);
   if (buf.includes(0x00)) fail(`NUL byte found in ${normalized}`);
   if (text.includes(String.fromCharCode(0xfffd))) fail(`replacement character found in ${normalized}`);
 }
 
 if (!hasFailure) {
-  ok(`checked ${files.length} text files`);
+  ok(`checked ${files.length} text files against UTF-8 without BOM baseline`);
   console.log("Repository encoding check passed.");
 } else {
   process.exitCode = 1;

@@ -27,6 +27,7 @@
 - 如改动会影响已安装 skill 的对外文案、说明或默认 prompt（例如 `SKILL.md`、`README.md`、`references/`、`packages/*/agents/openai.yaml`），在仓库内验证完成后，再运行 `npm run sync:installed-skills -- --skills <skill-a,skill-b>`，把对应 package 镜像到本机 `$CODEX_HOME/skills/`
 - 上面的 installed-skill 同步属于本地开发辅助，不是 CI 强制步骤；`npm run check` 只会在临时目录验证同步脚本本身，不会改动你的本机安装目录
 - 新增脚本优先复用 `packages/*/scripts`
+- 提交的文档、脚本、JSON 默认保持 `UTF-8 without BOM` + `LF`；不要把 BOM 写回仓库
 - 正式代码与配置不得硬编码依赖用户本地路径
 - 运行产物不要提交到 Git
 

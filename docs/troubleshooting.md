@@ -19,6 +19,13 @@ chcp 65001 > $null
 Get-Content -LiteralPath .\README.md -Encoding utf8
 ```
 
+如果需要安全写回文本，优先明确使用 no-BOM 写入器：
+
+```powershell
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+[System.IO.File]::WriteAllText($path, $content, $utf8NoBom)
+```
+
 ## 2. 怎么判断是显示问题还是文件问题
 
 按下面顺序判断：
@@ -26,6 +33,8 @@ Get-Content -LiteralPath .\README.md -Encoding utf8
 1. 先用 `Get-Content -Encoding utf8` 读取
 2. 再跑仓库检查：`npm run check:encoding`
 3. 如果检查通过，大概率是终端显示问题，不是文件损坏
+
+当前仓库的读写基线不是“随便 UTF-8”，而是 `UTF-8 without BOM` + `LF`。
 
 当前仓库的编码检查会拦截：
 
@@ -40,7 +49,7 @@ Get-Content -LiteralPath .\README.md -Encoding utf8
 - `Unexpected token '锘?'`
 - JSON 无法解析
 
-通常是文件被写成了 `UTF-8 BOM`。
+通常是文件被写成了 `UTF-8 BOM`。仓库内文档、脚本、JSON 与默认生成输出都不应继续写 BOM。
 
 优先检查写入方式，不要先怀疑解析器。
 

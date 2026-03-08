@@ -1,3 +1,4 @@
+# Repository text baseline: UTF-8 without BOM + LF
 root = true
 
 [*.{md,mjs,json,yml,yaml,txt}]

@@ -6,7 +6,7 @@
 
 - Node.js `20+`
 - 仓库根目录执行命令
-- 编辑器默认使用 `UTF-8` 与 `LF`
+- 编辑器默认使用 `UTF-8 without BOM` 与 `LF`
 - Windows PowerShell 如出现中文乱码，先确认是终端显示问题而不是文件损坏；优先尝试 `chcp 65001 > $null`
 - 如需快速判断是否为编码/BOM/终端显示问题，先看 `docs/troubleshooting.md`
 
@@ -40,10 +40,11 @@ run_pipeline.mjs
 
 ## 4. 编码与跨平台约定
 
-- 文本文件统一保存为 `UTF-8`
-- 仓库统一以 `LF` 为基线，避免 CRLF/BOM 干扰脚本和 review
+- 文本文件统一保存为 `UTF-8 without BOM`
+- 仓库统一以 `UTF-8 without BOM` + `LF` 为基线，避免 CRLF/BOM 干扰脚本和 review
 - 输入侧允许兼容 `UTF-8`、`UTF-8 BOM`、`GBK`、`GB18030`
-- 输出侧统一落为标准 `UTF-8`
+- 输出侧统一落为标准 `UTF-8 without BOM`
+- 在 PowerShell / .NET 写文本时，优先显式使用 `System.Text.UTF8Encoding($false)` 或其他已确认 no-BOM 写入器
 - 浏览器、数据库、技能包路径优先自动探测，必要时再允许显式传参覆盖
 
 ## 5. 验证阶梯
