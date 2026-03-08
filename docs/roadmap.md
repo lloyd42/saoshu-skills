@@ -172,7 +172,8 @@
 
 - `UTF-8 without BOM` / `LF` 基线
 - 绝对路径边界检查
-- 命令执行 helper 回归`r`n- 共享 no-BOM 文本写入 helper（`scripts/lib/text_output.mjs`）
+- 命令执行 helper 回归
+- 共享 no-BOM 文本写入 helper（`scripts/lib/text_output.mjs`）
 - 规则目录一致性与多样性审计
 - 批次归并 focused regression
 - 结论层 focused regression
