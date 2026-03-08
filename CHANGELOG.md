@@ -4,9 +4,14 @@
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-03-09
+
 ### 改进
-- `db_dashboard.mjs` 现在在默认流程下优先展示可点击的 compare 详情入口：缺失或过期的详情页会自动补齐，已有自定义 compare 产物会被保留，仅在自动补齐失败或显式 `--skip-compare` 时才回退为命令兜底。
-- `saoshu_cli.mjs db dashboard` 已透传 `--compare-presets`、`--compare-top`、`--skip-compare`；`saoshu_cli.mjs compare` 也补齐返回链，确保 skill 内外的 compare / dashboard 自动化入口保持一致。
+- `context_references` 现在已经打通到报告 JSON、Markdown/HTML、复核包与 `scan-db`，并保留 `counter_evidence` 与 `offset_hint` 这类可回看定位信息，方便后续审查与复核。
+- `scan-db` 现在支持 `context-reference-overview`、`context-references`、`counter-evidence-candidates` 查询口径，以及 `context-audit` / `context-source` compare preset，便于按作品集合回看引用来源、反证线索与偏移定位差异。
+- `db_dashboard.mjs` 现在会优先自动补齐 canonical compare 详情页，并直接展示“点击查看详情”入口；只有自动补齐失败或显式 `--skip-compare` 时才回退为命令提示。
+- `run_pipeline.mjs` 在 `db_mode=local` 下会在入库后自动刷新 `<db>/dashboard.html`，让 skill 用户跑完主流程就能直接落到可点击的 dashboard 入口。
+- 仓库补齐了 `db_ingest_report_tree.mjs`、installed-skill 同步与相关 focused/e2e 校验，保证报告合同、scan-db 入口、已安装 skill 镜像与本地工作流保持一致。
 
 ## [0.5.3] - 2026-03-08
 
