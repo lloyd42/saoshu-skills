@@ -22,6 +22,7 @@
 - 扫书结果入库、查询、趋势分析、维度对比与仪表板生成
 - MCP / 外部增强结果回填与失败时的本地回退
 - 统一输出 `JSON / Markdown / HTML` 报告与 `pipeline-state.json`
+- 对 `送女 / 背叛 / 死女 / 绿帽 / wrq` 这类要求女性主体语境的待补证风险，归并层会保持保守：主体证据不足时不直接升成 `未证实风险`，而是继续留在事件复核与补证问题层
 
 ## 仓库结构
 
@@ -224,6 +225,11 @@ node packages/saoshu-harem-review/scripts/run_pipeline.mjs --manifest <manifest.
 
 建议把 `docs/development-workflow.md` 作为接手开发、处理中断与发布前自检的统一入口。
 编码与终端显示问题优先看 `docs/troubleshooting.md`。
+
+### 默认同步约定
+
+- 只要改动影响用户可见行为、报告语义、CLI 默认行为、维护流程或对外文档理解，默认同一轮同步 `README.md`、产品手册、`CHANGELOG.md` 的 `Unreleased`，必要时再补 `docs/roadmap.md` / `docs/troubleshooting.md`
+- 不要把这类同步拖到“准备发版时再一起补”；对这个仓库来说，文档与代码应尽量同轮落地，避免接手者只能靠 `git diff` 猜当前基线
 
 如果你是第一次接手这个仓库，推荐按下面顺序阅读：
 
