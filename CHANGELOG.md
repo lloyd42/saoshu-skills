@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### 文档
+- 补齐 maintainer 向的任务生命周期、进度同步清单与完成定义，明确 `roadmap / workflow / contributing / versioning / changelog` 的分工，并把“开发流程标准化与进度同步”收进当前 `Now` 主线。
+
 ## [0.5.4] - 2026-03-09
 
 ### 改进
