@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { writeUtf8File, writeUtf8Json } from "./lib/text_output.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const tmpRoot = path.join(repoRoot, ".tmp", "check-event-review-focus");
@@ -24,8 +25,7 @@ function ensureCleanDir(dir) {
 }
 
 function writeJson(filePath, payload) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  writeUtf8Json(filePath, payload, { newline: true });
 }
 
 function readJson(filePath) {
@@ -66,7 +66,7 @@ function updateEventDecision(reviewPath, eventId, decision) {
     return block.replace(/复核结论[:：]\s*待补证/g, `复核结论：${decision}`);
   }).join("");
   if (!updated) throw new Error(`event review block not found for ${eventId}`);
-  fs.writeFileSync(reviewPath, next, "utf8");
+  writeUtf8File(reviewPath, next);
 }
 
 function prepareFixture(baseDir) {
@@ -83,7 +83,7 @@ function prepareFixture(baseDir) {
     "苏梨解释自己并未背叛林舟，另一条背叛传闻则被证实是误会。",
     "",
   ].join("\n");
-  fs.writeFileSync(inputPath, novel, "utf8");
+  writeUtf8File(inputPath, novel);
 
   const batch = {
     batch_id: "B01",

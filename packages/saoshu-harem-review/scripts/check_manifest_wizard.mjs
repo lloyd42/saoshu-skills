@@ -4,6 +4,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { resolvePipelineManifest } from "./lib/pipeline_manifest.mjs";
+import { writeUtf8File } from "./lib/text_output.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const tmpRoot = path.join(repoRoot, ".tmp", "check-manifest-wizard");
@@ -50,7 +51,7 @@ ensureCleanDir(tmpRoot);
 
 const inputTxt = path.join(tmpRoot, "novel.txt");
 const outputManifest = path.join(tmpRoot, "manifest.json");
-fs.writeFileSync(inputTxt, "第一章 开局\n测试文本\n", "utf8");
+writeUtf8File(inputTxt, "第一章 开局\n测试文本\n");
 
 const success = runWizard([
   "--output", outputManifest,

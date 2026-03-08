@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { writeUtf8Jsonl } from "./lib/text_output.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const tmpRoot = path.join(repoRoot, ".tmp", "check-db-compare-feedback-metrics");
@@ -13,8 +14,7 @@ function ok(message) { console.log(`OK: ${message}`); }
 function fail(message) { hasFailure = true; console.error(`FAIL: ${message}`); }
 
 function writeJsonl(filePath, rows) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`, "utf8");
+  writeUtf8Jsonl(filePath, rows);
 }
 
 function runNode(scriptPath, args = []) {

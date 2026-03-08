@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { writeUtf8File, writeUtf8Json } from "./lib/text_output.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const tmpRoot = path.join(repoRoot, ".tmp", "check-chapter-detect-assist");
@@ -27,14 +28,14 @@ const inputPath = path.join(tmpRoot, 'weird.txt');
 const outputDir = path.join(tmpRoot, 'batches');
 const assistDir = path.join(tmpRoot, 'chapter-assist');
 const manifestPath = path.join(tmpRoot, 'manifest.json');
-fs.writeFileSync(inputPath, '【序章】\n第一段\n第二段\n＊＊风起＊＊\n第三段\n第四段\n终章·离别\n第五段\n', 'utf8');
+writeUtf8File(inputPath, '【序章】\n第一段\n第二段\n＊＊风起＊＊\n第三段\n第四段\n终章·离别\n第五段\n');
 
 const firstRun = runNode('packages/saoshu-harem-review/scripts/scan_txt_batches.mjs', ['--input', inputPath, '--output', outputDir, '--chapter-detect-mode', 'auto', '--chapter-assist-dir', assistDir]);
 if (firstRun.status !== 0 && fs.existsSync(path.join(assistDir, 'chapter-detect-request.md')) && fs.existsSync(path.join(assistDir, 'chapter-detect-input.txt'))) ok('auto mode writes chapter assist pack on script failure');
 else fail(`auto mode should emit assist pack\nSTDOUT:\n${firstRun.stdout}\nSTDERR:\n${firstRun.stderr}`);
 
 const assistResultPath = path.join(assistDir, 'chapter-detect-result.json');
-fs.writeFileSync(assistResultPath, `${JSON.stringify({
+writeUtf8Json(assistResultPath, {
   source_input: path.join(assistDir, 'chapter-detect-input.txt').replace(/\\/g, '/'),
   detected_by: 'assist',
   confidence: 'medium',
@@ -44,13 +45,13 @@ fs.writeFileSync(assistResultPath, `${JSON.stringify({
     { num: 2, title: '＊＊风起＊＊', start_line: 4, end_line: 6 },
     { num: 3, title: '终章·离别', start_line: 7, end_line: 8 }
   ]
-}, null, 2)}\n`, 'utf8');
+}, { newline: true });
 
 const secondRun = runNode('packages/saoshu-harem-review/scripts/scan_txt_batches.mjs', ['--input', inputPath, '--output', outputDir, '--chapter-detect-mode', 'assist', '--chapter-assist-dir', assistDir, '--chapter-assist-result', assistResultPath]);
 if (secondRun.status === 0 && fs.existsSync(path.join(outputDir, 'B01.json'))) ok('assist result lets scan_txt_batches continue');
 else fail(`assist mode should continue with result\nSTDOUT:\n${secondRun.stdout}\nSTDERR:\n${secondRun.stderr}`);
 
-fs.writeFileSync(manifestPath, `${JSON.stringify({
+writeUtf8Json(manifestPath, {
   input_txt: './weird.txt',
   output_dir: './workspace',
   title: '章节 assist 夹具',
@@ -78,7 +79,7 @@ fs.writeFileSync(manifestPath, `${JSON.stringify({
   db_mode: 'none',
   db_path: './workspace/scan-db',
   db_ingest_cmd: ''
-}, null, 2)}\n`, 'utf8');
+}, { newline: true });
 
 const pipelineRun = runNode('packages/saoshu-harem-review/scripts/run_pipeline.mjs', ['--manifest', manifestPath, '--stage', 'chunk']);
 if (pipelineRun.status === 0 && pipelineRun.stdout.includes('Chapter detect: assist')) ok('run_pipeline forwards chapter assist settings');

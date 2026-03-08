@@ -18,6 +18,7 @@
 - 仓库编码基线现在明确收紧为 `UTF-8 without BOM` + `LF`：`.editorconfig` / `.gitattributes` 的说明、`README.md`、`docs/development-workflow.md`、`docs/troubleshooting.md`、`CONTRIBUTING.md` 与 `check_repo_encoding.mjs` 的文案都已统一到这条硬要求，避免 Windows / PowerShell 下反复出现 BOM 写回问题。
 - 新增 scripts/lib/text_output.mjs 作为共享 no-BOM 文本写入 helper，并已接入主执行链、mode-diff 汇总链与 scan-db 关键输出/JSONL 追加路径；check_script_helpers.mjs 也补了 focused regression，直接锁定 writeUtf8Json / ppendUtf8Jsonl / writeUtf8File 的 UTF-8 without BOM 行为。
 - 新增 sync_installed_skills.mjs 与 check_installed_skill_sync.mjs：前者可把 packages/* 下的 skill 包镜像到本机 $CODEX_HOME/skills/ 并按需补跑 quick_validate.mjs，后者在临时目录验证这条同步链路；package.json、docs/development-workflow.md 与 CONTRIBUTING.md 也已同步这套本地镜像闭环。
+- scripts/lib/text_output.mjs 进一步补齐了 writeUtf8Jsonl，第二批 check_* / fixture 脚本也已批量切到共享 no-BOM 写入 helper；现在仓库里剩余的直写命中基本只剩 helper 本身与 check_script_helpers.mjs 里的临时子脚本片段。
 
 ### 重构
 - 抽出 `scripts/lib/report_relationships.mjs`，集中承接外部 `relationship-map.json` 的加载、归一化与关系边合并逻辑；`batch_merge.mjs` 进一步收敛为编排层。

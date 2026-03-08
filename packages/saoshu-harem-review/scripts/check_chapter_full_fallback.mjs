@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { writeUtf8File, writeUtf8Json } from "./lib/text_output.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const tmpRoot = path.join(repoRoot, ".tmp", "check-chapter-full-fallback");
@@ -54,7 +55,7 @@ function writeFixture(dir) {
   const novelPath = path.join(dir, "novel.txt");
   const paragraph = "男主与众女主在宗门中推进主线，气氛稳定，没有明确章节标题，但每段都是独立场景，需要按分段继续全文扫描。";
   const novelContent = Array.from({ length: 120 }, (_, index) => `${paragraph}${index + 1}\n\n`).join("");
-  fs.writeFileSync(novelPath, novelContent, "utf8");
+  writeUtf8File(novelPath, novelContent);
   const manifest = {
     input_txt: "./novel.txt",
     output_dir: "./workspace/chapter-full-fallback",
@@ -76,7 +77,7 @@ function writeFixture(dir) {
     db_path: "./workspace/chapter-full-fallback/scan-db",
     db_ingest_cmd: "",
   };
-  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  writeUtf8Json(manifestPath, manifest, { newline: true });
   return { manifestPath, outputDir: path.join(dir, "workspace", "chapter-full-fallback") };
 }
 

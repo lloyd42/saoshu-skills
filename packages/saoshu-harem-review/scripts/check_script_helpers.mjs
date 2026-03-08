@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatCommand, pushArg, pushFlag, runNodeScript } from "./lib/script_helpers.mjs";
-import { appendUtf8Jsonl, writeUtf8File, writeUtf8Json } from "./lib/text_output.mjs";
+import { appendUtf8Jsonl, writeUtf8File, writeUtf8Json, writeUtf8Jsonl } from "./lib/text_output.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const tmpRoot = path.join(repoRoot, ".tmp", "check-script-helpers");
@@ -61,11 +61,13 @@ else fail(`formatCommand should quote spaced arguments: ${formatted}`);
 const helperDir = path.join(tmpRoot, "text output");
 const helperJsonPath = path.join(helperDir, "sample.json");
 const helperJsonlPath = path.join(helperDir, "events.jsonl");
+const helperJsonlWritePath = path.join(helperDir, "rows.jsonl");
 const helperTextPath = path.join(helperDir, "note.md");
 
 writeUtf8Json(helperJsonPath, { title: "编码基线", ok: true }, { newline: true });
 appendUtf8Jsonl(helperJsonlPath, { id: 1, name: "alpha" });
 appendUtf8Jsonl(helperJsonlPath, { id: 2, name: "beta" });
+writeUtf8Jsonl(helperJsonlWritePath, [{ id: 3, name: "gamma" }, { id: 4, name: "delta" }]);
 writeUtf8File(helperTextPath, "第一行\n第二行\n");
 
 const helperJsonBuffer = fs.readFileSync(helperJsonPath);
@@ -79,6 +81,10 @@ else fail("writeUtf8Json payload mismatch");
 const jsonlLines = fs.readFileSync(helperJsonlPath, "utf8").trim().split(/\r?\n/u);
 if (jsonlLines.length === 2 && JSON.parse(jsonlLines[1]).name === "beta") ok("appendUtf8Jsonl appends newline-delimited records");
 else fail("appendUtf8Jsonl should append JSONL rows");
+
+const helperJsonlWriteLines = fs.readFileSync(helperJsonlWritePath, "utf8").trim().split(/\r?\n/u);
+if (helperJsonlWriteLines.length === 2 && JSON.parse(helperJsonlWriteLines[0]).name === "gamma") ok("writeUtf8Jsonl writes newline-delimited records");
+else fail("writeUtf8Jsonl should write JSONL rows");
 
 if (fs.existsSync(helperTextPath) && fs.readFileSync(helperTextPath, "utf8").includes("第二行")) ok("writeUtf8File creates parent directories and writes text");
 else fail("writeUtf8File should create parent directories and write text");

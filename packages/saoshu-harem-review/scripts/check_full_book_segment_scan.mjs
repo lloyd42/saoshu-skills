@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { writeUtf8File, writeUtf8Json } from "./lib/text_output.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const tmpRoot = path.join(repoRoot, ".tmp", "check-full-book-segment-scan");
@@ -56,7 +57,7 @@ function writeFixture(dir) {
     const chapterNo = index + 1;
     return `第${chapterNo}章 章节${chapterNo}\n男主与多位女主在不同场景推进关系线，第${chapterNo}章包含明确章节标题，但 full-book 仍应按整书连续分段全文扫描。\n\n补充说明${chapterNo}：这里继续提供足够正文，保证会被切成多个分段。`;
   });
-  fs.writeFileSync(novelPath, chapters.join("\n\n"), "utf8");
+  writeUtf8File(novelPath, chapters.join("\n\n"));
   const manifest = {
     input_txt: "./novel.txt",
     output_dir: "./workspace/full-book-segment",
@@ -78,7 +79,7 @@ function writeFixture(dir) {
     db_path: "./workspace/full-book-segment/scan-db",
     db_ingest_cmd: "",
   };
-  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  writeUtf8Json(manifestPath, manifest, { newline: true });
   return { manifestPath, outputDir: path.join(dir, "workspace", "full-book-segment") };
 }
 

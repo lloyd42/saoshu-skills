@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { writeUtf8File } from "./lib/text_output.mjs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import {
@@ -95,7 +96,7 @@ function prepareFixture(baseDir) {
     "柳清月是林舟的妻子，为救林舟而战死沙场，众人久久无言。",
     "",
   ].join("\n");
-  fs.writeFileSync(inputPath, novel, "utf8");
+  writeUtf8File(inputPath, novel);
   return { inputPath, outputDir };
 }
 

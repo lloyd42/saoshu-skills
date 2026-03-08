@@ -34,3 +34,7 @@ export function writeUtf8Json(targetPath, payload, options = {}) {
 export function appendUtf8Jsonl(targetPath, payload) {
   return appendUtf8File(targetPath, `${JSON.stringify(payload)}\n`);
 }
+export function writeUtf8Jsonl(targetPath, rows) {
+  const items = Array.isArray(rows) ? rows : [];
+  return writeUtf8File(targetPath, `${items.map((row) => JSON.stringify(row)).join("\n")}\n`);
+}

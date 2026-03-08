@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { writeUtf8File, writeUtf8Json } from "./lib/text_output.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const tmpRoot = path.join(repoRoot, ".tmp", "check-e2e-minimal");
@@ -89,7 +90,7 @@ function writeFixtureManifest(manifestPath, outputDirRelative, overrides = {}) {
     db_ingest_cmd: "",
     ...overrides,
   };
-  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  writeUtf8Json(manifestPath, manifest, { newline: true });
 }
 
 function readJson(jsonPath) {
@@ -116,7 +117,7 @@ function updateEventDecision(reviewPath, eventId, decision) {
     return block.replace(/复核结论[:：]\s*待补证/g, "复核结论：" + decision);
   }).join("");
   if (!updated) throw new Error("event review block not found for " + eventId);
-  fs.writeFileSync(reviewPath, next, "utf8");
+  writeUtf8File(reviewPath, next);
 }
 
 function prepareFixture(baseDir, outputDirRelative, overrides = {}) {
@@ -146,7 +147,7 @@ function prepareCustomFixture(baseDir, outputDirRelative, novelContent, override
   ensureCleanDir(baseDir);
   const inputPath = path.join(baseDir, "novel.txt");
   const manifestPath = path.join(baseDir, "manifest.json");
-  fs.writeFileSync(inputPath, novelContent, "utf8");
+  writeUtf8File(inputPath, novelContent);
 
   const manifest = {
     input_txt: "./novel.txt",
@@ -184,7 +185,7 @@ function prepareCustomFixture(baseDir, outputDirRelative, novelContent, override
     ...overrides,
   };
   const prefix = options.withBom ? "\uFEFF" : "";
-  fs.writeFileSync(manifestPath, `${prefix}${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  writeUtf8File(manifestPath, `${prefix}${JSON.stringify(manifest, null, 2)}\n`);
 
   return {
     inputPath,
