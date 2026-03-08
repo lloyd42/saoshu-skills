@@ -9,6 +9,7 @@ const allowedRoots = [
   path.join(repoRoot, "docs"),
   path.join(repoRoot, ".github"),
 ];
+const ignoredDirNames = new Set([".git", "node_modules", ".tmp", "workspace", "scan-db"]);
 
 const forbiddenSnippets = [
   "D:/codex/asset",
@@ -39,7 +40,7 @@ function walk(dir, output = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name === ".git" || entry.name === "node_modules") continue;
+      if (ignoredDirNames.has(entry.name)) continue;
       walk(fullPath, output);
     } else {
       output.push(fullPath);
