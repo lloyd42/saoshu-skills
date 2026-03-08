@@ -13,7 +13,7 @@ export function showCliHelp() {
   console.log("  node saoshu_cli.mjs db ingest --db <dir> --report <merged-report.json> [--state <pipeline-state.json>] [--manifest <manifest.json>]");
   console.log("  node saoshu_cli.mjs db ingest-mode-diff --db <dir> --ledger <mode-diff-ledger.jsonl>");
   console.log("  node saoshu_cli.mjs db assets --db <dir> --output-dir <dir>");
-  console.log("  node saoshu_cli.mjs compare --db <dir> [--dimensions author,tags,verdict,pipeline_mode,target_defense,title,mode_diff_gain_window,mode_diff_band] [--output-dir <dir>]");
+  console.log("  node saoshu_cli.mjs compare --db <dir> [--dimensions author,tags,verdict,coverage_mode,coverage_template,pipeline_mode,target_defense,title,mode_diff_gain_window,mode_diff_band] [--output-dir <dir>]");
   console.log("  node saoshu_cli.mjs compare ledger --ledger <mode-diff-ledger.jsonl> --output-dir <dir> [--title <name>]");
   console.log("  node saoshu_cli.mjs compare discover --root <dir> --output <queue.json> [--db <dir>]");
   console.log("  node saoshu_cli.mjs compare record --perf <perf.json> --econ <econ.json> --out-dir <dir> --ledger <mode-diff-ledger.jsonl> [--db <dir>]");
@@ -21,11 +21,10 @@ export function showCliHelp() {
   console.log("  node saoshu_cli.mjs compare sync --ledger <mode-diff-ledger.jsonl> [--db <dir>]");
   console.log("");
   console.log("术语说明:");
-  console.log("  economy = 节能模式，适合快速初筛");
-  console.log("  performance = 全量模式，适合完整复核");
   console.log("  coverage_mode 兼容口径：sampled=快速摸底；chapter-full=章节级尽量完整（无章节时自动退化为分段级全文扫描）；full-book=整书最终确认（当前默认整书连续分段全文扫描，不依赖章节识别）");
-  console.log("  当前稳定 manifest 字段仍是 pipeline_mode；coverage_mode 已可作为兼容字段传入运行时");
+  console.log("  wizard/manifest 当前优先按 coverage_mode 生成；内部仍会自动补齐兼容的 pipeline_mode");
   console.log("  coverage_template：opening-100 / head-tail / head-tail-risk / opening-latest（当前用于 sampled/economy 路径的抽查模板）");
+  console.log("  economy / performance 仍是内部稳定执行层别名：sampled -> economy；chapter-full / full-book -> performance");
   console.log("  serial_status：unknown / ongoing / completed；会影响 opening-latest 更像‘最新进度’还是‘完结尾部’");
   console.log("  fixed = 固定抽样；dynamic = 动态抽样");
   console.log("  risk-aware = 风险优先；uniform = 均匀抽样");

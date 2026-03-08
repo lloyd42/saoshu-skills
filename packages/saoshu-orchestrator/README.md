@@ -5,12 +5,15 @@
 ## 当前定位
 
 - 统一入口仍是 `saoshu-harem-review/scripts/run_pipeline.mjs`
-- 执行层仍复用 `economy / performance`
 - 用户口径已进入 coverage-first：`sampled / chapter-full / full-book`
 - 当前最重要的边界是：
   - `sampled`：快速摸底
   - `chapter-full`：章节优先，失败时分段退化
   - `full-book`：整书连续分段全文扫描，用于最终确认
+- `economy / performance` 仍作为内部稳定执行层保留：
+  - `sampled -> economy`
+  - `chapter-full -> performance`
+  - `full-book -> performance`
 
 ## Main Entry
 - 技能定义：`SKILL.md`

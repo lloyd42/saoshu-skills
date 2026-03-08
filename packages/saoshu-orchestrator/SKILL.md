@@ -10,11 +10,14 @@ description: 扫书编排技能。用于执行分阶段流水线（chunk/enrich/
 - 先准备 manifest，再按 stage 或 all 执行。
 
 ## 模式
-- 稳定执行层：`economy`（抽样快速摸底）、`performance`（高覆盖复核）。
-- coverage-first 用户口径：
+- coverage-first 用户口径应放在第一位：
+  - `sampled`：快速摸底
+  - `chapter-full`：章节级尽量完整；章节失败时自动退化为分段级全文扫描
+  - `full-book`：整书最终确认；默认按整书连续分段做全文扫描，不依赖章节识别
+- 内部稳定执行层仍保持兼容：
   - `sampled -> economy`
-  - `chapter-full -> performance`，并在章节失败时自动退化为分段级全文扫描
-  - `full-book -> performance`，并默认按整书连续分段做全文扫描，不依赖章节识别
+  - `chapter-full -> performance`
+  - `full-book -> performance`
 
 ## 默认升级与介入
 - 先用 `sampled` 做快速摸底。

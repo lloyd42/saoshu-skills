@@ -9,6 +9,7 @@
 - 新增 `check_report_summary_focus.mjs`，直接保护结论层的风险合并、事件升格与排序优先级；`check_batch_merge_focus.mjs` 也补充了男性主体 `送女` 候选不会误升格、但仍保留人工复核入口的断言。
 - `check_repo_boundaries.mjs` 现在会跳过 `.tmp`、`workspace`、`scan-db` 等运行时输出目录，避免临时产物把仓库边界检查刷红。
 - `manifest_wizard.mjs` 现在会优先按 `coverage_mode=sampled|chapter-full|full-book` 生成入口配置，并自动写入兼容的 `pipeline_mode`；非交互模式也支持直接传 `--coverage-mode`、`--coverage-template`、`--serial-status`。
+- `saoshu_cli.mjs --help`、`saoshu-orchestrator` 的 skill 文案与 agent prompt 现在也把 coverage-first 放到第一叙事层，减少用户继续把 `economy / performance` 误读成主入口模式。
 
 ### 重构
 - 抽出 `scripts/lib/report_relationships.mjs`，集中承接外部 `relationship-map.json` 的加载、归一化与关系边合并逻辑；`batch_merge.mjs` 进一步收敛为编排层。
