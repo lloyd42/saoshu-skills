@@ -182,10 +182,12 @@ node scripts/saoshu_cli.mjs db assets --db ./scan-db --output-dir ./workspace/fe
 
 Manifest 向导（新手推荐）：
 - 交互式：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie`
-- 非交互：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie --non-interactive --input-txt <txt> --output-dir <dir> --title <name>`
+- 非交互：`node scripts/manifest_wizard.mjs --output <manifest.json> --preset newbie --non-interactive --input-txt <txt> --output-dir <dir> --title <name> [--coverage-mode sampled|chapter-full|full-book] [--coverage-template opening-100|head-tail|head-tail-risk|opening-latest] [--serial-status unknown|ongoing|completed]`
+- 向导现在会优先按 coverage-first 口径提问或生成配置：`preset=newbie` 默认走 `sampled`，`preset=full` 默认走 `chapter-full`；如果要直接走“整书最终确认”，可显式传 `--coverage-mode full-book`。
+- 向导生成的 manifest 会同时写入 `coverage_mode` 与兼容的 `pipeline_mode`，避免入口口径与运行时映射再度漂移。
 
 ## 6. Manifest 关键字段
-当前代码基线仍以 `pipeline_mode=economy|performance` 为主。运行时现已接受 `coverage_mode=sampled|chapter-full|full-book` 作为兼容字段，并自动映射到当前双模式基线；其中 `chapter-full` 已具备“章节失败 -> 分段级全文扫描”的真实差异，`full-book` 已具备“整书连续分段全文扫描”的真实差异，后续再逐步把 CLI / skill / 批处理脚本切到 coverage-first 口径。
+当前代码基线仍以 `pipeline_mode=economy|performance` 为主。运行时现已接受 `coverage_mode=sampled|chapter-full|full-book` 作为兼容字段，并自动映射到当前双模式基线；其中 `chapter-full` 已具备“章节失败 -> 分段级全文扫描”的真实差异，`full-book` 已具备“整书连续分段全文扫描”的真实差异。当前 `manifest_wizard.mjs` 已改为优先按 `coverage_mode` 生成入口配置，再自动补齐兼容的 `pipeline_mode`。
 
 如果当前想显式指定“这次快速摸底采用哪种抽查模板”，也可以额外写：`coverage_template=opening-100|head-tail|head-tail-risk|opening-latest`。当前这些模板会在 `sampled / economy` 路径中直接影响选批逻辑，并同时透传到 `pipeline-state.json`、`merged-report.scan.sampling` 与数据库 `runs.jsonl`。当前已落库的 coverage 相关字段至少包括 `coverage_mode`、`coverage_template`、`coverage_unit`、`chapter_detect_used_mode`、`serial_status`、`total_batches`、`selected_batches`、`coverage_ratio`、`coverage_gap_summary`、`coverage_gap_risk_types`。
 

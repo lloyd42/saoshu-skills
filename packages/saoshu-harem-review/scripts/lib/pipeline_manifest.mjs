@@ -1,9 +1,9 @@
 import path from "node:path";
 import { pipelineUsage } from "./pipeline_feedback.mjs";
 
-const COVERAGE_MODES = ["sampled", "chapter-full", "full-book"];
-const COVERAGE_TEMPLATES = ["opening-100", "head-tail", "head-tail-risk", "opening-latest"];
-const SERIAL_STATUSES = ["unknown", "ongoing", "completed"];
+export const COVERAGE_MODES = ["sampled", "chapter-full", "full-book"];
+export const COVERAGE_TEMPLATES = ["opening-100", "head-tail", "head-tail-risk", "opening-latest"];
+export const SERIAL_STATUSES = ["unknown", "ongoing", "completed"];
 
 function toNumber(value, fallback) {
   return Number(value ?? fallback);
@@ -20,7 +20,7 @@ function assertEnum(value, allowedValues, fieldName) {
   }
 }
 
-function pipelineModeForCoverageMode(coverageMode) {
+export function pipelineModeForCoverageMode(coverageMode) {
   if (coverageMode === "sampled") return "economy";
   if (coverageMode === "chapter-full" || coverageMode === "full-book") return "performance";
   return "performance";

@@ -131,7 +131,7 @@ node packages/saoshu-harem-review/scripts/run_pipeline.mjs --manifest examples/m
 
 项目下一阶段会把重点从“继续打磨抽样置信度”转到“提升正文覆盖层级”。
 
-当前 manifest 的稳定字段仍是 `pipeline_mode=economy|performance`；运行时已经接受 `coverage_mode=sampled|chapter-full|full-book` 作为兼容口径，便于后续逐步迁移入口文案与批处理配置。
+当前 manifest 的稳定字段仍是 `pipeline_mode=economy|performance`；运行时已经接受 `coverage_mode=sampled|chapter-full|full-book` 作为兼容口径，便于后续逐步迁移入口文案与批处理配置。`manifest_wizard.mjs` 现在也会优先按 `coverage_mode` 生成配置，并自动补齐兼容的 `pipeline_mode`。
 
 #### 当前状态卡
 
@@ -206,6 +206,12 @@ node packages/saoshu-harem-review/scripts/saoshu_cli.mjs scan --manifest ./manif
 node packages/saoshu-harem-review/scripts/saoshu_cli.mjs wiki --term wrq
 ```
 
+其中 `manifest` 向导现在会先按 coverage-first 口径理解模式：
+
+- `preset=newbie` 默认生成 `coverage_mode=sampled`
+- `preset=full` 默认生成 `coverage_mode=chapter-full`
+- 如果要直接走“整书最终确认”，可显式传 `--coverage-mode full-book`
+
 ## Manifest 与样例
 
 如果你第一次使用这个仓库，建议先看：
@@ -219,6 +225,14 @@ node packages/saoshu-harem-review/scripts/saoshu_cli.mjs wiki --term wrq
 
 ```bash
 node packages/saoshu-harem-review/scripts/run_pipeline.mjs --manifest <manifest.json>
+```
+
+如果你直接用向导生成 manifest，当前推荐入口是 coverage-first：
+
+```bash
+node packages/saoshu-harem-review/scripts/manifest_wizard.mjs --output ./manifest.json --preset newbie
+node packages/saoshu-harem-review/scripts/manifest_wizard.mjs --output ./manifest.json --preset full
+node packages/saoshu-harem-review/scripts/manifest_wizard.mjs --output ./manifest.json --preset newbie --coverage-mode full-book
 ```
 
 ## 开发与校验

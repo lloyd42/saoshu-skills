@@ -69,8 +69,63 @@ if (fs.existsSync(outputManifest)) ok("manifest wizard writes manifest file");
 else fail("manifest wizard should write manifest file");
 
 const manifest = readJson(outputManifest);
-if (manifest.pipeline_mode === "economy" && manifest.sample_mode === "dynamic" && manifest.sample_level === "auto") ok("newbie preset keeps economy dynamic auto defaults");
-else fail("newbie preset should keep economy dynamic auto defaults");
+if (manifest.coverage_mode === "sampled" && manifest.pipeline_mode === "economy" && manifest.sample_mode === "dynamic" && manifest.sample_level === "auto") ok("newbie preset keeps sampled coverage defaults aligned with economy dynamic auto path");
+else fail("newbie preset should keep sampled coverage defaults aligned with economy dynamic auto path");
+
+const fullPresetManifestPath = path.join(tmpRoot, "manifest-full.json");
+const fullPreset = runWizard([
+  "--output", fullPresetManifestPath,
+  "--preset", "full",
+  "--non-interactive",
+  "--input-txt", inputTxt,
+  "--output-dir", "./workspace/wizard-full-case",
+  "--title", "向导夹具-高覆盖",
+]);
+
+if (fullPreset.status === 0) ok("manifest wizard full preset run");
+else fail(`manifest wizard full preset run failed\nSTDERR:\n${fullPreset.stderr}`);
+
+const fullPresetManifest = readJson(fullPresetManifestPath);
+if (fullPresetManifest.coverage_mode === "chapter-full" && fullPresetManifest.pipeline_mode === "performance") ok("full preset now writes chapter-full coverage entry with performance compatibility");
+else fail("full preset should write chapter-full coverage entry with performance compatibility");
+
+const explicitFullBookManifestPath = path.join(tmpRoot, "manifest-full-book.json");
+const explicitFullBook = runWizard([
+  "--output", explicitFullBookManifestPath,
+  "--preset", "newbie",
+  "--non-interactive",
+  "--input-txt", inputTxt,
+  "--output-dir", "./workspace/wizard-full-book-case",
+  "--title", "向导夹具-整书",
+  "--coverage-mode", "full-book",
+]);
+
+if (explicitFullBook.status === 0) ok("wizard accepts explicit full-book coverage mode");
+else fail(`wizard should accept explicit full-book coverage mode\nSTDERR:\n${explicitFullBook.stderr}`);
+
+const explicitFullBookManifest = readJson(explicitFullBookManifestPath);
+if (explicitFullBookManifest.coverage_mode === "full-book" && explicitFullBookManifest.pipeline_mode === "performance") ok("explicit full-book coverage mode writes compatible performance baseline");
+else fail("explicit full-book coverage mode should write compatible performance baseline");
+
+const sampledTemplateManifestPath = path.join(tmpRoot, "manifest-opening-latest.json");
+const sampledTemplate = runWizard([
+  "--output", sampledTemplateManifestPath,
+  "--preset", "newbie",
+  "--non-interactive",
+  "--input-txt", inputTxt,
+  "--output-dir", "./workspace/wizard-opening-latest-case",
+  "--title", "向导夹具-抽查模板",
+  "--coverage-mode", "sampled",
+  "--coverage-template", "opening-latest",
+  "--serial-status", "ongoing",
+]);
+
+if (sampledTemplate.status === 0) ok("wizard accepts sampled coverage template flags");
+else fail(`wizard should accept sampled coverage template flags\nSTDERR:\n${sampledTemplate.stderr}`);
+
+const sampledTemplateManifest = readJson(sampledTemplateManifestPath);
+if (sampledTemplateManifest.coverage_mode === "sampled" && sampledTemplateManifest.coverage_template === "opening-latest" && sampledTemplateManifest.serial_status === "ongoing" && sampledTemplateManifest.pipeline_mode === "economy") ok("wizard writes sampled coverage template and serial status into manifest");
+else fail("wizard should write sampled coverage template and serial status into manifest");
 
 const sampledResolved = resolvePipelineManifest(outputManifest, {
   input_txt: inputTxt,
@@ -122,6 +177,20 @@ try {
 
 if (manifest.report_relation_graph_output === "./workspace/wizard-case/relation-graph.html") ok("wizard derives relation graph output from output_dir");
 else fail("wizard should derive relation graph output from output_dir");
+
+const badTemplate = runWizard([
+  "--output", path.join(tmpRoot, "bad-template.json"),
+  "--preset", "full",
+  "--non-interactive",
+  "--input-txt", inputTxt,
+  "--output-dir", "./workspace/bad-template",
+  "--title", "坏模板",
+  "--coverage-mode", "chapter-full",
+  "--coverage-template", "head-tail",
+]);
+
+if (badTemplate.status !== 0 && badTemplate.stderr.includes("coverage_template 仅能与 sampled 搭配")) ok("wizard rejects coverage_template outside sampled path");
+else fail("wizard should reject coverage_template outside sampled path");
 
 const missingInput = runWizard([
   "--output", path.join(tmpRoot, "missing-input.json"),
