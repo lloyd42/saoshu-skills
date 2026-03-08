@@ -24,6 +24,8 @@
 - 保持改动聚焦，不顺手修无关问题
 - 功能改动需要同步更新相关文档
 - 如改动影响用户可见行为、报告语义、CLI 默认行为或维护流程，默认同一轮同步 `README.md`、产品手册与 `CHANGELOG.md` `Unreleased`，必要时补 `docs/roadmap.md` / `docs/troubleshooting.md`
+- 如改动会影响已安装 skill 的对外文案、说明或默认 prompt（例如 `SKILL.md`、`README.md`、`references/`、`packages/*/agents/openai.yaml`），在仓库内验证完成后，再运行 `npm run sync:installed-skills -- --skills <skill-a,skill-b>`，把对应 package 镜像到本机 `$CODEX_HOME/skills/`
+- 上面的 installed-skill 同步属于本地开发辅助，不是 CI 强制步骤；`npm run check` 只会在临时目录验证同步脚本本身，不会改动你的本机安装目录
 - 新增脚本优先复用 `packages/*/scripts`
 - 正式代码与配置不得硬编码依赖用户本地路径
 - 运行产物不要提交到 Git
@@ -36,7 +38,8 @@
 3. 先跑与改动直接相关的最小检查
 4. 再跑 `node packages/saoshu-harem-review/scripts/check_e2e_minimal.mjs`
 5. 最后跑 `npm run check`
-6. 补齐 changelog / README / 产品手册 / 相关文档 / schema 说明后再准备提交
+6. 如本轮改动会影响已安装 skill 的对外表现，再运行一次 installed-skill 同步命令，并按需对安装副本补跑 `quick_validate.mjs` 或最小 smoke
+7. 补齐 changelog / README / 产品手册 / 相关文档 / schema 说明后再准备提交
 
 ## Commit Style
 - 推荐使用 Conventional Commits

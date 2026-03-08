@@ -73,6 +73,14 @@ run_pipeline.mjs
 - `packages/*/README.md`
 - `packages/saoshu-harem-review/references/schemas/*.json`
 
+如果改动会影响本机已安装 skill 的对外表现，也要补这一环：
+
+- 当 `packages/*/SKILL.md`、`packages/*/README.md`、`packages/*/references/` 或 `packages/*/agents/openai.yaml` 更新后，运行仓库根新增的 `npm run sync:installed-skills -- --skills <skill-a,skill-b>`，把对应 package 镜像到本机 Codex skill 安装目录（通常是 `$CODEX_HOME/skills/`）
+- 这一步是本地开发辅助，用来让“仓库内容”和“本机已安装 skill”保持一致，方便重启 Codex 前做真实体验核对
+- 真正写入本机安装目录的同步命令不是 CI 强制步骤；纯仓库内改动只要仓库验证通过即可提交
+- 仓库里的 `npm run check` 只会通过 `check:installed-skill-sync` 在临时目录验证同步脚本本身，不会改动你的本机已安装 skill
+- 如果你想顺手确认安装副本没有坏，再对同步后的 skill 目录补跑一次对应 package 的 `quick_validate.mjs` 或最小 smoke
+
 ## 7. 发布前清单
 
 - `CHANGELOG.md` 的 `Unreleased` 已更新
