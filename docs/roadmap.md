@@ -69,6 +69,11 @@
 - 混合样本下，`背叛 / 送女 / 死女` 等不同类型规则能同时被扫出
 - 风险识别不再依赖“第一个命中词刚好长什么样”
 
+当前归并层也已补一条防污染保护：`送女 / 背叛 / 死女 / 绿帽 / wrq`
+这类要求女性主体语境的雷点，如果事件候选主体仍更像男性角色，
+或仍无法证明属于女性核心角色，就不再自动升成
+`risks_unconfirmed`，而是继续留在事件复核与补证问题层。
+
 后续如果继续扩充规则，优先补共享规则目录与 focused check，而不是只改单个样本直到通过。
 
 ### 4. 继续走人机协同闭环，而不是把启发式写死
@@ -93,17 +98,24 @@
 - `未证实风险` 与旧称 `高风险未证实` 是否仍在非关键文档中并存
 - CLI 帮助、产品手册、术语百科新增内容时是否继续沿用同一口径
 
-### 6. 视需要继续细拆 `mergeBatches()`
+### 6. 视需要补强 `mergeBatches()` 周边契约与后处理拆分
 
 当前已经完成的拆分：
 
 - `lib/report_events.mjs`：事件聚合、事件排序、跨批次去重
 - `lib/report_output.mjs`：报告数据构建与 Markdown / HTML 渲染
 - `lib/report_merge_stats.mjs`：标签/角色/抽样理由等统计汇总
-
-后续仍可继续的拆分方向：
-
 - `lib/report_summary.mjs`：结论层（雷点 / 郁闷点 / 风险）归并
+
+当前已补的 focused check：
+
+- `check_batch_merge_focus.mjs`：保护整条归并链路的聚合、升格与输出回归
+- `check_report_summary_focus.mjs`：直接保护结论层的风险合并、事件升格与排序优先级
+
+后续仍可继续的方向：
+
+- 如果关系映射后处理继续变厚，再考虑把关系加载/合并逻辑独立成 helper，而不是继续拆已经独立的 `report_summary.mjs`
+- 优先补 focused check，再做结构拆分，避免“看起来拆了”但契约没锁住
 
 ## Later
 
@@ -161,6 +173,7 @@
 - 命令执行 helper 回归
 - 规则目录一致性与多样性审计
 - 批次归并 focused regression
+- 结论层 focused regression
 - 用户可见术语一致性检查
 - 外部模板命令契约检查
 - manifest 向导 focused validation

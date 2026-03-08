@@ -126,8 +126,44 @@ function createFocusedBatches(batchDir) {
     ],
   };
 
+  const batch3 = {
+    batch_id: "B03",
+    range: "第13-13章",
+    metadata: {
+      top_tags: [{ name: "测试", count: 1 }],
+      top_characters: [{ name: "张三", count: 1 }],
+      chapter_title_scan: { score: 0, critical: false, hit_chapter_count: 0, hits: [] },
+    },
+    thunder_hits: [],
+    depression_hits: [],
+    risk_unconfirmed: [],
+    event_candidates: [
+      {
+        event_id: "送女-b03-003",
+        rule_candidate: "送女",
+        category: "risk",
+        status: "待补证",
+        certainty: "low",
+        confidence_score: 2,
+        review_decision: "待补证",
+        chapter_range: "第13-13章",
+        timeline: "mainline",
+        polarity: "affirmed",
+        subject: { name: "张三", gender: "male", role_hint: "unknown", relation_label: "未知", relation_confidence: 0.2 },
+        target: { name: "未识别对象", role_hint: "unknown", relation_label: "未知", relation_confidence: 0.2 },
+        signals: ["送给"],
+        evidence: [{ chapter_num: 13, keyword: "送给", snippet: "张三要把战俘送给王爷。" }],
+        counter_evidence: ["主体更像男性角色"],
+        missing_evidence: ["需确认主体是否为女性核心角色"],
+        alternate_targets: [],
+        conflict_notes: [],
+      },
+    ],
+  };
+
   writeJson(path.join(batchDir, "B01.json"), batch1);
   writeJson(path.join(batchDir, "B02.json"), batch2);
+  writeJson(path.join(batchDir, "B03.json"), batch3);
 }
 
 function runFocusedScenario() {
@@ -171,6 +207,18 @@ function runFocusedScenario() {
   const thunderItems = Array.isArray(report?.thunder?.items) ? report.thunder.items.filter((item) => item.rule === "背叛") : [];
   if (thunderItems.length === 1) ok("focused merge upgrades confirmed event into one thunder item");
   else fail("focused merge should upgrade confirmed event into one thunder item");
+
+  const sendGirlEvents = Array.isArray(report?.events?.items) ? report.events.items.filter((item) => item.rule_candidate === "送女") : [];
+  if (sendGirlEvents.length === 1 && sendGirlEvents[0]?.subject?.gender === "male") ok("focused merge keeps male-context send-girl candidate for manual review");
+  else fail("focused merge should keep male-context send-girl candidate in event review list");
+
+  const sendGirlRisks = Array.isArray(report?.risks_unconfirmed) ? report.risks_unconfirmed.filter((item) => item.risk === "送女") : [];
+  if (sendGirlRisks.length === 0) ok("focused merge does not auto-promote male-context send-girl candidate into unresolved risks");
+  else fail("focused merge should block male-context send-girl candidate from unresolved risks");
+
+  const followUps = Array.isArray(report?.follow_up_questions) ? report.follow_up_questions : [];
+  if (followUps.some((item) => String(item).includes("[送女] 需确认主体是否为女性核心角色"))) ok("focused merge still keeps manual follow-up question for blocked send-girl candidate");
+  else fail("focused merge should keep manual follow-up question for blocked send-girl candidate");
 
   const markdown = fs.readFileSync(reportMd, "utf8");
   if (markdown.includes("事件候选复核") && markdown.includes("背叛-b01-001")) ok("focused markdown render keeps merged event section");

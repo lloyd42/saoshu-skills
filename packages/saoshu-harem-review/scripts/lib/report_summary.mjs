@@ -3,7 +3,12 @@ import {
   promoteEventToRisk,
   promoteEventToThunder,
 } from "./report_events.mjs";
-import { CRITICAL_RISK_RULES } from "./rule_catalog.mjs";
+import {
+  CRITICAL_RISK_RULES,
+  FEMALE_CONTEXT_REQUIRED_RULES,
+} from "./rule_catalog.mjs";
+
+const FEMALE_SUBJECT_HINTS = new Set(["female", "女主候选", "女性角色", "未婚妻", "伴侣候选", "感情线候选"]);
 
 export function keyOfThunder(item) {
   return `${item.rule || ""}|${item.summary || ""}|${item.anchor || ""}|${item.batch_id || ""}`;
@@ -30,6 +35,21 @@ export function mergeRiskIntoMap(riskMap, item) {
   }
 }
 
+function hasFemaleSubjectEvidence(event) {
+  const subject = event?.subject || {};
+  const gender = String(subject.gender || "").trim();
+  const roleHint = String(subject.role_hint || "").trim();
+  const relationLabel = String(subject.relation_label || "").trim();
+  return FEMALE_SUBJECT_HINTS.has(gender) || FEMALE_SUBJECT_HINTS.has(roleHint) || FEMALE_SUBJECT_HINTS.has(relationLabel);
+}
+
+export function shouldPromotePendingEventToRisk(event) {
+  const ruleName = String(event?.rule_candidate || "").trim();
+  if (!ruleName) return false;
+  if (!FEMALE_CONTEXT_REQUIRED_RULES.has(ruleName)) return true;
+  return hasFemaleSubjectEvidence(event);
+}
+
 export function mergeEventsIntoSummaryMaps({ mergedEvents, thunderMap, depressionMap, riskMap, recordSignal }) {
   for (const event of mergedEvents) {
     const decision = String(event.review_decision || "").trim();
@@ -47,6 +67,7 @@ export function mergeEventsIntoSummaryMaps({ mergedEvents, thunderMap, depressio
       continue;
     }
     if (decision !== "排除" && event.category !== "depression") {
+      if (!shouldPromotePendingEventToRisk(event)) continue;
       mergeRiskIntoMap(riskMap, promoteEventToRisk(event));
       recordSignal("风险", event.rule_candidate);
     }
