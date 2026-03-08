@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-03-08
+
 ### 改进
 - `docs/roadmap.md` 现在承接“当前状态快照”，把 coverage-first 的产品主线、已落地基线、当前未完点与下一轮起点收口到同一入口；`README.md` 与 `docs/development-workflow.md` 也同步改为先看 roadmap 快照再接手开发。
 - `references/product-manual.md` 补了一版“覆盖升级建议” `v0` 契约草案：建议把升级动作真源放进 `scan.coverage_decision`，让 `decision_summary.next_action` 只保留为首页单行摘要，并先收敛首批升级原因码与 scan-db 扁平字段命名。
