@@ -4,12 +4,23 @@ import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { readJsonFile } from "./lib/json_input.mjs";
-import { findFirstExisting, formatCommand, getScriptDir, pushArg, runNodeScript, runShellCommand } from "./lib/script_helpers.mjs";
+import { formatCommand, getScriptDir, pushArg, runNodeScript, runShellCommand } from "./lib/script_helpers.mjs";
 import { resolvePipelineManifest } from "./lib/pipeline_manifest.mjs";
 import { writeUtf8Json } from "./lib/text_output.mjs";
 import { runOptionalStage, runStageIfSelected } from "./lib/pipeline_stages.mjs";
 import { getExitCode } from "./lib/exit_codes.mjs";
 import { formatPipelineError, pipelineIo, pipelineUsage } from "./lib/pipeline_feedback.mjs";
+import {
+  appendCoverageTag,
+  countBatchFiles,
+  parseRecommendedCoverageTemplate,
+  parseRecommendedLevelFromState,
+  readCoverageExecutionMeta,
+  readCoverageTemplateMeta,
+  recommendCoverageTemplate,
+  recommendSampleLevelByBatchCount,
+} from "./lib/pipeline_coverage.mjs";
+import { buildExternalDbIngestCommand, resolveDefaultWikiPath, resolveLocalDbIngestScript } from "./lib/pipeline_integrations.mjs";
 
 function usage() {
   console.log("Usage: node run_pipeline.mjs --manifest <novel_manifest.json> [--stage all|chunk|enrich|review|apply|merge]");
@@ -47,112 +58,8 @@ function now() {
   return new Date().toISOString();
 }
 
-function countBatchFiles(dir) {
-  if (!fs.existsSync(dir)) return 0;
-  return fs.readdirSync(dir).filter((f) => /^B\d+\.json$/i.test(f)).length;
-}
-
-function readCoverageExecutionMeta(batchDir) {
-  if (!fs.existsSync(batchDir)) return { coverageUnit: "", chapterDetectUsedMode: "" };
-  const firstFile = fs.readdirSync(batchDir)
-    .filter((file) => /^B\d+\.json$/i.test(file))
-    .sort((left, right) => left.localeCompare(right, undefined, { numeric: true }))[0];
-  if (!firstFile) return { coverageUnit: "", chapterDetectUsedMode: "" };
-  const batch = readJson(path.join(batchDir, firstFile));
-  const detect = batch?.metadata?.chapter_detect || {};
-  return {
-    coverageUnit: String(detect.unit_type || "").trim(),
-    chapterDetectUsedMode: String(detect.used_mode || "").trim(),
-  };
-}
-
-function recommendSampleLevelByBatchCount(batchCount) {
-  if (batchCount <= 8) return "high";
-  if (batchCount <= 20) return "medium";
-  return "low";
-}
-
-function parseRecommendedLevelFromState(steps) {
-  const rows = Array.isArray(steps) ? steps : [];
-  for (let i = rows.length - 1; i >= 0; i--) {
-    const s = rows[i];
-    if (!s || s.step !== "sample_level_recommendation") continue;
-    const detail = String(s.detail || "");
-    const m = /auto\s*->\s*(low|medium|high)/i.exec(detail);
-    if (m) return m[1].toLowerCase();
-  }
-  return "";
-}
-
-function parseCoverageTemplate(detail) {
-  const text = String(detail || "");
-  const match = /auto\s*->\s*(opening-100|head-tail|head-tail-risk|opening-latest)/i.exec(text);
-  return match ? match[1] : "";
-}
-
-function parseRecommendedCoverageTemplate(state) {
-  if (String(state?.coverage_template || "").trim()) return String(state.coverage_template).trim();
-  const rows = Array.isArray(state?.steps) ? state.steps : [];
-  for (let index = rows.length - 1; index >= 0; index -= 1) {
-    const step = rows[index];
-    if (!step || step.step !== "coverage_template_recommendation") continue;
-    const parsed = parseCoverageTemplate(step.detail || "");
-    if (parsed) return parsed;
-  }
-  return "";
-}
-
-function readCoverageTemplateMeta(batchDir) {
-  if (!fs.existsSync(batchDir)) return [];
-  return fs.readdirSync(batchDir)
-    .filter((file) => /^B\d+\.json$/i.test(file))
-    .sort((left, right) => left.localeCompare(right, undefined, { numeric: true }))
-    .map((file) => {
-      const batch = readJson(path.join(batchDir, file));
-      const titleScan = batch?.metadata?.chapter_title_scan || {};
-      const titleScore = Number.isFinite(Number(titleScan.score)) ? Number(titleScan.score) : 0;
-      const titleCritical = Boolean(titleScan.critical);
-      const critical = Array.isArray(batch?.thunder_hits) && batch.thunder_hits.length > 0
-        || Array.isArray(batch?.risk_unconfirmed) && batch.risk_unconfirmed.length > 0;
-      return { titleScore, titleCritical, critical };
-    });
-}
-
-function coverageModeTag(coverageMode, pipelineMode) {
-  const mode = String(coverageMode || "").trim();
-  if (mode === "sampled") return "[SAMPLED]";
-  if (mode === "chapter-full") return "[CHAPTER-FULL]";
-  if (mode === "full-book") return "[FULL-BOOK]";
-  return pipelineMode === "economy" ? "[SAMPLED]" : "[HIGH-COVERAGE]";
-}
-
-function appendCoverageTag(tags, coverageMode, pipelineMode) {
-  const base = String(tags || "")
-    .replace(/\s*\[(?:ECONOMY-SAMPLED|PERFORMANCE-FULL|SAMPLED|CHAPTER-FULL|FULL-BOOK|HIGH-COVERAGE)\]\s*/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  const suffix = coverageModeTag(coverageMode, pipelineMode);
-  return base ? `${base} ${suffix}` : suffix;
-}
-
-function recommendCoverageTemplate({ serialStatus, totalBatches, metaRows }) {
-  const rows = Array.isArray(metaRows) ? metaRows : [];
-  const total = Math.max(1, Number(totalBatches || rows.length || 0));
-  const titleSignalDensity = rows.filter((row) => Number(row.titleScore || 0) > 0).length / total;
-  const titleCriticalDensity = rows.filter((row) => row.titleCritical).length / total;
-  const criticalDensity = rows.filter((row) => row.critical).length / total;
-
-  if (serialStatus === "ongoing") return total <= 2 ? "opening-100" : "opening-latest";
-  if (total <= 2) return "opening-100";
-  if (serialStatus === "completed") {
-    if (titleCriticalDensity > 0 || criticalDensity >= 0.15 || titleSignalDensity >= 0.3) return "head-tail-risk";
-    return "head-tail";
-  }
-  if (titleCriticalDensity > 0 || criticalDensity >= 0.15 || titleSignalDensity >= 0.3) return "head-tail-risk";
-  return "head-tail";
-}
-
 function main() {
+
   const args = parseArgs(process.argv);
   if (!args) return usage();
 
@@ -319,13 +226,7 @@ function main() {
     const coverageExecutionMeta = readCoverageExecutionMeta(workBatchesDir);
     const coverageUnit = coverageExecutionMeta.coverageUnit;
     const chapterDetectUsedMode = coverageExecutionMeta.chapterDetectUsedMode;
-    const defaultWiki = findFirstExisting([
-      process.env.SAOSHU_WIKI_DICT || "",
-      path.join(projectRoot, "saoshu-term-wiki", "references", "glossary.json"),
-      process.env.CODEX_HOME ? path.join(process.env.CODEX_HOME, "skills", "saoshu-term-wiki", "references", "glossary.json") : "",
-      home ? path.join(home, ".codex", "skills", "saoshu-term-wiki", "references", "glossary.json") : "",
-    ]);
-    const wikiPath = wikiDict || defaultWiki;
+    const wikiPath = resolveDefaultWikiPath({ projectRoot, home, wikiDict });
     function buildMergeArgs() {
       const args = [
         "--input", workBatchesDir,
@@ -414,12 +315,7 @@ function main() {
     });
 
     if (dbMode === "local") {
-      const localIngestScript = findFirstExisting([
-        process.env.SAOSHU_DB_INGEST_SCRIPT || "",
-        path.join(projectRoot, "saoshu-scan-db", "scripts", "db_ingest.mjs"),
-        process.env.CODEX_HOME ? path.join(process.env.CODEX_HOME, "skills", "saoshu-scan-db", "scripts", "db_ingest.mjs") : "",
-        home ? path.join(home, ".codex", "skills", "saoshu-scan-db", "scripts", "db_ingest.mjs") : "",
-      ]);
+      const localIngestScript = resolveLocalDbIngestScript({ projectRoot, home });
       if (localIngestScript && fs.existsSync(path.resolve(localIngestScript))) {
         const dbArgs = ["--db", dbPath, "--report", js, "--state", statePath, "--manifest", manifestPath];
         const dbCmd = formatCommand(process.execPath, [path.resolve(localIngestScript), ...dbArgs.map((item) => String(item))]);
@@ -432,11 +328,12 @@ function main() {
       if (!dbIngestCmd) {
         mark("db_ingest", "skipped", "db_mode=external but db_ingest_cmd empty");
       } else {
-        const ext = dbIngestCmd
-          .replaceAll("{report}", js.replaceAll("\\", "/"))
-          .replaceAll("{state}", statePath.replaceAll("\\", "/"))
-          .replaceAll("{manifest}", manifestPath.replaceAll("\\", "/"))
-          .replaceAll("{db}", dbPath.replaceAll("\\", "/"));
+        const ext = buildExternalDbIngestCommand(dbIngestCmd, {
+          reportPath: js,
+          statePath,
+          manifestPath,
+          dbPath,
+        });
         runShellCommand(ext);
         mark("db_ingest", "done", ext);
       }

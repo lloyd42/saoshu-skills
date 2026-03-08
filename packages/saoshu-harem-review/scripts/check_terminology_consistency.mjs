@@ -32,7 +32,7 @@ const checks = [
     mustNotInclude: ["高风险未证实条目"],
   },
   {
-    file: "packages/saoshu-harem-review/scripts/lib/report_output.mjs",
+    file: "packages/saoshu-harem-review/scripts/lib/report_output_markdown.mjs",
     mustInclude: ["未证实风险"],
     mustNotInclude: ["未证实高风险"],
   },

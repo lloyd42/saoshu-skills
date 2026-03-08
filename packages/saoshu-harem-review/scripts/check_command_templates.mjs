@@ -35,7 +35,7 @@ const checks = [
     mustInclude: ["{batch_file}"],
   },
   {
-    file: "packages/saoshu-harem-review/scripts/run_pipeline.mjs",
+    file: "packages/saoshu-harem-review/scripts/lib/pipeline_integrations.mjs",
     mustInclude: ["{report}", "{state}", "{manifest}", "{db}"],
   },
   {

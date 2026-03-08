@@ -183,7 +183,7 @@ npm run check
 当前已经完成的拆分：
 
 - `lib/report_events.mjs`：事件聚合、事件排序、跨批次去重
-- `lib/report_output.mjs`：报告数据构建与 Markdown / HTML 渲染
+- `lib/report_output_*.mjs`：报告输出已按共享辅助 / 数据拼装 / Markdown / HTML 渲染拆分，避免单文件继续膨胀
 - `lib/report_merge_stats.mjs`：标签/角色/抽样理由等统计汇总
 - `lib/report_summary.mjs`：结论层（雷点 / 郁闷点 / 风险）归并
 
@@ -222,6 +222,8 @@ npm run check
 - `scripts/dev/`
 
 前提是不要破坏现有入口路径；可以先内部整理，再逐步兼容。
+
+当前已先走了一步轻量分层：`run_pipeline.mjs` 的覆盖推荐/模板推荐辅助已抽到 `scripts/lib/pipeline_coverage.mjs`，term-wiki / scan-db 的路径发现与外部入库命令拼装已抽到 `scripts/lib/pipeline_integrations.mjs`，后续可继续沿这条方向拆编排入口。
 
 ### 9. 评估是否需要引入更细的自动化质量门
 

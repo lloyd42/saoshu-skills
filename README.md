@@ -122,43 +122,17 @@ node packages/saoshu-harem-review/scripts/run_pipeline.mjs --manifest examples/m
 
 ### 当前兼容执行层
 
-- `economy`：当前抽样执行基线，对应 `sampled`
-- `performance`：当前高覆盖执行基线，对应 `chapter-full / full-book`
-
-项目当前主线已经转向 coverage-first：重点不再是“继续打磨抽样置信度”，而是逐步提升正文覆盖层级。当前 manifest 的稳定执行字段仍是 `pipeline_mode=economy|performance`；运行时已经接受 `coverage_mode=sampled|chapter-full|full-book` 作为用户入口口径，`manifest_wizard.mjs` 现在也会优先按 `coverage_mode` 生成配置，并自动补齐兼容的 `pipeline_mode`。
-
-#### 用户概念 -> 当前实现
-
-- 快速摸底
-  - 用户选择：`coverage_mode=sampled`
-  - 当前执行：`pipeline_mode=economy`
-  - 可选增强：`coverage_template`、`serial_status`
-  - 适用场景：先判断“这本能不能看”、先摸底再决定是否升级
-- 章节级尽量完整
-  - 用户选择：`coverage_mode=chapter-full`
-  - 当前执行：先映射到 `pipeline_mode=performance`
-  - 适用场景：希望比抽查更稳，但后续目标仍是“有章节按章扫、无章节按分段全文扫”
-- 整书最终确认
-  - 用户选择：`coverage_mode=full-book`
-  - 当前执行：先映射到 `pipeline_mode=performance`，再按整书连续分段做全文扫描
-  - 适用场景：关键决策、争议文本、最终复核
-
-#### 当前迁移规则
-
 - `sampled -> economy`
-- `chapter-full -> performance`（当前已增加“章节失败 -> 分段级全文扫描”的实际执行差异）
-- `full-book -> performance`（当前已增加“整书连续分段全文扫描”的实际执行差异）
-- 因此，当前不要把 `sampled / chapter-full / full-book` 误解成三套已经完全分叉的独立执行引擎；它们仍共享 `economy / performance` 主链，但 `chapter-full` / `full-book` 已具备各自的切批语义边界。
+- `chapter-full -> performance`（章节识别失败时会退化为分段级全文扫描）
+- `full-book -> performance`（默认按整书连续分段全文扫描）
 
-规划中的统一口径是：
+当前请把 `coverage_mode=sampled|chapter-full|full-book` 理解成用户入口，把 `pipeline_mode=economy|performance` 理解成兼容执行层；两层仍共享主链，但 `chapter-full / full-book` 已有各自的切批边界。
 
-- `sampled`：保留现有抽样能力，作为低成本摸底入口
-- `chapter-full`：优先按章节做全文扫描；若章节识别失败，会自动退化为分段级全文扫描，作为当前主推的高覆盖模式
-- `full-book`：默认按整书连续分段做全文扫描，用于最终确认或争议复核
+如果想继续深看模式边界与设计分工，优先读：
 
-如果文本没有稳定章节，后续会退化为“按分段单元全文扫描”，而不是因为章节脚本失败就直接放弃全文覆盖。
-
-现有关键词、别名、补证问题、关系映射等闭环能力会继续保留，但定位会从“主扫描依据”下调为“热点提示、复核排序、人工协同辅助层”。
+- `docs/community-alignment.md`
+- `docs/sampling-design.md`
+- `packages/saoshu-harem-review/references/product-manual.md`
 
 当前 coverage-first 口径除了进入 manifest 与最终报告，也已经进入数据库运行记录；完整字段可参考 `packages/saoshu-scan-db/references/db-schema.md`。
 

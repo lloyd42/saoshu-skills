@@ -53,11 +53,12 @@
 - `chapter-full`：章节级尽量完整；有章节按章节全文扫，无章节时自动退化为分段级全文扫。当前 `chapter-full v1` 已落地这条退化路径。
 - `full-book`：整书最终确认；默认按整书连续分段做全文扫描，不依赖章节识别。当前 `full-book v1` 已落地这条最小真实差异。
 
+
 ### 4.4 当前兼容执行层
 - `economy`：当前抽样执行基线，对应 `sampled` 的快速摸底路径。
 - `performance`：当前高覆盖执行基线，对应 `chapter-full / full-book` 的兼容主链。
 
-后续主线不再继续深挖“如何把抽样模式调得更像全量”，而是继续提升正文覆盖层级；因此文档与入口都优先按 `sampled / chapter-full / full-book` 理解，再补充 `economy / performance` 的实现映射。
+这里仅保留当前契约与实现映射；如果想看更完整的模式边界与用户语义，优先读 `docs/community-alignment.md`，抽样模板设计细节再看 `docs/sampling-design.md`。
 - 关键词、别名、补证问题、关系图等能力继续保留，但更多承担热点提示、排序、人工协同辅助职责。
 
 ### 4.5 当前抽样机制（兼容保留）

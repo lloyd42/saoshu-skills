@@ -43,6 +43,15 @@
 - `pipeline_stages.mjs`
   - 流水线阶段调度与可选阶段执行辅助
 
+
+- `pipeline_coverage.mjs`
+  - 覆盖层/抽样推荐辅助
+  - 负责批次数统计、coverage template 推荐、sample level 回读与 coverage tag 生成
+
+- `pipeline_integrations.mjs`
+  - 外部 skill/数据库集成发现辅助
+  - 负责 term-wiki 默认词典定位、scan-db 本地入库脚本定位与外部入库命令拼装
+
 - `json_input.mjs`
   - JSON 输入读取辅助
   - 负责 `UTF-8 BOM` 去除与统一解析
@@ -66,6 +75,24 @@
 - `report_relationships.mjs`
   - 关系图导入与归并辅助
   - 负责加载外部 `relationship-map.json`、归一化关系边，并与批次汇总得到的关系图做去重合并
+
+- `report_output_common.mjs`
+  - 报告输出共享常量与基础文案辅助
+  - 负责防御档位、术语显示、覆盖升级建议动作文案等公共逻辑
+
+- `report_output_data.mjs`
+  - 报告数据拼装辅助
+  - 负责 `merged-report.json` 真源、首页摘要区与覆盖升级建议数据构建
+
+- `report_output_markdown.mjs`
+  - Markdown 报告渲染辅助
+
+- `report_output_html.mjs`
+  - HTML 报告渲染辅助
+
+- `report_output.mjs`
+  - 报告输出公共导出入口
+  - 对外保持稳定导入面，内部实现已按数据 / Markdown / HTML 拆分
 
 - `ui_terms.mjs`
   - 用户可见术语映射辅助
