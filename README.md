@@ -241,7 +241,7 @@ node packages/saoshu-harem-review/scripts/manifest_wizard.mjs --output ./manifes
 6. `CONTRIBUTING.md`：查看提交流程、PR 说明与协作约定
 7. `VERSIONING.md`：准备发版时再看版本与发布规则
 
-如果想直接看后续可推进项，优先看 `docs/roadmap.md`。
+如果想直接看当前状态与下一步起点，先看 `docs/roadmap.md` 的“当前状态快照”和 `Now`。
 
 仓库根目录提供统一检查入口：
 

@@ -14,6 +14,8 @@
 
 每次接手新任务或恢复中断开发，先做这一轮：
 
+先看 `docs/roadmap.md` 的“当前状态快照”，确认当前基线与接手起点，再跑下面这组检查：
+
 ```bash
 git status --short
 git diff --stat

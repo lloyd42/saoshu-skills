@@ -8,6 +8,76 @@
 - `Next`：在当前基线稳定后推进的事
 - `Later`：暂时不阻塞，但值得保留的方向
 
+## 当前状态快照
+
+这不是长期愿景文案，而是给下一位维护者或未来自己直接接手时用的“当前事实快照”。
+如果只想知道“现在做到哪了、哪些可以默认依赖、下一轮该从哪开始”，先看这里。
+
+### 1. 主线判断
+
+当前产品主线应明确理解为：
+
+- `saoshu` 是一个 coverage-first 的“阅读决策上游层”，不是继续深抠抽样技巧的工程优化项目
+- 用户第一视角统一为 `sampled / chapter-full / full-book`
+- `economy / performance` 继续保留，但只作为当前兼容执行层，不再承担产品第一叙事
+- mode-diff、反馈闭环、关系/术语/别名能力都继续保留，但定位应服务于“更稳地做阅读决策”，而不是反客为主变成产品中心
+
+### 2. 最近已落地基线
+
+当前可以默认依赖的已落地基线包括：
+
+- `sampled` 已具备面向决策的抽查模板：`opening-100`、`head-tail`、`head-tail-risk`、`opening-latest`
+- `sampled` 相关 metadata 已贯穿 manifest -> pipeline-state -> merged-report -> scan-db，并带有 `serial_status`、`coverage_gap_summary`、`coverage_gap_risk_types`
+- `chapter-full v1` 已具备真实执行差异：章节识别失败时会自动退化到分段级全文扫描
+- `full-book v1` 已具备真实执行差异：默认按整书连续分段做全文扫描，不把章节识别当成硬前置
+- 报告、DB、compare、dashboard、CLI、wizard、产品文档都已统一到 coverage-first 叙事层
+- 仓库读写基线已明确为 `UTF-8 without BOM` + `LF`
+- 运行时与大部分 fixture 文本输出已收敛到共享 helper `scripts/lib/text_output.mjs`
+- `npm run check` 现已内置 no-BOM 输出回归门：`check:text-output`
+- 已安装 skill 镜像同步链已稳定：`sync:installed-skills` + `check:installed-skill-sync`
+
+### 3. 当前未完与风险
+
+当前仍要避免误判为“已经彻底完成”的点包括：
+
+- `sampled / chapter-full / full-book` 虽然已经是稳定用户口径，但底层仍共享 `economy / performance` 执行主链，并不是三套完全独立引擎
+- `sampled` 的目标不是无限逼近全文，而是做更像人类扫书习惯的“决策导向快速摸底”层
+- “什么时候该从 `sampled` 升到 `chapter-full` / `full-book`” 还没有被正式产品化成稳定升级规则
+- mode-diff、DB compare、trends 已经能提供证据，但还没有被收口成明确的用户升级建议卡或默认产品策略
+- 反馈闭环资产很完整，但仍应保持辅助层定位，避免重新把主叙事拉回“规则系统”或“抽取系统”
+
+### 4. 下一轮建议起点
+
+如果下一轮正式回到产品主线，建议按下面顺序启动：
+
+1. 先把“升级决策规则”产品化：明确什么信号触发 `sampled -> chapter-full -> full-book`
+2. 再把这些规则落到报告首页/摘要区，而不是只留在 compare 或 DB 里
+3. 然后再决定是继续补 `sampled` 模板体验，还是优先补 `chapter-full / full-book` 的边界与收益说明
+
+建议开工前先读：
+
+- `README.md` 的“扫描模式”章节
+- `docs/community-alignment.md`
+- `docs/sampling-design.md`
+- `packages/saoshu-harem-review/references/product-manual.md`
+
+建议开工前先跑：
+
+```bash
+git status --short
+git diff --stat
+npm run check
+```
+
+### 5. 相关入口
+
+- `README.md`：对外入口、能力总览、当前模式口径
+- `docs/development-workflow.md`：接手开发、恢复中断、验证闭环
+- `docs/community-alignment.md`：扫书社区语义与产品边界
+- `docs/sampling-design.md`：`sampled` 的产品语义与模板演化方向
+- `packages/saoshu-harem-review/references/product-manual.md`：产品手册与 manifest 口径
+- `packages/saoshu-harem-review/references/architecture/overview.md`：实现层与契约边界
+
 ## Now
 
 ### 0. 从 sampling-first 转向 coverage-first
@@ -28,6 +98,14 @@
 - 现有 `sample_*` 字段后续优先通过兼容层映射，而不是继续扩字段堆复杂度
 
 这条路线的目标不是再造一个“更聪明的 economy”，而是建立一个可从抽样平滑升级到章节级/整书级扫描的统一覆盖架构。
+
+当前 Now 里最先要补上的收口不是新模式，而是把“何时升级覆盖、为什么升级、升级后减少什么误判”沉淀成统一产品契约：
+
+- 结构化真源建议优先落在 `merged-report.json` 的 `scan.coverage_decision`
+- 报告首页仍可继续沿用 `decision_summary.next_action` 作为单行摘要，但不再让它承担完整契约语义
+- 首批升级原因建议先收敛为 `late_risk_uncovered`、`latest_progress_uncertain`、`evidence_conflict`、`too_many_unverified`、`chapter_boundary_unstable`、`high_defense_needs_more_evidence`
+- `mode-diff`、`coverage_gap_summary`、`coverage_gap_risk_types`、`target_defense` 与现有“待补证 / 未证实风险”应优先被收口成升级建议卡，而不是继续散落在 compare、DB 与报告细节里
+- `scan-db` 落库也应同步准备 `coverage_decision_action`、`coverage_decision_confidence`、`coverage_decision_reasons` 这类扁平字段，方便后续 compare / dashboard / trends 直接消费
 
 ### 1. 先把覆盖层重构方案文档化并与入口对齐
 

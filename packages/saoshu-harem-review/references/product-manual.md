@@ -76,6 +76,21 @@
 - `newbie` 视图优先展示结论、关键证据、补证问题；`expert` 视图再展开事件表、雷点表、术语速查与审计细节。
 - `newbie` 视图中的补证问题会压缩到最关键 3 条，并优先展示“可能改变结论”的未证实风险。
 
+### 4.6.1 覆盖升级建议（v0 契约草案）
+- 当前主线不是继续新增模式，而是把“是否该升级覆盖层”收口成统一动作建议。
+- 结构化真源建议优先放在 `merged-report.json` 的 `scan.coverage_decision`；报告首页已有的 `decision_summary.next_action` 继续保留为单行摘要，不替代结构化真源。
+- `scan.coverage_decision` 建议至少包含：
+  - `action`: `keep-sampled|upgrade-chapter-full|upgrade-full-book`
+  - `confidence`: `stable|cautious|insufficient`
+  - `reason_codes`: 结构化原因码数组
+  - `reason_lines`: 面向报告首页的中文原因行
+  - `current_conclusion`: 当前已能交付到什么程度
+  - `risk_if_not_upgraded`: 如果不升级，最可能漏掉什么
+  - `upgrade_benefit`: 升级后主要减少什么误判/漏判
+- 首批 `reason_codes` 建议先收敛为：`late_risk_uncovered`、`latest_progress_uncertain`、`evidence_conflict`、`too_many_unverified`、`chapter_boundary_unstable`、`high_defense_needs_more_evidence`。
+- 这些原因应优先消费现有 coverage-first 信号：`coverage_gap_summary`、`coverage_gap_risk_types`、`serial_status`、`target_defense`、章节退化路径，以及现有“待补证 / 未证实风险”规模；`mode-diff` 则主要承担“为什么该升级”的证据层角色。
+- `scan-db` 落库建议同步准备扁平字段：`coverage_decision_action`、`coverage_decision_confidence`、`coverage_decision_reasons`，方便后续 compare / dashboard / trends 直接消费。
+
 ### 4.7 术语百科（Wiki）
 - 通过 `saoshu-term-wiki` 提供黑话解释。
 - 报告可自动注入术语速查（term_wiki）。
