@@ -12,7 +12,9 @@
 - sample_mode / sample_level
 - total_batches / selected_batches / coverage_ratio
 - coverage_gap_summary / coverage_gap_risk_types
-- coverage_decision_action / coverage_decision_confidence / coverage_decision_reasons
+- coverage_decision_action / coverage_decision_confidence / coverage_decision_reasons / coverage_contract_source
+- coverage_decision_context_references[] / decision_supporting_references[]
+- context_reference_total / context_reference_source_kinds[] / counter_evidence_ref_total / offset_hint_ref_total
 - thunder_total / depression_total / risk_total
 - keyword_candidate_total / alias_candidate_total / risk_question_candidate_total / relation_candidate_total
 - input_txt / output_dir
@@ -21,14 +23,17 @@
 ## thunder_items.jsonl
 - run_id / title
 - rule / evidence_level / anchor / batch_id
+- primary_context_reference / context_references[]
 
 ## depression_items.jsonl
 - run_id / title
 - rule / severity / min_defense / evidence_level / anchor / batch_id
+- primary_context_reference / context_references[]
 
 ## risk_items.jsonl
 - run_id / title
 - risk / current_evidence / impact
+- primary_context_reference / context_references[]
 
 ## tag_items.jsonl
 - run_id / title
@@ -41,7 +46,13 @@
 - review_decision / status
 - subject_name / target_name
 - chapter_range / chapter_num / chapter_title
-- snippet
+- offset_hint / snippet
+
+## context_references[] 内部字段
+- ref_id / source_kind / source_label
+- batch_id / anchor
+- chapter_num / chapter_title / offset_hint
+- keyword / snippet / note
 
 ## keyword_promotions.jsonl
 - promoted_at
@@ -110,3 +121,7 @@
 - serial_status（unknown / ongoing / completed）
 - coverage_decision_action（keep-sampled / keep-current / upgrade-chapter-full / upgrade-full-book）
 - coverage_decision_confidence（stable / cautious / insufficient）
+- coverage_contract_source（reported / legacy-inferred）
+- has_counter_evidence（由 `counter_evidence_ref_total > 0` 推导出的 compare 维度）
+- has_offset_hints（由 `offset_hint_ref_total > 0` 推导出的 compare 维度）
+- context_reference_source_kind（来自 `context_reference_source_kinds[]` 的多值 compare 维度）

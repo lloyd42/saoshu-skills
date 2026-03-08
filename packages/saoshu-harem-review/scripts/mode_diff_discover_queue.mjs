@@ -93,7 +93,7 @@ function buildQueue(config) {
     ledger: path.relative(path.dirname(config.output), config.ledger).replace(/\\/g, "/"),
     db: config.db ? path.relative(path.dirname(config.output), config.db).replace(/\\/g, "/") : undefined,
     summary_dir: path.relative(path.dirname(config.output), config.summaryDir).replace(/\\/g, "/"),
-    db_compare_dimensions: "author,tags,mode_diff_gain_window,mode_diff_band",
+    db_compare_dimensions: "author,tags,coverage_mode,coverage_template,coverage_decision_action,coverage_decision_confidence,coverage_decision_reason,serial_status,target_defense,mode_diff_gain_window,mode_diff_band",
     jobs,
   };
 }

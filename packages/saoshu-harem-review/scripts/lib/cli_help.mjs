@@ -7,13 +7,14 @@ export function showCliHelp() {
   console.log("  node saoshu_cli.mjs manifest --output <manifest.json> [--preset newbie|full] [--coverage-mode sampled|chapter-full|full-book] [--non-interactive --input-txt <txt> --output-dir <dir> --title <name> [--coverage-template opening-100|head-tail|head-tail-risk|opening-latest] [--serial-status unknown|ongoing|completed]]");
   console.log("  node saoshu_cli.mjs wiki --term <text> [--contains] [--format text|json] [--mcp-cmd <cmd>]");
   console.log("  node saoshu_cli.mjs relation --report <merged-report.json> --output <relation-graph.html> [--review-dir <review-pack-dir>] [--top-chars 20] [--top-signals 16] [--min-edge-weight 2] [--max-links 220] [--min-name-freq 2]");
-  console.log("  node saoshu_cli.mjs db overview --db <dir> [--format text|json]");
+  console.log("  node saoshu_cli.mjs db overview --db <dir> [--metric overview|coverage-decision-overview|context-reference-overview|counter-evidence-candidates] [--format text|json]");
   console.log("  node saoshu_cli.mjs db trends --db <dir> [--output-dir <dir>] [--top 10]");
-  console.log("  node saoshu_cli.mjs db dashboard --db <dir> --output <html>");
+  console.log("  node saoshu_cli.mjs db dashboard --db <dir> --output <html> [--compare-presets default,context-audit,context-source] [--compare-top 20] [--skip-compare]");
   console.log("  node saoshu_cli.mjs db ingest --db <dir> --report <merged-report.json> [--state <pipeline-state.json>] [--manifest <manifest.json>]");
+  console.log("  node saoshu_cli.mjs db ingest-tree --db <dir> --root <reports-root> [--report-name merged-report.json] [--limit 0] [--dry-run]");
   console.log("  node saoshu_cli.mjs db ingest-mode-diff --db <dir> --ledger <mode-diff-ledger.jsonl>");
   console.log("  node saoshu_cli.mjs db assets --db <dir> --output-dir <dir>");
-  console.log("  node saoshu_cli.mjs compare --db <dir> [--dimensions author,tags,verdict,coverage_mode,coverage_template,coverage_decision_action,coverage_decision_confidence,pipeline_mode,target_defense,title,mode_diff_gain_window,mode_diff_band] [--output-dir <dir>]");
+  console.log("  node saoshu_cli.mjs compare --db <dir> [--preset default|context-audit|context-source] [--dimensions author,tags,verdict,coverage_mode,coverage_template,coverage_decision_action,coverage_decision_confidence,coverage_decision_reason,pipeline_mode,target_defense,title,has_counter_evidence,has_offset_hints,context_reference_source_kind,mode_diff_gain_window,mode_diff_band] [--output-dir <dir>]");
   console.log("  node saoshu_cli.mjs compare ledger --ledger <mode-diff-ledger.jsonl> --output-dir <dir> [--title <name>]");
   console.log("  node saoshu_cli.mjs compare discover --root <dir> --output <queue.json> [--db <dir>]");
   console.log("  node saoshu_cli.mjs compare record --perf <perf.json> --econ <econ.json> --out-dir <dir> --ledger <mode-diff-ledger.jsonl> [--db <dir>]");

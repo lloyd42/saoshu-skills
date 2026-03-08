@@ -2,9 +2,18 @@
 import fs from "node:fs";
 import path from "node:path";
 import { buildModeDiffSummaryFromRows, getModeDiffDbFile, readJsonl } from "./lib/mode_diff_db.mjs";
+import {
+  buildCoverageDecisionOverview,
+  formatCoverageDecisionOverviewText,
+} from "./lib/coverage_decision_view.mjs";
+import {
+  buildContextReferenceOverview,
+  collectContextReferences,
+  formatContextReferenceOverviewText,
+} from "./lib/context_reference_view.mjs";
 
 function usage() {
-  console.log("Usage: node db_query.mjs --db <dir> [--metric overview|verdict|top-risks|top-tags|top-keywords|keyword-candidates|promoted-keywords|top-aliases|alias-candidates|promoted-aliases|top-risk-questions|risk-question-candidates|promoted-risk-questions|top-relations|relation-candidates|promoted-relations|runs|mode-diff-overview|mode-diff-entries] [--limit 10] [--format text|json]");
+  console.log("Usage: node db_query.mjs --db <dir> [--metric overview|coverage-decision-overview|context-reference-overview|context-references|counter-evidence-candidates|verdict|top-risks|top-tags|top-keywords|keyword-candidates|promoted-keywords|top-aliases|alias-candidates|promoted-aliases|top-risk-questions|risk-question-candidates|promoted-risk-questions|top-relations|relation-candidates|promoted-relations|runs|mode-diff-overview|mode-diff-entries] [--limit 10] [--format text|json]");
 }
 
 function parseArgs(argv) {
@@ -200,6 +209,8 @@ function main() {
   const db = path.resolve(args.db);
   const runs = readJsonl(path.join(db, "runs.jsonl"));
   const risks = readJsonl(path.join(db, "risk_items.jsonl"));
+  const thunder = readJsonl(path.join(db, "thunder_items.jsonl"));
+  const depression = readJsonl(path.join(db, "depression_items.jsonl"));
   const tags = readJsonl(path.join(db, "tag_items.jsonl"));
   const keywords = readJsonl(path.join(db, "keyword_candidates.jsonl"));
   const promotions = readJsonl(path.join(db, "keyword_promotions.jsonl"));
@@ -211,6 +222,12 @@ function main() {
   const relationPromotions = readJsonl(path.join(db, "relation_promotions.jsonl"));
   const modeDiffEntries = readJsonl(getModeDiffDbFile(db));
   const modeDiffSummary = buildModeDiffSummaryFromRows(modeDiffEntries, args.limit);
+  const contextRows = collectContextReferences({ runs, thunderRows: thunder, depressionRows: depression, riskRows: risks });
+  const contextReferenceOverview = buildContextReferenceOverview(contextRows, args.limit);
+  const counterEvidenceCandidates = contextRows
+    .filter((row) => String(row.source_kind || "").trim() === "event_counter_evidence")
+    .slice(-args.limit)
+    .reverse();
 
   let out = {};
   if (args.metric === "overview") {
@@ -229,6 +246,8 @@ function main() {
       top_coverage_units: topN(runs, "coverage_unit", 10),
       top_chapter_detect_modes: topN(runs, "chapter_detect_used_mode", 10),
       top_serial_statuses: topN(runs, "serial_status", 10),
+      coverage_decision_overview: buildCoverageDecisionOverview(runs, args.limit),
+      context_reference_overview: contextReferenceOverview,
       coverage_gap_runs: countCoverageGapRuns(runs),
       promoted_keywords: promotions.slice(-Math.min(args.limit, 10)).reverse(),
       promoted_aliases: aliasPromotions.slice(-Math.min(args.limit, 10)).reverse(),
@@ -252,9 +271,13 @@ function main() {
   else if (args.metric === "relation-candidates") out = topRelationCandidates(relations, args.limit);
   else if (args.metric === "promoted-relations") out = relationPromotions.slice(-args.limit).reverse();
   else if (args.metric === "runs") out = runs.slice(-args.limit).reverse();
+  else if (args.metric === "coverage-decision-overview") out = buildCoverageDecisionOverview(runs, args.limit);
+  else if (args.metric === "context-reference-overview") out = contextReferenceOverview;
+  else if (args.metric === "context-references") out = contextRows.slice(0, args.limit);
+  else if (args.metric === "counter-evidence-candidates") out = counterEvidenceCandidates;
   else if (args.metric === "mode-diff-overview") out = modeDiffSummary;
   else if (args.metric === "mode-diff-entries") out = modeDiffEntries.slice(-args.limit).reverse();
-  else throw new Error("metric must be overview|verdict|top-risks|top-tags|top-keywords|keyword-candidates|promoted-keywords|top-aliases|alias-candidates|promoted-aliases|top-risk-questions|risk-question-candidates|promoted-risk-questions|top-relations|relation-candidates|promoted-relations|runs|mode-diff-overview|mode-diff-entries");
+  else throw new Error("metric must be overview|coverage-decision-overview|context-reference-overview|context-references|counter-evidence-candidates|verdict|top-risks|top-tags|top-keywords|keyword-candidates|promoted-keywords|top-aliases|alias-candidates|promoted-aliases|top-risk-questions|risk-question-candidates|promoted-risk-questions|top-relations|relation-candidates|promoted-relations|runs|mode-diff-overview|mode-diff-entries");
 
   if (args.format === "json") {
     console.log(JSON.stringify(out, null, 2));
@@ -274,8 +297,18 @@ function main() {
     console.log(`Top coverage units: ${out.top_coverage_units.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
     console.log(`Top chapter detect modes: ${out.top_chapter_detect_modes.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
     console.log(`Top serial statuses: ${out.top_serial_statuses.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
+    console.log(formatCoverageDecisionOverviewText(out.coverage_decision_overview));
+    console.log(formatContextReferenceOverviewText(out.context_reference_overview));
     console.log(`Coverage-gap runs: ${out.coverage_gap_runs}`);
     console.log(formatModeDiffText(out.mode_diff_overview));
+    return;
+  }
+  if (args.metric === "coverage-decision-overview") {
+    console.log(formatCoverageDecisionOverviewText(out));
+    return;
+  }
+  if (args.metric === "context-reference-overview") {
+    console.log(formatContextReferenceOverviewText(out));
     return;
   }
   if (args.metric === "mode-diff-overview") {

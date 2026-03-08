@@ -4,6 +4,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { readJsonFile } from "../../saoshu-harem-review/scripts/lib/json_input.mjs";
 import { appendUtf8Jsonl } from "../../saoshu-harem-review/scripts/lib/text_output.mjs";
+import { resolveCoverageContract } from "./lib/coverage_contract_compat.mjs";
 
 function usage() {
   console.log("Usage: node db_ingest.mjs --db <dir> --report <merged-report.json> [--state <pipeline-state.json>] [--manifest <manifest.json>] [--run-id <id>]");
@@ -51,6 +52,20 @@ function arr(v) {
   return Array.isArray(v) ? v : [];
 }
 
+function hasNumber(value) {
+  return Number.isFinite(Number(value));
+}
+
+function collectRunContextReferences(report) {
+  return [
+    ...arr(report.scan?.coverage_decision?.context_references),
+    ...arr(report.decision_summary?.supporting_references),
+    ...arr(report.thunder?.items).flatMap((item) => arr(item.context_references)),
+    ...arr(report.depression?.items).flatMap((item) => arr(item.context_references)),
+    ...arr(report.risks_unconfirmed).flatMap((item) => arr(item.context_references)),
+  ];
+}
+
 function uniqBy(items, keyFn) {
   const seen = new Set();
   const out = [];
@@ -84,6 +99,11 @@ function main() {
   const state = readJsonIfExists(args.state);
   const manifest = readJsonIfExists(args.manifest);
   const runId = makeRunId(report, args.runId);
+  const coverageContract = resolveCoverageContract(report, state, manifest);
+  const runContextReferences = collectRunContextReferences(report);
+  const contextReferenceSourceKinds = [...new Set(runContextReferences.map((item) => String(item?.source_kind || "").trim()).filter(Boolean))].sort();
+  const counterEvidenceRefTotal = runContextReferences.filter((item) => String(item?.source_kind || "").trim() === "event_counter_evidence").length;
+  const offsetHintRefTotal = runContextReferences.filter((item) => hasNumber(item?.offset_hint)).length;
 
   const runsFile = path.join(dbDir, "runs.jsonl");
   const thunderFile = path.join(dbDir, "thunder_items.jsonl");
@@ -107,11 +127,11 @@ function main() {
     rating: Number(report.overall?.rating || 0),
     batch_count: Number(report.scan?.batch_count || 0),
     pipeline_mode: report.scan?.sampling?.pipeline_mode || "",
-    coverage_mode: report.scan?.sampling?.coverage_mode || "",
-    coverage_template: report.scan?.sampling?.coverage_template || "",
-    coverage_unit: report.scan?.sampling?.coverage_unit || "",
-    chapter_detect_used_mode: report.scan?.sampling?.chapter_detect_used_mode || "",
-    serial_status: report.scan?.sampling?.serial_status || "",
+    coverage_mode: coverageContract.coverageMode || "",
+    coverage_template: coverageContract.coverageTemplate || "",
+    coverage_unit: coverageContract.coverageUnit || "",
+    chapter_detect_used_mode: coverageContract.chapterDetectUsedMode || "",
+    serial_status: coverageContract.serialStatus || "",
     sample_mode: report.scan?.sampling?.sample_mode || "",
     sample_level: report.scan?.sampling?.sample_level_effective || "",
     total_batches: Number(report.scan?.sampling?.total_batches || 0),
@@ -119,9 +139,16 @@ function main() {
     coverage_ratio: Number(report.scan?.sampling?.coverage_ratio || 0),
     coverage_gap_summary: report.scan?.sampling?.coverage_gap_summary || "",
     coverage_gap_risk_types: arr(report.scan?.sampling?.coverage_gap_risk_types).map((item) => String(item)).filter(Boolean),
-    coverage_decision_action: report.scan?.coverage_decision?.action || "",
-    coverage_decision_confidence: report.scan?.coverage_decision?.confidence || "",
-    coverage_decision_reasons: arr(report.scan?.coverage_decision?.reason_codes).map((item) => String(item)).filter(Boolean),
+    coverage_decision_action: coverageContract.action || "",
+    coverage_decision_confidence: coverageContract.confidence || "",
+    coverage_decision_reasons: arr(coverageContract.reasons).map((item) => String(item)).filter(Boolean),
+    coverage_contract_source: coverageContract.source || "reported",
+    coverage_decision_context_references: arr(report.scan?.coverage_decision?.context_references),
+    decision_supporting_references: arr(report.decision_summary?.supporting_references),
+    context_reference_total: runContextReferences.length,
+    context_reference_source_kinds: contextReferenceSourceKinds,
+    counter_evidence_ref_total: counterEvidenceRefTotal,
+    offset_hint_ref_total: offsetHintRefTotal,
     thunder_total: Number(report.thunder?.total_candidates || 0),
     depression_total: Number(report.depression?.total || 0),
     risk_total: arr(report.risks_unconfirmed).length,
@@ -138,6 +165,8 @@ function main() {
       evidence_level: t.evidence_level || "",
       anchor: t.anchor || "",
       batch_id: t.batch_id || "",
+      primary_context_reference: arr(t.context_references)[0] || null,
+      context_references: arr(t.context_references),
     });
   }
 
@@ -151,6 +180,8 @@ function main() {
       evidence_level: d.evidence_level || "",
       anchor: d.anchor || "",
       batch_id: d.batch_id || "",
+      primary_context_reference: arr(d.context_references)[0] || null,
+      context_references: arr(d.context_references),
     });
   }
 
@@ -161,6 +192,8 @@ function main() {
       risk: r.risk || "",
       current_evidence: r.current_evidence || "",
       impact: r.impact || "",
+      primary_context_reference: arr(r.context_references)[0] || null,
+      context_references: arr(r.context_references),
     });
   }
 
@@ -206,12 +239,13 @@ function main() {
         source_kind: "event_evidence",
         chapter_num: Number(evidence.chapter_num || 0),
         chapter_title: String(evidence.chapter_title || ""),
+        offset_hint: hasNumber(evidence.offset_hint) ? Number(evidence.offset_hint) : null,
         snippet: String(evidence.snippet || ""),
       });
     }
   }
 
-  for (const row of uniqBy(keywordRows, (item) => `${item.event_id}|${item.keyword}|${item.source_kind}|${item.chapter_num || 0}|${item.chapter_title || ""}`)) {
+  for (const row of uniqBy(keywordRows, (item) => `${item.event_id}|${item.keyword}|${item.source_kind}|${item.chapter_num || 0}|${item.chapter_title || ""}|${hasNumber(item.offset_hint) ? Number(item.offset_hint) : ""}`)) {
     appendJsonl(keywordFile, row);
   }
 
@@ -360,4 +394,3 @@ try {
   console.error(`Error: ${err.message}`);
   process.exit(1);
 }
-

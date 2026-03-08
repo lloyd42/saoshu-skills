@@ -81,6 +81,10 @@ else fail("mode_diff_workflow should write compare and summary outputs");
 if (fs.existsSync(path.join(dbDir, "mode_diff_entries.jsonl")) && fs.existsSync(path.join(dbDir, "compare", "compare.json")) && fs.existsSync(path.join(dbDir, "trends", "trends.json")) && fs.existsSync(path.join(dbDir, "dashboard.html"))) ok("mode_diff_workflow refreshes db compare/trends/dashboard outputs");
 else fail("mode_diff_workflow should refresh db artifacts");
 
+const comparePayload = JSON.parse(fs.readFileSync(path.join(dbDir, "compare", "compare.json"), "utf8"));
+if (JSON.stringify(comparePayload.dimensions) === JSON.stringify(["author", "tags", "coverage_mode", "coverage_template", "coverage_decision_action", "coverage_decision_confidence", "coverage_decision_reason", "serial_status", "target_defense", "mode_diff_gain_window", "mode_diff_band"])) ok("mode_diff_workflow default compare dimensions prefer coverage-decision calibration");
+else fail(`mode_diff_workflow should prefer coverage-decision calibration dimensions: ${JSON.stringify(comparePayload.dimensions)}`);
+
 const sync = runNode("packages/saoshu-harem-review/scripts/mode_diff_workflow.mjs", ["--ledger", ledgerPath, "--summary-dir", summaryDir, "--db", dbDir]);
 if (sync.status === 0) ok("mode_diff_workflow sync run");
 else fail(`mode_diff_workflow sync run failed\nSTDERR:\n${sync.stderr}`);

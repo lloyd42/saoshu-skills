@@ -14,7 +14,7 @@ function parseArgs(argv) {
     summaryTitle: "mode-diff 台账汇总",
     db: "",
     dbCompareDir: "",
-    dbCompareDimensions: "author,tags,mode_diff_gain_window,mode_diff_band",
+    dbCompareDimensions: "author,tags,coverage_mode,coverage_template,coverage_decision_action,coverage_decision_confidence,coverage_decision_reason,serial_status,target_defense,mode_diff_gain_window,mode_diff_band",
     dbTrendsDir: "",
     dbDashboard: "",
     perf: "",

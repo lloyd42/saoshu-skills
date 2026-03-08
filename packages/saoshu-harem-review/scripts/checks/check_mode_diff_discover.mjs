@@ -60,5 +60,8 @@ else fail(`mode_diff_discover_queue should find 2 jobs: ${JSON.stringify(payload
 if (payload.jobs[0]?.out_dir && payload.jobs[0]?.perf && payload.jobs[0]?.econ) ok("mode_diff_discover_queue writes queue job paths");
 else fail(`mode_diff_discover_queue should write queue job paths: ${JSON.stringify(payload.jobs?.[0])}`);
 
+if (payload.db_compare_dimensions === "author,tags,coverage_mode,coverage_template,coverage_decision_action,coverage_decision_confidence,coverage_decision_reason,serial_status,target_defense,mode_diff_gain_window,mode_diff_band") ok("mode_diff_discover_queue defaults to coverage-first calibration dimensions");
+else fail(`mode_diff_discover_queue should default to coverage-first calibration dimensions: ${JSON.stringify(payload.db_compare_dimensions)}`);
+
 if (!hasFailure) console.log("Mode diff discover check passed.");
 else process.exitCode = 1;

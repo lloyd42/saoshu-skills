@@ -63,7 +63,7 @@ fs.rmSync(tmpRoot, { recursive: true, force: true });
 fs.mkdirSync(tmpRoot, { recursive: true });
 const ledgerPath = path.join(tmpRoot, "mode-diff-ledger.jsonl");
 const dbDir = path.join(tmpRoot, "scan-db");
-writeUtf8Jsonl(path.join(dbDir, "runs.jsonl"), [{ ingested_at: "2026-03-08T09:00:00Z", title: "仪表盘夹具", verdict: "慎入", rating: 5, coverage_mode: "sampled", coverage_template: "opening-latest", coverage_decision_action: "upgrade-chapter-full", coverage_decision_confidence: "cautious", pipeline_mode: "economy", coverage_unit: "chapter", chapter_detect_used_mode: "script", serial_status: "ongoing", coverage_ratio: 0.5, coverage_gap_summary: "中后段仍未完整覆盖" }]);
+writeUtf8Jsonl(path.join(dbDir, "runs.jsonl"), [{ ingested_at: "2026-03-08T09:00:00Z", title: "仪表盘夹具", verdict: "慎入", rating: 5, coverage_mode: "sampled", coverage_template: "opening-latest", coverage_decision_action: "upgrade-chapter-full", coverage_decision_confidence: "cautious", coverage_decision_reasons: ["late_risk_uncovered", "latest_progress_uncertain"], pipeline_mode: "economy", coverage_unit: "chapter", chapter_detect_used_mode: "script", serial_status: "ongoing", coverage_ratio: 0.5, coverage_gap_summary: "中后段仍未完整覆盖" }]);
 
 const cases = [
   { title: "玄幻样本", author: "作者甲", tags: ["玄幻", "多女主"] },
@@ -105,10 +105,34 @@ const textOverview = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["-
 if (textOverview.status === 0 && textOverview.stdout.includes("Mode-diff entries: 3")) ok("db overview text surfaces mode-diff summary");
 else fail(`db overview text should include mode-diff summary\nSTDOUT:\n${textOverview.stdout}\nSTDERR:\n${textOverview.stderr}`);
 
+const decisionOverview = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["--db", dbDir, "--metric", "coverage-decision-overview", "--format", "json"]);
+if (decisionOverview.status === 0) ok("db_query coverage decision overview run");
+else fail(`db_query coverage decision overview failed\nSTDERR:\n${decisionOverview.stderr}`);
+
+const decisionPayload = JSON.parse(decisionOverview.stdout || "{}");
+if (Array.isArray(decisionPayload.action_dist) && decisionPayload.action_dist.some((item) => item[0] === "upgrade-chapter-full" && item[1] === 1) && Array.isArray(decisionPayload.reason_dist) && decisionPayload.reason_dist.some((item) => item[0] === "late_risk_uncovered" && item[1] === 1)) ok("db_query coverage decision overview exposes action and reason distribution");
+else fail(`db_query coverage decision overview should expose action and reason distribution: ${JSON.stringify(decisionPayload)}`);
+
+const decisionText = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["--db", dbDir, "--metric", "coverage-decision-overview", "--format", "text"]);
+if (decisionText.status === 0 && decisionText.stdout.includes("Coverage decision actions: 升级到 chapter-full(1)") && decisionText.stdout.includes("Coverage decision reasons: 中后段关键风险未覆盖(1) / 最新进度仍可能改判(1)")) ok("db_query coverage decision overview renders readable text summary");
+else fail(`db_query coverage decision overview should render readable text summary\nSTDOUT:\n${decisionText.stdout}\nSTDERR:\n${decisionText.stderr}`);
+
+writeUtf8File(path.join(dbDir, "compare", "compare.html"), "<html><body>custom default compare</body></html>");
+writeUtf8Json(path.join(dbDir, "compare", "compare.json"), {
+  preset: "",
+  dimensions: ["author", "mode_diff_gain_window"],
+}, { newline: true });
+
 const dashboardPath = path.join(tmpRoot, "dashboard.html");
 const dashboard = runNode("packages/saoshu-scan-db/scripts/db_dashboard.mjs", ["--db", dbDir, "--output", dashboardPath]);
 if (dashboard.status === 0 && fs.existsSync(dashboardPath)) ok("db_dashboard renders mode-diff aware dashboard");
 else fail(`db_dashboard failed\nSTDERR:\n${dashboard.stderr}`);
+
+if (fs.existsSync(path.join(dbDir, "compare", "compare.html")) && fs.existsSync(path.join(dbDir, "compare-context", "compare.html")) && fs.existsSync(path.join(dbDir, "compare-context-kinds", "compare.html"))) ok("db_dashboard auto-refreshes missing compare detail pages");
+else fail("db_dashboard should auto-refresh missing compare detail pages");
+
+if (fs.readFileSync(path.join(dbDir, "compare", "compare.html"), "utf8").includes("custom default compare")) ok("db_dashboard preserves custom compare pages");
+else fail("db_dashboard should not overwrite custom compare pages");
 
 const dashboardHtml = fs.readFileSync(dashboardPath, "utf8");
 if (dashboardHtml.includes("覆盖口径") && dashboardHtml.includes("兼容执行层") && dashboardHtml.indexOf("覆盖口径") < dashboardHtml.indexOf("兼容执行层")) ok("db_dashboard recent-runs table prefers coverage-first column ordering");
@@ -116,6 +140,15 @@ else fail("db_dashboard recent-runs table should prefer coverage-first column or
 
 if (dashboardHtml.includes("升级建议") && dashboardHtml.includes("建议把握") && dashboardHtml.includes("升级到 chapter-full") && dashboardHtml.includes("谨慎")) ok("db_dashboard surfaces coverage decision defaults");
 else fail("db_dashboard should surface coverage decision defaults");
+
+if (dashboardHtml.includes("高频升级理由") && dashboardHtml.includes("中后段关键风险未覆盖") && dashboardHtml.includes("最新进度仍可能改判")) ok("db_dashboard surfaces coverage decision reasons");
+else fail("db_dashboard should surface coverage decision reasons");
+
+if (dashboardHtml.includes("Compare 详情入口") && !dashboardHtml.includes("saoshu_cli.mjs compare --db")) ok("db_dashboard prefers detail links over command snippets when compare pages are ready");
+else fail("db_dashboard should prefer detail links over command snippets when compare pages are ready");
+
+if (dashboardHtml.includes("点击查看详情") && dashboardHtml.includes("href=\"scan-db/compare/compare.html\"") && dashboardHtml.includes("href=\"scan-db/compare-context/compare.html\"") && dashboardHtml.includes("href=\"scan-db/compare-context-kinds/compare.html\"")) ok("db_dashboard links compare detail pages after refresh");
+else fail("db_dashboard should link compare detail pages after refresh");
 
 const trendsDir = path.join(tmpRoot, "trends");
 const trends = runNode("packages/saoshu-scan-db/scripts/db_trends.mjs", ["--db", dbDir, "--output-dir", trendsDir]);

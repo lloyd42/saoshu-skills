@@ -10,12 +10,17 @@ export function handleDb(rest, context) {
   if (!fs.existsSync(dbRoot)) failUsage(`未找到数据库脚本目录：${dbRoot}`);
   if (sub === "overview") {
     const format = valueOf(rest, "--format", "text");
-    return runNodeScript(path.join(dbRoot, "scripts/db_query.mjs"), ["--db", db, "--metric", "overview", "--format", format]);
+    const metric = valueOf(rest, "--metric", "overview");
+    return runNodeScript(path.join(dbRoot, "scripts/db_query.mjs"), ["--db", db, "--metric", metric, "--format", format]);
   }
   if (sub === "dashboard") {
     const output = valueOf(rest, "--output");
     requireArg(output, "db dashboard 缺少 `--output`", "示例：node saoshu_cli.mjs db dashboard --db ./scan-db --output ./dashboard.html");
-    return runNodeScript(path.join(dbRoot, "scripts/db_dashboard.mjs"), ["--db", db, "--output", output]);
+    const args = ["--db", db, "--output", output];
+    pushArg(args, "--compare-presets", valueOf(rest, "--compare-presets", ""));
+    pushArg(args, "--compare-top", valueOf(rest, "--compare-top", ""));
+    if (rest.includes("--skip-compare")) args.push("--skip-compare");
+    return runNodeScript(path.join(dbRoot, "scripts/db_dashboard.mjs"), args);
   }
   if (sub === "trends") {
     const outputDir = valueOf(rest, "--output-dir", "");
@@ -33,6 +38,14 @@ export function handleDb(rest, context) {
     pushArg(args, "--manifest", manifest);
     return runNodeScript(path.join(dbRoot, "scripts/db_ingest.mjs"), args);
   }
+  if (sub === "ingest-tree") {
+    const root = requireArg(valueOf(rest, "--root"), "db ingest-tree 缺少 `--root`", "示例：node saoshu_cli.mjs db ingest-tree --db ./scan-db --root ./reports");
+    const args = ["--db", db, "--root", root];
+    pushArg(args, "--report-name", valueOf(rest, "--report-name", ""));
+    pushArg(args, "--limit", valueOf(rest, "--limit", ""));
+    if (rest.includes("--dry-run")) args.push("--dry-run");
+    return runNodeScript(path.join(dbRoot, "scripts/db_ingest_report_tree.mjs"), args);
+  }
   if (sub === "ingest-mode-diff") {
     const ledger = requireArg(valueOf(rest, "--ledger"), "db ingest-mode-diff 缺少 `--ledger`", "示例：node saoshu_cli.mjs db ingest-mode-diff --db ./scan-db --ledger ./workspace/mode-diff-ledger.jsonl");
     return runNodeScript(path.join(dbRoot, "scripts/db_ingest_mode_diff.mjs"), ["--db", db, "--ledger", ledger]);
@@ -41,7 +54,7 @@ export function handleDb(rest, context) {
     const outputDir = requireArg(valueOf(rest, "--output-dir"), "db assets 缺少 `--output-dir`", "示例：node saoshu_cli.mjs db assets --db ./scan-db --output-dir ./scan-db/assets");
     return runNodeScript(path.join(dbRoot, "scripts/db_export_feedback_assets.mjs"), ["--db", db, "--output-dir", outputDir]);
   }
-  failUsage("db 子命令必须是 overview|trends|dashboard|ingest|ingest-mode-diff|assets", "示例：node saoshu_cli.mjs db overview --db ./scan-db");
+  failUsage("db 子命令必须是 overview|trends|dashboard|ingest|ingest-tree|ingest-mode-diff|assets", "示例：node saoshu_cli.mjs db overview --db ./scan-db");
 }
 
 export function handleCompare(rest, context) {
@@ -123,12 +136,15 @@ export function handleCompare(rest, context) {
   }
 
   const db = requireArg(valueOf(rest, "--db"), "compare 缺少 `--db`", "示例：node saoshu_cli.mjs compare --db ./scan-db");
-  const dimensions = valueOf(rest, "--dimensions", "author,tags,verdict,coverage_mode,coverage_template,coverage_decision_action,pipeline_mode,target_defense");
+  const dimensions = valueOf(rest, "--dimensions", "");
+  const preset = valueOf(rest, "--preset", "");
   const outputDir = valueOf(rest, "--output-dir", "");
   const top = valueOf(rest, "--top", "20");
   const compareScript = path.join(getInstalledSkillPath("saoshu-scan-db", context.importMetaUrl), "scripts/db_compare.mjs");
   if (!fs.existsSync(compareScript)) failUsage(`未找到对比脚本：${compareScript}`);
-  const args = ["--db", db, "--dimensions", dimensions, "--top", top];
+  const args = ["--db", db, "--top", top];
+  pushArg(args, "--preset", preset);
+  pushArg(args, "--dimensions", dimensions);
   pushArg(args, "--output-dir", outputDir);
-  runNodeScript(compareScript, args);
+  return runNodeScript(compareScript, args);
 }
