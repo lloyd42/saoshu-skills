@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### 改进
+- `report_summary.mjs` 现在会拦截缺少女性主体证据的待补证雷点升格：`送女 / 背叛 / 死女 / 绿帽 / wrq` 这类要求女性主体语境的风险，若主体仍像男性角色或未知角色，将继续停留在事件复核与补证问题层，而不是直接进入 `risks_unconfirmed`。
+- 新增 `check_report_summary_focus.mjs`，直接保护结论层的风险合并、事件升格与排序优先级；`check_batch_merge_focus.mjs` 也补充了男性主体 `送女` 候选不会误升格、但仍保留人工复核入口的断言。
+- `check_repo_boundaries.mjs` 现在会跳过 `.tmp`、`workspace`、`scan-db` 等运行时输出目录，避免临时产物把仓库边界检查刷红。
+
+### 重构
+- 抽出 `scripts/lib/report_relationships.mjs`，集中承接外部 `relationship-map.json` 的加载、归一化与关系边合并逻辑；`batch_merge.mjs` 进一步收敛为编排层。
+
 ## [0.5.1] - 2026-03-08
 
 ### 改进
