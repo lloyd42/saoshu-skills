@@ -4,16 +4,19 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-const scanRoots = [
-  path.join(repoRoot, "packages", "saoshu-harem-review", "scripts"),
-  path.join(repoRoot, "packages", "saoshu-scan-db", "scripts"),
-];
+const packagesRoot = path.join(repoRoot, "packages");
+const scanRoots = fs.readdirSync(packagesRoot, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => path.join(packagesRoot, entry.name, "scripts"))
+  .filter((dir) => fs.existsSync(dir));
 const allowedFiles = new Set([
   "packages/saoshu-harem-review/scripts/lib/text_output.mjs",
 ]);
 const patterns = [
   { label: "writeFileSync", regex: /\b(?:fs\.)?writeFileSync\s*\(/g },
   { label: "appendFileSync", regex: /\b(?:fs\.)?appendFileSync\s*\(/g },
+  { label: "fs.promises.writeFile", regex: /\bfs\.promises\.writeFile\s*\(/g },
+  { label: "fs.promises.appendFile", regex: /\bfs\.promises\.appendFile\s*\(/g },
 ];
 let hasFailure = false;
 let checkedFiles = 0;

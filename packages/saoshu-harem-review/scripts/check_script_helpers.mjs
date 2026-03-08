@@ -28,12 +28,16 @@ fs.mkdirSync(tmpRoot, { recursive: true });
 
 const scriptPath = path.join(tmpRoot, "script dir", "echo args.mjs");
 const outputPath = path.join(tmpRoot, "out dir", "result.json");
+const helperModulePath = path.join(repoRoot, "packages", "saoshu-harem-review", "scripts", "lib", "text_output.mjs");
+let helperImportPath = path.relative(path.dirname(scriptPath), helperModulePath).replaceAll("\\", "/");
+if (!helperImportPath.startsWith(".")) helperImportPath = `./${helperImportPath}`;
 writeUtf8File(scriptPath, `import fs from "node:fs";
 import path from "node:path";
+import { writeUtf8Json } from ${JSON.stringify(helperImportPath)};
 const output = process.argv[2];
 const payload = { args: process.argv.slice(3) };
 fs.mkdirSync(path.dirname(output), { recursive: true });
-await fs.promises.writeFile(output, Buffer.from(JSON.stringify(payload, null, 2), "utf8"));
+writeUtf8Json(output, payload);
 `);
 
 const args = [];
