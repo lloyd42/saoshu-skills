@@ -1,65 +1,16 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { writeUtf8Json } from "./lib/text_output.mjs";
+import { createCheckHarness, createNodeCheckTestkit } from "./lib/check_testkit.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const tmpRoot = path.join(repoRoot, ".tmp", "check-coverage-decision-focus");
 
-let hasFailure = false;
-
-function ok(message) {
-  console.log(`OK: ${message}`);
-}
-
-function fail(message) {
-  hasFailure = true;
-  console.error(`FAIL: ${message}`);
-}
-
-function ensureCleanDir(dir) {
-  fs.rmSync(dir, { recursive: true, force: true });
-  fs.mkdirSync(dir, { recursive: true });
-}
-
-function writeJson(filePath, payload) {
-  writeUtf8Json(filePath, payload, { newline: true });
-}
-
-function readJson(filePath) {
-  return JSON.parse(fs.readFileSync(filePath, "utf8"));
-}
-
-function runNode(scriptPath, args = []) {
-  const absoluteScriptPath = path.isAbsolute(scriptPath) ? scriptPath : path.join(repoRoot, scriptPath);
-  try {
-    const stdout = execFileSync(process.execPath, [absoluteScriptPath, ...args], {
-      cwd: repoRoot,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    return { status: 0, stdout, stderr: "" };
-  } catch (error) {
-    return {
-      status: typeof error.status === "number" ? error.status : 1,
-      stdout: error.stdout ? String(error.stdout) : "",
-      stderr: error.stderr ? String(error.stderr) : String(error.message || error),
-    };
-  }
-}
-
-function expectSuccess(result, label) {
-  if (result.status === 0) ok(label);
-  else fail(`${label} failed\nSTDOUT:\n${result.stdout}\nSTDERR:\n${result.stderr}`);
-}
-
-function expect(condition, successMessage, failureMessage) {
-  if (condition) ok(successMessage);
-  else fail(failureMessage);
-}
-
+const harness = createCheckHarness();
+const { ok, fail, expectSuccess, hasFailures, expect } = harness;
+const toolkit = createNodeCheckTestkit({ repoRoot, ok, fail });
+const { ensureCleanDir, writeJson, readJson, runNode } = toolkit;
 function createBatch(batchDir, fileName, payload) {
   writeJson(path.join(batchDir, fileName), {
     batch_id: String(payload.batch_id || fileName.replace(/\.json$/i, "")),
@@ -303,7 +254,7 @@ function main() {
     assertReport: assertFullBookScenario,
   });
 
-  if (!hasFailure) console.log("Coverage decision focus check passed.");
+  if (!hasFailures()) console.log("Coverage decision focus check passed.");
   else process.exitCode = 1;
 }
 
