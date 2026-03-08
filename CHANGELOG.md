@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### 改进
+- `coverage_decision` 现在会把 `chapter-full` / `full-book` 的“保持当前层”语义与“继续升级”语义分开，避免报告里出现“升级到自己”的自升级表述；`check_coverage_decision_focus.mjs` 也补了 `chapter-full -> full-book` 与 `full-book stable` 两条 focused 场景。
 - `db_compare.mjs` 默认维度现在会带上 `coverage_decision_action`，CLI/README/skill 示例也同步到这条覆盖升级建议视角。
 - `db_dashboard.mjs` 首页和“最近运行”现在会默认展示升级建议与建议把握，帮助直接判断哪些作品更常需要升到 `chapter-full` / `full-book`。
 

@@ -80,7 +80,8 @@
 - 当前主线不是继续新增模式，而是把“是否该升级覆盖层”收口成统一动作建议。
 - 结构化真源建议优先放在 `merged-report.json` 的 `scan.coverage_decision`；报告首页已有的 `decision_summary.next_action` 继续保留为单行摘要，不替代结构化真源。
 - `scan.coverage_decision` 建议至少包含：
-  - `action`: `keep-sampled|upgrade-chapter-full|upgrade-full-book`
+  - `action`: `keep-sampled|keep-current|upgrade-chapter-full|upgrade-full-book`
+  - `keep-current` 用于当前已经处在合适覆盖层（常见于 `chapter-full` / `full-book`）且不需要再出现“升级到自己”的语义
   - `confidence`: `stable|cautious|insufficient`
   - `reason_codes`: 结构化原因码数组
   - `reason_lines`: 面向报告首页的中文原因行

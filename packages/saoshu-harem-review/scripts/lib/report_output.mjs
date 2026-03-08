@@ -235,24 +235,40 @@ function buildNewbieCard(verdict, rating, thunderCount, depressionCount, riskCou
   return { level, label, confidence, headline, bullets };
 }
 
-function mapCoverageDecisionAction(action) {
+function mapCoverageDecisionAction(action, coverageMode = "") {
   if (action === "upgrade-chapter-full") return "升级到 chapter-full";
   if (action === "upgrade-full-book") return "升级到 full-book";
+  if (action === "keep-current") {
+    if (coverageMode === "chapter-full") return "继续保持 chapter-full";
+    if (coverageMode === "full-book") return "当前已是 full-book";
+    return "继续保持当前覆盖层";
+  }
   return "继续保持 sampled";
+}
+
+function hasCoverageDecisionImpact(risk) {
+  const riskName = String(risk?.risk || "").trim();
+  const impact = String(risk?.impact || "").trim();
+  return CRITICAL_RISK_RULES.includes(riskName) || /(劝退|改变结论|显著下调|直接劝退|关键)/.test(impact);
 }
 
 function describeCoverageDecisionNextAction(coverageDecision, coverageMode, verdict) {
   const action = String(coverageDecision?.action || "keep-sampled");
   const confidence = String(coverageDecision?.confidence || "stable");
-  if (coverageMode === "full-book") {
-    return confidence === "stable"
-      ? "当前已是最高覆盖层，可直接基于当前结果决策。"
-      : "当前已是最高覆盖层，优先回看关键未证实风险与复核事件。";
+  if (action === "keep-current") {
+    if (coverageMode === "full-book") {
+      return confidence === "stable"
+        ? "当前已是最高覆盖层，可直接基于当前结果决策。"
+        : "当前已是最高覆盖层，优先回看关键未证实风险与复核事件。";
+    }
+    if (coverageMode === "chapter-full") {
+      return confidence === "stable"
+        ? "当前 chapter-full 已足够，可直接基于当前结果继续判断。"
+        : "当前 chapter-full 已覆盖主要风险区，先回看关键未证实风险再决定。";
+    }
   }
-  if (coverageMode === "chapter-full") {
-    return action === "upgrade-full-book"
-      ? "建议继续升级到 full-book，补齐整书连续证据。"
-      : "当前 chapter-full 已够用，可直接基于当前结果继续判断。";
+  if (coverageMode === "chapter-full" && action === "upgrade-full-book") {
+    return "建议继续升级到 full-book，补齐整书连续证据。";
   }
   if (action === "upgrade-full-book") return "建议直接升级到 full-book。";
   if (action === "upgrade-chapter-full") return "建议升级到 chapter-full。";
@@ -267,10 +283,14 @@ function buildCoverageDecision({ meta, coverageGap, coverageRate, mergedRisks, p
   const serialStatus = String(meta.serialStatus || "").trim();
   const chapterDetectUsedMode = String(meta.chapterDetectUsedMode || "").trim();
   const targetDefense = String(meta.targetDefense || "").trim();
-  const unresolvedCount = Array.isArray(mergedRisks) ? mergedRisks.length : 0;
-  const pendingCount = Array.isArray(pendingEvents) ? pendingEvents.length : 0;
+  const unresolvedRisks = Array.isArray(mergedRisks) ? mergedRisks : [];
+  const pendingItems = Array.isArray(pendingEvents) ? pendingEvents : [];
+  const unresolvedCount = unresolvedRisks.length;
+  const pendingCount = pendingItems.length;
   const followUpCount = Array.isArray(followUpQuestions) ? followUpQuestions.length : 0;
+  const impactfulRiskCount = unresolvedRisks.filter((item) => hasCoverageDecisionImpact(item)).length;
   const hasCoverageGap = Boolean(String(coverageGap?.summary || "").trim());
+  const lowDefense = ["布甲", "轻甲", "低防", "负防", "极限负防"].includes(targetDefense);
   const reasonCodes = [];
   const reasonLines = [];
   const addReason = (code, line) => {
@@ -285,54 +305,80 @@ function buildCoverageDecision({ meta, coverageGap, coverageRate, mergedRisks, p
   if (coverageMode === "sampled" && coverageTemplate === "opening-latest" && ["ongoing", "unknown"].includes(serialStatus)) {
     addReason("latest_progress_uncertain", "当前模板偏开篇与最新进度，后续连载变化仍可能改判。");
   }
-  if (coverageMode === "sampled" && unresolvedCount > 0 && pendingCount > 0 && (hasCoverageGap || coverageRate < 0.5)) {
-    addReason("evidence_conflict", "当前线索仍有分歧，快速摸底结论还不够稳。");
+  if (coverageMode === "sampled" && hasCoverageGap && coverageRate < 0.5 && impactfulRiskCount >= 1 && pendingCount >= 2 && followUpCount >= 3) {
+    addReason("evidence_conflict", "当前关键线索仍互相牵制，快速摸底结论还不够稳。");
   }
-  if (unresolvedCount >= 2 || pendingCount >= 3 || (unresolvedCount >= 1 && followUpCount >= 3)) {
-    addReason("too_many_unverified", `当前待补证/未证实风险仍偏多（未证实风险 ${unresolvedCount} 项，待补证事件 ${pendingCount} 项）。`);
+  if (impactfulRiskCount >= 1 || unresolvedCount >= 2 || pendingCount >= 3 || (impactfulRiskCount >= 1 && followUpCount >= 2)) {
+    addReason("too_many_unverified", `当前会改判的待补证仍偏多（关键未证实风险 ${impactfulRiskCount} 项，待补证事件 ${pendingCount} 项）。`);
   }
-  if (chapterDetectUsedMode === "segment-fallback") {
-    addReason("chapter_boundary_unstable", "章节边界不稳，当前结果已退化到分段级覆盖。");
+  if (coverageMode !== "sampled" && chapterDetectUsedMode === "segment-fallback" && (impactfulRiskCount >= 1 || pendingCount >= 1)) {
+    addReason("chapter_boundary_unstable", "章节边界仍不稳，当前章节级覆盖已退化到分段路径。");
   }
-  if (["布甲", "轻甲", "低防", "负防", "极限负防"].includes(targetDefense) && (hasCoverageGap || unresolvedCount > 0)) {
+  if (lowDefense && (hasCoverageGap || impactfulRiskCount >= 1 || pendingCount >= 2)) {
     addReason("high_defense_needs_more_evidence", `当前目标防御为 ${targetDefense}，建议补更多证据后再定。`);
   }
 
-  let action = "keep-sampled";
-  if (chapterDetectUsedMode === "segment-fallback") action = "upgrade-full-book";
-  else if (coverageMode === "full-book") action = "upgrade-full-book";
-  else if (coverageMode === "chapter-full") action = (reasonCodes.includes("too_many_unverified") || reasonCodes.includes("evidence_conflict")) ? "upgrade-full-book" : "upgrade-chapter-full";
-  else if (reasonCodes.length > 0) action = "upgrade-chapter-full";
+  let action = coverageMode === "sampled" ? "keep-sampled" : "keep-current";
+  if (coverageMode === "sampled") {
+    if (reasonCodes.length > 0) action = "upgrade-chapter-full";
+  } else if (coverageMode === "chapter-full") {
+    const shouldUpgradeFullBook = reasonCodes.includes("chapter_boundary_unstable")
+      || reasonCodes.includes("too_many_unverified")
+      || reasonCodes.includes("high_defense_needs_more_evidence")
+      || reasonCodes.includes("evidence_conflict");
+    action = shouldUpgradeFullBook ? "upgrade-full-book" : "keep-current";
+  } else if (coverageMode === "full-book") {
+    action = "keep-current";
+  }
 
   let confidence = "stable";
-  if (action === "upgrade-full-book") confidence = (unresolvedCount > 0 || pendingCount > 0) ? "insufficient" : "cautious";
-  else if (action === "upgrade-chapter-full") confidence = reasonCodes.length >= 3 ? "insufficient" : "cautious";
-  else if (coverageRate < 0.75 || unresolvedCount > 0) confidence = "cautious";
+  if (action === "upgrade-full-book") {
+    confidence = (impactfulRiskCount >= 1 || reasonCodes.includes("chapter_boundary_unstable")) ? "insufficient" : "cautious";
+  } else if (action === "upgrade-chapter-full") {
+    confidence = (impactfulRiskCount >= 1 || reasonCodes.length >= 3) ? "insufficient" : "cautious";
+  } else if (coverageMode === "full-book") {
+    if (impactfulRiskCount >= 1 || pendingCount >= 2) confidence = "insufficient";
+    else if (unresolvedCount > 0 || pendingCount > 0) confidence = "cautious";
+  } else if (unresolvedCount > 0 || pendingCount > 0 || (coverageMode === "sampled" && coverageRate < 0.75)) {
+    confidence = "cautious";
+  }
 
   let currentConclusion = "当前覆盖已足以支撑本次阅读决策。";
   let riskIfNotUpgraded = "当前阶段继续加覆盖的收益有限。";
   let upgradeBenefit = "当前可优先结合未证实风险与补证问题继续判断。";
   if (action === "upgrade-chapter-full") {
-    currentConclusion = coverageMode === "chapter-full"
-      ? "当前章节级覆盖已能给出方向，但仍建议保守解读。"
-      : "当前可以给初步判断，但不建议把快速摸底当成最终确认。";
+    currentConclusion = "当前可以给初步判断，但不建议把快速摸底当成最终确认。";
     riskIfNotUpgraded = hasCoverageGap
       ? `如果不升级，最可能漏掉的是：${coverageGap.summary}`
       : "如果不升级，可能把局部窗口误当整体趋势。";
     upgradeBenefit = "补齐章节级覆盖，减少中后段漏判与局部误判风险。";
   } else if (action === "upgrade-full-book") {
-    currentConclusion = coverageMode === "full-book"
-      ? "当前已是最高覆盖层，但关键未证实风险仍需回看后再定稿。"
+    currentConclusion = coverageMode === "chapter-full"
+      ? "当前 chapter-full 已覆盖主要风险区，但仍不足以支撑最终定稿判断。"
       : "当前覆盖仍不足以支撑最终定稿判断。";
     riskIfNotUpgraded = chapterDetectUsedMode === "segment-fallback"
       ? "如果不升级，章节边界不稳可能继续放大局部误判。"
-      : "如果不升级，可能把局部窗口误当整书趋势，或漏掉后期连续演化。";
+      : "如果不升级，可能漏掉整书连续演化中的关键反转。";
     upgradeBenefit = "补齐整书连续证据，降低关键误判和漏判风险。";
+  } else if (coverageMode === "chapter-full") {
+    currentConclusion = confidence === "stable"
+      ? "当前 chapter-full 已足以支撑本次阅读决策。"
+      : "当前 chapter-full 已覆盖主要风险区，但仍建议保守回看关键未证实风险。";
+    riskIfNotUpgraded = "当前无需继续升层；如仍不确定，优先回看关键未证实风险与复核事件。";
+    upgradeBenefit = "当前更重要的是补证与定稿，而不是继续提升覆盖层。";
+  } else if (coverageMode === "full-book") {
+    currentConclusion = confidence === "stable"
+      ? "当前已是最高覆盖层，可直接基于当前结果决策。"
+      : "当前已是最高覆盖层，但关键未证实风险仍需回看后再定稿。";
+    riskIfNotUpgraded = "当前已是最高覆盖层，如仍不确定，应转向补证或人工复核。";
+    upgradeBenefit = "继续提升覆盖层的收益有限，当前更值得复看关键片段与结论。";
   }
 
   if (reasonLines.length === 0) {
-    if (action === "keep-sampled") reasonLines.push("当前快速摸底已足以支撑本次阅读决策。");
-    else reasonLines.push(`当前建议动作：${mapCoverageDecisionAction(action)}。`);
+    if (action === "keep-current" && coverageMode === "full-book") reasonLines.push("当前已是最高覆盖层，暂无继续升级的必要。");
+    else if (action === "keep-current" && coverageMode === "chapter-full") reasonLines.push("当前 chapter-full 已覆盖主要风险区，暂无继续升层的必要。");
+    else if (action === "keep-sampled") reasonLines.push("当前快速摸底已足以支撑本次阅读决策。");
+    else reasonLines.push(`当前建议动作：${mapCoverageDecisionAction(action, coverageMode)}。`);
   }
 
   return {
@@ -345,7 +391,6 @@ function buildCoverageDecision({ meta, coverageGap, coverageRate, mergedRisks, p
     upgrade_benefit: upgradeBenefit,
   };
 }
-
 function buildDecisionSummary({ verdict, rating, newbieCard, coverage, coverageRate, sampleBasis, reviewedEvents, mergedRisks, coverageDecision, coverageMode }) {
   const nextAction = describeCoverageDecisionNextAction(coverageDecision, coverageMode, verdict);
   return {
@@ -673,7 +718,7 @@ export function renderMarkdown(data) {
 
   if (data.scan?.coverage_decision) {
     lines.push("## ⬆️ 覆盖升级建议");
-    lines.push(`- 建议动作：${mapCoverageDecisionAction(data.scan.coverage_decision.action)}`);
+    lines.push(`- 建议动作：${mapCoverageDecisionAction(data.scan.coverage_decision.action, data.scan?.sampling?.coverage_mode)}`);
     lines.push(`- 当前把握：${lineOrDash(data.scan.coverage_decision.confidence)}`);
     if (Array.isArray(data.scan.coverage_decision.reason_lines) && data.scan.coverage_decision.reason_lines.length > 0) {
       lines.push("- 触发原因：");
@@ -930,7 +975,7 @@ body.view-newbie .expert-only{display:none}
     <ul class="summary" style="margin-top:8px">${decisionHighlightsHtml || "<li>-</li>"}</ul>
     <div class="muted">下一步建议：${escapeHtml(data.decision_summary?.next_action || "-")}</div>
     <div style="margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#faf3ea">
-      <div><b>覆盖升级建议</b> ｜ 建议动作：${escapeHtml(mapCoverageDecisionAction(coverageDecision.action || "keep-sampled"))} ｜ 当前把握：${escapeHtml(coverageDecision.confidence || "-")}</div>
+      <div><b>覆盖升级建议</b> ｜ 建议动作：${escapeHtml(mapCoverageDecisionAction(coverageDecision.action || "keep-sampled", data.scan?.sampling?.coverage_mode))} ｜ 当前把握：${escapeHtml(coverageDecision.confidence || "-")}</div>
       <ul class="summary" style="margin-top:8px">${coverageReasonHtml || "<li>当前暂无额外升级信号。</li>"}</ul>
       <div><b>当前可交付结论：</b>${escapeHtml(coverageDecision.current_conclusion || "-")}</div>
       <div class="muted" style="margin-top:6px">如不升级的保守提醒：${escapeHtml(coverageDecision.risk_if_not_upgraded || "-")}</div>

@@ -39,6 +39,7 @@ function esc(s) {
 function formatCoverageDecisionAction(value) {
   const normalized = String(value || "").trim();
   if (normalized === "keep-sampled") return "继续保持 sampled";
+  if (normalized === "keep-current") return "继续当前覆盖层";
   if (normalized === "upgrade-chapter-full") return "升级到 chapter-full";
   if (normalized === "upgrade-full-book") return "升级到 full-book";
   return normalized || "-";

@@ -108,5 +108,5 @@
 - coverage_unit（chapter / segment）
 - chapter_detect_used_mode（script / assist / segment-fallback / segment-full-book）
 - serial_status（unknown / ongoing / completed）
-- coverage_decision_action（keep-sampled / upgrade-chapter-full / upgrade-full-book）
+- coverage_decision_action（keep-sampled / keep-current / upgrade-chapter-full / upgrade-full-book）
 - coverage_decision_confidence（stable / cautious / insufficient）
