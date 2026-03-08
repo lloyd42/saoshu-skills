@@ -7,6 +7,7 @@
 ### 改进
 - `docs/roadmap.md` 现在承接“当前状态快照”，把 coverage-first 的产品主线、已落地基线、当前未完点与下一轮起点收口到同一入口；`README.md` 与 `docs/development-workflow.md` 也同步改为先看 roadmap 快照再接手开发。
 - `references/product-manual.md` 补了一版“覆盖升级建议” `v0` 契约草案：建议把升级动作真源放进 `scan.coverage_decision`，让 `decision_summary.next_action` 只保留为首页单行摘要，并先收敛首批升级原因码与 scan-db 扁平字段命名。
+- `merged-report.json` 现在会输出 `scan.coverage_decision`，Markdown/HTML 报告首页也新增“覆盖升级建议”区块；`db_ingest.mjs` 同步把 `coverage_decision_action / coverage_decision_confidence / coverage_decision_reasons` 扁平写入 `runs.jsonl`，并新增 `check_coverage_decision_focus.mjs` 与 E2E 断言保护这条合同。
 - `report_summary.mjs` 现在会拦截缺少女性主体证据的待补证雷点升格：`送女 / 背叛 / 死女 / 绿帽 / wrq` 这类要求女性主体语境的风险，若主体仍像男性角色或未知角色，将继续停留在事件复核与补证问题层，而不是直接进入 `risks_unconfirmed`。
 - 新增 `check_report_summary_focus.mjs`，直接保护结论层的风险合并、事件升格与排序优先级；`check_batch_merge_focus.mjs` 也补充了男性主体 `送女` 候选不会误升格、但仍保留人工复核入口的断言。
 - `check_repo_boundaries.mjs` 现在会跳过 `.tmp`、`workspace`、`scan-db` 等运行时输出目录，避免临时产物把仓库边界检查刷红。

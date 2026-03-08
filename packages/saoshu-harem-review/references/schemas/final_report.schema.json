@@ -34,6 +34,19 @@
             "selection_reasons": {"type": "array", "items": {"type": "object"}}
           },
           "additionalProperties": true
+        },
+        "coverage_decision": {
+          "type": "object",
+          "properties": {
+            "action": {"type": "string"},
+            "confidence": {"type": "string"},
+            "reason_codes": {"type": "array", "items": {"type": "string"}},
+            "reason_lines": {"type": "array", "items": {"type": "string"}},
+            "current_conclusion": {"type": "string"},
+            "risk_if_not_upgraded": {"type": "string"},
+            "upgrade_benefit": {"type": "string"}
+          },
+          "additionalProperties": true
         }
       },
       "additionalProperties": true

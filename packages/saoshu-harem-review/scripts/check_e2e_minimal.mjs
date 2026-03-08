@@ -295,6 +295,12 @@ function runCoverageTemplateMetadataScenario() {
   else fail(`db runs should keep coverage gap summary: ${JSON.stringify(dbRun)}`);
   if (JSON.stringify(dbRun.coverage_gap_risk_types || []) === JSON.stringify(report.scan?.sampling?.coverage_gap_risk_types || [])) ok("db runs keeps coverage gap risk types");
   else fail(`db runs should keep coverage gap risk types: ${JSON.stringify(dbRun)}`);
+  if (String(dbRun.coverage_decision_action || "") === String(report.scan?.coverage_decision?.action || "")) ok("db runs keeps coverage decision action");
+  else fail(`db runs should keep coverage decision action: ${JSON.stringify(dbRun)}`);
+  if (String(dbRun.coverage_decision_confidence || "") === String(report.scan?.coverage_decision?.confidence || "")) ok("db runs keeps coverage decision confidence");
+  else fail(`db runs should keep coverage decision confidence: ${JSON.stringify(dbRun)}`);
+  if (JSON.stringify(dbRun.coverage_decision_reasons || []) === JSON.stringify(report.scan?.coverage_decision?.reason_codes || [])) ok("db runs keeps coverage decision reasons");
+  else fail(`db runs should keep coverage decision reasons: ${JSON.stringify(dbRun)}`);
   const dbOverview = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["--db", path.join(fixture.outputDir, "scan-db"), "--metric", "overview", "--format", "text"]);
   expectSuccess(dbOverview, "coverage template db overview query");
   if (dbOverview.stdout.includes("Top coverage modes: sampled(1)") && dbOverview.stdout.includes("Top coverage templates: head-tail-risk(1)")) ok("db overview text surfaces coverage mode and template summary");

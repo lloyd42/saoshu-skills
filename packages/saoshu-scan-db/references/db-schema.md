@@ -12,6 +12,7 @@
 - sample_mode / sample_level
 - total_batches / selected_batches / coverage_ratio
 - coverage_gap_summary / coverage_gap_risk_types
+- coverage_decision_action / coverage_decision_confidence / coverage_decision_reasons
 - thunder_total / depression_total / risk_total
 - keyword_candidate_total / alias_candidate_total / risk_question_candidate_total / relation_candidate_total
 - input_txt / output_dir
@@ -107,3 +108,5 @@
 - coverage_unit（chapter / segment）
 - chapter_detect_used_mode（script / assist / segment-fallback / segment-full-book）
 - serial_status（unknown / ongoing / completed）
+- coverage_decision_action（keep-sampled / upgrade-chapter-full / upgrade-full-book）
+- coverage_decision_confidence（stable / cautious / insufficient）
