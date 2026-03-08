@@ -122,8 +122,10 @@ PDF 导出：
 - `P2-1` 增强：角色名归一化、弱边剪枝、前端可交互筛选（角色-角色/角色-信号/最小权重）。
 
 报告标签建议附加：
-- `performance`: `[PERFORMANCE-FULL]`
-- `economy`: `[ECONOMY-SAMPLED]`
+- `coverage_mode=sampled` 或兼容 `economy`: `[SAMPLED]`
+- `coverage_mode=chapter-full`: `[CHAPTER-FULL]`
+- `coverage_mode=full-book`: `[FULL-BOOK]`
+- 仅有兼容 `performance` 且未显式声明覆盖口径时：`[HIGH-COVERAGE]`
 
 ## 6. 变更治理（必须遵守）
 - 任何新增字段先更新 schema，再改脚本。

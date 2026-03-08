@@ -108,10 +108,12 @@ const state = readJson(statePath);
 const batch = readJson(batchPath);
 const dbRun = readJsonl(dbRuns).slice(-1)[0] || {};
 
-if (report.scan?.sampling?.coverage_mode === "full-book") ok("report keeps full-book coverage mode");
-else fail(`report should keep full-book coverage mode: ${JSON.stringify(report.scan?.sampling || {})}`);
-if (report.scan?.sampling?.coverage_unit === "segment") ok("report marks full-book segment coverage unit");
-else fail(`report should mark full-book segment coverage unit: ${JSON.stringify(report.scan?.sampling || {})}`);
+  if (report.scan?.sampling?.coverage_mode === "full-book") ok("report keeps full-book coverage mode");
+  else fail(`report should keep full-book coverage mode: ${JSON.stringify(report.scan?.sampling || {})}`);
+  if (String(report.novel?.tags || "").includes("[FULL-BOOK]")) ok("report tags use full-book coverage-first marker");
+  else fail(`report tags should use full-book coverage-first marker: ${JSON.stringify(report.novel || {})}`);
+  if (report.scan?.sampling?.coverage_unit === "segment") ok("report marks full-book segment coverage unit");
+  else fail(`report should mark full-book segment coverage unit: ${JSON.stringify(report.scan?.sampling || {})}`);
 if (report.scan?.sampling?.chapter_detect_used_mode === "segment-full-book") ok("report marks full-book segment detect path");
 else fail(`report should mark full-book segment detect path: ${JSON.stringify(report.scan?.sampling || {})}`);
 if (Array.isArray(report.scan?.sampling?.basis_lines) && report.scan.sampling.basis_lines.some((item) => String(item).includes("执行说明：当前按整书连续分段做全文扫描，不依赖章节识别"))) ok("report basis lines explain full-book direct segment scan");

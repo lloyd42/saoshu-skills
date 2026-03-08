@@ -106,10 +106,12 @@ const state = readJson(statePath);
 const batch = readJson(batchPath);
 const dbRun = readJsonl(dbRuns).slice(-1)[0] || {};
 
-if (report.scan?.sampling?.coverage_mode === "chapter-full") ok("report keeps chapter-full coverage mode");
-else fail(`report should keep chapter-full coverage mode: ${JSON.stringify(report.scan?.sampling || {})}`);
-if (report.scan?.sampling?.coverage_unit === "segment") ok("report marks segment coverage unit after chapter fallback");
-else fail(`report should mark segment coverage unit: ${JSON.stringify(report.scan?.sampling || {})}`);
+  if (report.scan?.sampling?.coverage_mode === "chapter-full") ok("report keeps chapter-full coverage mode");
+  else fail(`report should keep chapter-full coverage mode: ${JSON.stringify(report.scan?.sampling || {})}`);
+  if (String(report.novel?.tags || "").includes("[CHAPTER-FULL]")) ok("report tags use chapter-full coverage-first marker");
+  else fail(`report tags should use chapter-full coverage-first marker: ${JSON.stringify(report.novel || {})}`);
+  if (report.scan?.sampling?.coverage_unit === "segment") ok("report marks segment coverage unit after chapter fallback");
+  else fail(`report should mark segment coverage unit: ${JSON.stringify(report.scan?.sampling || {})}`);
 if (report.scan?.sampling?.chapter_detect_used_mode === "segment-fallback") ok("report marks segment-fallback detect path");
 else fail(`report should mark segment-fallback detect path: ${JSON.stringify(report.scan?.sampling || {})}`);
 if (Array.isArray(report.scan?.sampling?.basis_lines) && report.scan.sampling.basis_lines.some((item) => String(item).includes("执行说明：章节识别失败后，当前已退化为分段级全文扫描"))) ok("report basis lines explain chapter-full segment fallback");

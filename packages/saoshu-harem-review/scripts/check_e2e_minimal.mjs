@@ -266,6 +266,8 @@ function runCoverageTemplateMetadataScenario() {
   const dbRun = readJsonl(dbRuns).slice(-1)[0] || {};
   if (report.scan?.sampling?.coverage_template === "head-tail-risk") ok("coverage template is written into merged report sampling metadata");
   else fail(`coverage template should be written into merged report: ${JSON.stringify(report.scan?.sampling || {})}`);
+  if (String(report.novel?.tags || "").includes("[SAMPLED]")) ok("coverage template report tags use sampled coverage-first marker");
+  else fail(`coverage template report tags should use sampled coverage-first marker: ${JSON.stringify(report.novel || {})}`);
   if (report.scan?.sampling?.serial_status === "completed") ok("serial_status is written into merged report sampling metadata");
   else fail(`serial_status should be written into merged report: ${JSON.stringify(report.scan?.sampling || {})}`);
   if (Array.isArray(report.scan?.sampling?.basis_lines) && report.scan.sampling.basis_lines.some((item) => String(item).includes("覆盖模板"))) ok("coverage template appears in sampling basis lines");
@@ -586,7 +588,6 @@ try {
   fail(err.stderr || err.stdout || err.message || String(err));
   process.exitCode = 1;
 }
-
 
 
 

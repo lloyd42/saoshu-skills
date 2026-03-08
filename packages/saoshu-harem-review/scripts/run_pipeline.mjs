@@ -118,6 +118,23 @@ function readCoverageTemplateMeta(batchDir) {
     });
 }
 
+function coverageModeTag(coverageMode, pipelineMode) {
+  const mode = String(coverageMode || "").trim();
+  if (mode === "sampled") return "[SAMPLED]";
+  if (mode === "chapter-full") return "[CHAPTER-FULL]";
+  if (mode === "full-book") return "[FULL-BOOK]";
+  return pipelineMode === "economy" ? "[SAMPLED]" : "[HIGH-COVERAGE]";
+}
+
+function appendCoverageTag(tags, coverageMode, pipelineMode) {
+  const base = String(tags || "")
+    .replace(/\s*\[(?:ECONOMY-SAMPLED|PERFORMANCE-FULL|SAMPLED|CHAPTER-FULL|FULL-BOOK|HIGH-COVERAGE)\]\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const suffix = coverageModeTag(coverageMode, pipelineMode);
+  return base ? `${base} ${suffix}` : suffix;
+}
+
 function recommendCoverageTemplate({ serialStatus, totalBatches, metaRows }) {
   const rows = Array.isArray(metaRows) ? metaRows : [];
   const total = Math.max(1, Number(totalBatches || rows.length || 0));
@@ -282,7 +299,7 @@ function main() {
     const html = path.join(outputDir, "merged-report.html");
     const title = config.title;
     const author = config.author;
-    const tags = `${config.tags}${pipelineMode === "economy" ? " [ECONOMY-SAMPLED]" : " [PERFORMANCE-FULL]"}`;
+    const tags = appendCoverageTag(config.tags, coverageMode, pipelineMode);
     const target = config.targetDefense;
     const totalBatches = pipelineMode === "economy" ? countBatchFiles(allBatchesDir) : countBatchFiles(workBatchesDir);
     const selectedBatches = countBatchFiles(workBatchesDir);
