@@ -4,6 +4,12 @@ import path from "node:path";
 import { getExitCode } from "./lib/exit_codes.mjs";
 import { readJsonFile } from "./lib/json_input.mjs";
 import { parseChapters, readNovelText, readNovelWithChapterDetection } from "./lib/novel_input.mjs";
+import {
+  buildEventContextReferences,
+  buildSummaryOnlyContextReferences,
+  formatContextReference,
+  pickTopContextReferences,
+} from "./lib/report_context_references.mjs";
 import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
 import { writeUtf8File } from "./lib/text_output.mjs";
 
@@ -149,7 +155,12 @@ function suggestEventDecision(event) {
   return { decision: "待补证", reason: "需人工确认主体、时间线与事件真实性" };
 }
 
-function linesForItem(title, keyword, snippets, suggestion, extraLines = []) {
+function pushContextReferenceLines(lines, references) {
+  if (!Array.isArray(references) || references.length === 0) return;
+  references.forEach((reference, index) => lines.push(`- 引用${index + 1}：${formatContextReference(reference)}`));
+}
+
+function linesForItem(title, keyword, snippets, suggestion, extraLines = [], references = []) {
   const lines = [];
   lines.push(`### ${title}`);
   lines.push(...extraLines);
@@ -162,11 +173,33 @@ function linesForItem(title, keyword, snippets, suggestion, extraLines = []) {
       lines.push(`  ${s.snippet}`);
     });
   }
+  pushContextReferenceLines(lines, references);
   lines.push(`- 机器建议：${suggestion.decision}（${suggestion.reason}）`);
   lines.push("- 复核结论：待补证");
   lines.push("- 填写规则：把上面改成且仅改成 `已确认` / `排除` / `待补证` 之一。");
   lines.push("");
   return lines;
+}
+
+function buildReviewSnippetReferences(snippets, batch, keyword, fallbackText = "") {
+  const snippetReferences = pickTopContextReferences((Array.isArray(snippets) ? snippets : []).map((item, index) => ({
+    ref_id: `${String(batch?.batch_id || "review")}:snippet:${index + 1}`,
+    source_kind: "review_snippet",
+    batch_id: String(batch?.batch_id || ""),
+    anchor: String(batch?.range || ""),
+    chapter_title: String(item?.chapter || ""),
+    keyword: String(item?.keyword || keyword || ""),
+    snippet: String(item?.snippet || ""),
+  })), 3);
+  if (snippetReferences.length > 0) return snippetReferences;
+  return buildSummaryOnlyContextReferences({
+    refId: `${String(batch?.batch_id || "review")}:summary`,
+    batch_id: batch?.batch_id,
+    anchor: batch?.range,
+    keyword,
+    snippet: fallbackText,
+    limit: 1,
+  });
 }
 
 function buildEventReviewLines(event, maxSnippets) {
@@ -191,7 +224,8 @@ function buildEventReviewLines(event, maxSnippets) {
   if (counterEvidence.length > 0) extraLines.push(`- 反证：${counterEvidence.join("；")}`);
   const missingEvidence = Array.isArray(event.missing_evidence) ? event.missing_evidence.filter(Boolean) : [];
   if (missingEvidence.length > 0) extraLines.push(`- 缺失证据：${missingEvidence.join("；")}`);
-  return linesForItem(`[事件候选] ${String(event.rule_candidate || "未命名事件")}`, keyword, snippets, suggestEventDecision(event), extraLines);
+  const references = buildEventContextReferences(event, { limit: maxSnippets || 3 });
+  return linesForItem(`[事件候选] ${String(event.rule_candidate || "未命名事件")}`, keyword, snippets, suggestEventDecision(event), extraLines, references);
 }
 
 function buildBatchReview(batch, text, chapters, opts) {
@@ -230,7 +264,8 @@ function buildBatchReview(batch, text, chapters, opts) {
     const snippets = collectSnippets(text, start, end, keyword, opts.window, opts.maxSnippets, chapters);
     const title = `[${it.kind}] ${it.risk || it.rule || "未命名项"}`;
     const suggestion = suggestLegacyDecision(it, snippets);
-    lines.push(...linesForItem(title, keyword, snippets, suggestion));
+    const references = buildReviewSnippetReferences(snippets, batch, keyword, it.current_evidence || it.summary || it.missing_evidence || "");
+    lines.push(...linesForItem(title, keyword, snippets, suggestion, [], references));
   }
 
   for (const event of eventItems) {

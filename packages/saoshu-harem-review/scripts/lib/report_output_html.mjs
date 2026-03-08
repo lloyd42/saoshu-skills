@@ -1,8 +1,13 @@
 import { formatUiTerm } from "./ui_terms.mjs";
+import { formatContextReference } from "./report_context_references.mjs";
 import { describeEvent, eventDecisionLabel, polarityLabel, timelineLabel } from "./report_events.mjs";
 import { DEFENSES, displayEvidenceLabel, escapeHtml, mapCoverageDecisionAction } from "./report_output_common.mjs";
 
 export function renderHtml(data) {
+  const renderContextReferenceList = (references) => {
+    if (!Array.isArray(references) || references.length === 0) return "";
+    return `<ul class="refs">${references.map((reference) => `<li>${escapeHtml(formatContextReference(reference))}</li>`).join("")}</ul>`;
+  };
   const termMap = new Map((Array.isArray(data.term_wiki) ? data.term_wiki : []).map((item) => [item.term, item]));
   const termTitle = (term) => {
     const item = termMap.get(String(term || ""));
@@ -23,10 +28,10 @@ export function renderHtml(data) {
   const charRows = data.metadata_summary.top_characters.map((item) => `<tr><td>${escapeHtml(item.name)}</td><td>${item.count}</td></tr>`).join("");
   const signalRows = data.metadata_summary.top_signals.map((item) => `<tr><td>${escapeHtml(item.name)}</td><td>${item.count}</td></tr>`).join("");
 
-  const thunderRows = data.thunder.items.map((item) => `<tr><td>${renderTerm(item.rule)}</td><td>${escapeHtml(item.summary)}</td><td>${renderTerm(displayEvidenceLabel(item.evidence_level))}</td><td>${escapeHtml(item.anchor || "-")}</td></tr>`).join("");
-  const depressionRows = data.depression.items.map((item) => `<tr><td>${renderTerm(item.rule)}</td><td>${escapeHtml(item.severity)}</td><td>${renderTerm(item.min_defense)}</td><td>${renderTerm(displayEvidenceLabel(item.evidence_level))}</td><td>${escapeHtml(item.summary)}</td></tr>`).join("");
-  const eventRows = (data.events?.items || []).map((event) => `<tr><td>${renderTerm(event.rule_candidate)}</td><td>${escapeHtml(event.event_id || "-")}</td><td>${escapeHtml(eventDecisionLabel(event))}</td><td>${escapeHtml(`${event.subject?.name || "-"} / ${event.target?.name || "-"}`)}</td><td>${escapeHtml(`${timelineLabel(event.timeline)} / ${polarityLabel(event.polarity)}`)}</td><td>${escapeHtml(describeEvent(event))}</td><td>${escapeHtml(event.chapter_range || "-")}</td></tr>`).join("");
-  const riskRows = data.risks_unconfirmed.map((item) => `<tr><td>${renderTerm(item.risk)}</td><td>${escapeHtml(item.current_evidence)}</td><td>${escapeHtml(item.missing_evidence)}</td><td>${escapeHtml(item.impact)}</td></tr>`).join("");
+  const thunderRows = data.thunder.items.map((item) => `<tr><td>${renderTerm(item.rule)}</td><td>${escapeHtml(item.summary)}${renderContextReferenceList(item.context_references)}</td><td>${renderTerm(displayEvidenceLabel(item.evidence_level))}</td><td>${escapeHtml(item.anchor || "-")}</td></tr>`).join("");
+  const depressionRows = data.depression.items.map((item) => `<tr><td>${renderTerm(item.rule)}</td><td>${escapeHtml(item.severity)}</td><td>${renderTerm(item.min_defense)}</td><td>${renderTerm(displayEvidenceLabel(item.evidence_level))}</td><td>${escapeHtml(item.summary)}${renderContextReferenceList(item.context_references)}</td></tr>`).join("");
+  const eventRows = (data.events?.items || []).map((event) => `<tr><td>${renderTerm(event.rule_candidate)}</td><td>${escapeHtml(event.event_id || "-")}</td><td>${escapeHtml(eventDecisionLabel(event))}</td><td>${escapeHtml(`${event.subject?.name || "-"} / ${event.target?.name || "-"}`)}</td><td>${escapeHtml(`${timelineLabel(event.timeline)} / ${polarityLabel(event.polarity)}`)}</td><td>${escapeHtml(describeEvent(event))}${renderContextReferenceList(event.context_references)}</td><td>${escapeHtml(event.chapter_range || "-")}</td></tr>`).join("");
+  const riskRows = data.risks_unconfirmed.map((item) => `<tr><td>${renderTerm(item.risk)}</td><td>${escapeHtml(item.current_evidence)}${renderContextReferenceList(item.context_references)}</td><td>${escapeHtml(item.missing_evidence)}</td><td>${escapeHtml(item.impact)}</td></tr>`).join("");
   const defenseRows = DEFENSES.map((defense) => `<tr><td>${renderTerm(defense)}</td><td>${escapeHtml(data.defense_recommendation[defense] || "-")}</td></tr>`).join("");
   const termRows = (Array.isArray(data.term_wiki) ? data.term_wiki : [])
     .map((item) => `<tr><td>${renderTerm(item.term)}</td><td>${escapeHtml(item.category || "-")}</td><td>${escapeHtml(item.definition || "-")}</td><td>${escapeHtml(item.risk_impact || "-")}</td><td>${escapeHtml(item.boundary || "-")}</td></tr>`)
@@ -50,11 +55,14 @@ export function renderHtml(data) {
   const newbieClass = newbieLevel === "red" ? "risk-red" : (newbieLevel === "green" ? "risk-green" : "risk-yellow");
   const newbieBullets = (Array.isArray(newbie?.bullets) ? newbie.bullets : []).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
   const decisionHighlightsHtml = (data.decision_summary?.highlights || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
-  const evidenceEventsHtml = (data.evidence_summary?.key_events || []).map((item) => `<li><b>${escapeHtml(item.label)}</b>：${escapeHtml(item.decision)} → ${escapeHtml(item.summary)}</li>`).join("");
-  const unresolvedRisksHtml = (data.evidence_summary?.unresolved_risks || []).map((item) => `<li><b>${renderTerm(item.risk)}</b>：${escapeHtml(item.current_evidence)} → 还缺：${escapeHtml(item.missing_evidence)}</li>`).join("");
+  const decisionReferenceHtml = renderContextReferenceList(data.decision_summary?.supporting_references || []);
+  const evidenceEventsHtml = (data.evidence_summary?.key_events || []).map((item) => `<li><b>${escapeHtml(item.label)}</b>：${escapeHtml(item.decision)} → ${escapeHtml(item.summary)}${renderContextReferenceList(item.context_references)}</li>`).join("");
+  const unresolvedRisksHtml = (data.evidence_summary?.unresolved_risks || []).map((item) => `<li><b>${renderTerm(item.risk)}</b>：${escapeHtml(item.current_evidence)} → 还缺：${escapeHtml(item.missing_evidence)}${renderContextReferenceList(item.context_references)}</li>`).join("");
+  const pendingCluesHtml = (data.evidence_summary?.pending_clues || []).map((item) => `<li><b>${escapeHtml(item.label)}</b>：${escapeHtml(item.clue)}${renderContextReferenceList(item.context_references)}</li>`).join("");
   const nextQuestionsHtml = (data.evidence_summary?.next_questions || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
   const coverageDecision = data.scan?.coverage_decision || {};
   const coverageReasonHtml = (coverageDecision.reason_lines || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+  const coverageDecisionReferenceHtml = renderContextReferenceList(coverageDecision.context_references || []);
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -75,6 +83,8 @@ h2{margin:0 0 10px;font-size:18px}.chips{display:flex;flex-wrap:wrap;gap:8px}.ch
 table{width:100%;border-collapse:collapse}th,td{padding:8px 7px;border-bottom:1px solid #efe6da;vertical-align:top}th{text-align:left;background:#faf3ea}
 .badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#ffe0d6;color:#8a2313;font-weight:700}
 .summary li{margin:6px 0}
+.refs{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:13px}
+.refs li{margin:4px 0}
 .audit-details summary{cursor:pointer;font-weight:700}
 .term{border-bottom:1px dashed #b55f4d;cursor:help}
 .newbie{border-radius:12px;padding:10px 12px;margin-top:12px}
@@ -127,12 +137,14 @@ body.view-newbie .expert-only{display:none}
     <div style="margin-top:10px"><b>一句话：</b>${escapeHtml(data.decision_summary?.headline || "-")}</div>
     <ul class="summary" style="margin-top:8px">${decisionHighlightsHtml || "<li>-</li>"}</ul>
     <div class="muted">下一步建议：${escapeHtml(data.decision_summary?.next_action || "-")}</div>
+    ${decisionReferenceHtml ? `<div style="margin-top:8px"><b>结论佐证引用</b>${decisionReferenceHtml}</div>` : ""}
     <div style="margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#faf3ea">
       <div><b>覆盖升级建议</b> ｜ 建议动作：${escapeHtml(mapCoverageDecisionAction(coverageDecision.action || "keep-sampled", data.scan?.sampling?.coverage_mode))} ｜ 当前把握：${escapeHtml(coverageDecision.confidence || "-")}</div>
       <ul class="summary" style="margin-top:8px">${coverageReasonHtml || "<li>当前暂无额外升级信号。</li>"}</ul>
       <div><b>当前可交付结论：</b>${escapeHtml(coverageDecision.current_conclusion || "-")}</div>
       <div class="muted" style="margin-top:6px">如不升级的保守提醒：${escapeHtml(coverageDecision.risk_if_not_upgraded || "-")}</div>
       <div class="muted" style="margin-top:4px">升级收益：${escapeHtml(coverageDecision.upgrade_benefit || "-")}</div>
+      ${coverageDecisionReferenceHtml ? `<div style="margin-top:8px"><b>升级佐证引用</b>${coverageDecisionReferenceHtml}</div>` : ""}
     </div>
   </div>
 
@@ -147,6 +159,10 @@ body.view-newbie .expert-only{display:none}
         <h3>最重要的未证实风险</h3>
         <ul class="summary">${unresolvedRisksHtml || "<li>无</li>"}</ul>
       </div>
+    </div>
+    <div style="margin-top:10px">
+      <h3>还没坐实但值得盯的线索</h3>
+      <ul class="summary">${pendingCluesHtml || "<li>无</li>"}</ul>
     </div>
     <h3 style="margin-top:10px">如果还不确定，先补这3个问题</h3>
     <ol>${nextQuestionsHtml || "<li>当前暂无补证问题。</li>"}</ol>

@@ -1,5 +1,11 @@
 import { DEFENSES, displayEvidenceLabel, lineOrDash, mapCoverageDecisionAction } from "./report_output_common.mjs";
+import { formatContextReference } from "./report_context_references.mjs";
 import { describeEvent, eventDecisionLabel } from "./report_events.mjs";
+
+function pushContextReferenceLines(lines, references, indent = "") {
+  if (!Array.isArray(references) || references.length === 0) return;
+  references.forEach((reference, index) => lines.push(`${indent}- 引用${index + 1}：${formatContextReference(reference)}`));
+}
 
 export function renderMarkdown(data) {
   const lines = [];
@@ -19,6 +25,10 @@ export function renderMarkdown(data) {
   lines.push(`- 一句话：${lineOrDash(data.decision_summary?.headline)}`);
   (data.decision_summary?.highlights || []).forEach((item) => lines.push(`- ${item}`));
   lines.push(`- 下一步建议：${lineOrDash(data.decision_summary?.next_action)}`);
+  if (Array.isArray(data.decision_summary?.supporting_references) && data.decision_summary.supporting_references.length > 0) {
+    lines.push("- 结论佐证引用：");
+    pushContextReferenceLines(lines, data.decision_summary.supporting_references, "  ");
+  }
   lines.push("");
 
   if (data.scan?.coverage_decision) {
@@ -34,21 +44,38 @@ export function renderMarkdown(data) {
     lines.push(`- 当前可交付结论：${lineOrDash(data.scan.coverage_decision.current_conclusion)}`);
     lines.push(`- 如不升级的保守提醒：${lineOrDash(data.scan.coverage_decision.risk_if_not_upgraded)}`);
     lines.push(`- 升级收益：${lineOrDash(data.scan.coverage_decision.upgrade_benefit)}`);
+    if (Array.isArray(data.scan.coverage_decision.context_references) && data.scan.coverage_decision.context_references.length > 0) {
+      lines.push("- 升级佐证引用：");
+      pushContextReferenceLines(lines, data.scan.coverage_decision.context_references, "  ");
+    }
     lines.push("");
   }
 
   lines.push("## 🔍 为什么这样判断");
   if (Array.isArray(data.evidence_summary?.key_events) && data.evidence_summary.key_events.length > 0) {
     lines.push("- 关键已确认事件：");
-    data.evidence_summary.key_events.forEach((item) => lines.push(`- [${item.label}] ${item.decision} -> ${item.summary}`));
+    data.evidence_summary.key_events.forEach((item) => {
+      lines.push(`- [${item.label}] ${item.decision} -> ${item.summary}`);
+      pushContextReferenceLines(lines, item.context_references, "  ");
+    });
   } else {
     lines.push("- 关键已确认事件：无");
   }
   if (Array.isArray(data.evidence_summary?.unresolved_risks) && data.evidence_summary.unresolved_risks.length > 0) {
     lines.push("- 当前最重要的未证实风险：");
-    data.evidence_summary.unresolved_risks.forEach((item) => lines.push(`- [${item.risk}] ${lineOrDash(item.current_evidence)} -> 还缺：${lineOrDash(item.missing_evidence)}`));
+    data.evidence_summary.unresolved_risks.forEach((item) => {
+      lines.push(`- [${item.risk}] ${lineOrDash(item.current_evidence)} -> 还缺：${lineOrDash(item.missing_evidence)}`);
+      pushContextReferenceLines(lines, item.context_references, "  ");
+    });
   } else {
     lines.push("- 当前最重要的未证实风险：无");
+  }
+  if (Array.isArray(data.evidence_summary?.pending_clues) && data.evidence_summary.pending_clues.length > 0) {
+    lines.push("- 还没坐实但值得盯的线索：");
+    data.evidence_summary.pending_clues.forEach((item) => {
+      lines.push(`- [${item.label}] ${lineOrDash(item.clue)}`);
+      pushContextReferenceLines(lines, item.context_references, "  ");
+    });
   }
   lines.push("");
 
@@ -100,19 +127,28 @@ export function renderMarkdown(data) {
   else lines.push(`- 结论：候选雷点${data.thunder.total_candidates}项（已确认/高概率 ${data.thunder.confirmed_or_probable} 项）`);
   lines.push("- 明细：");
   if (data.thunder.items.length === 0) lines.push("- 无");
-  else data.thunder.items.forEach((item) => lines.push(`- [${item.rule}]：${lineOrDash(item.summary)} -> ${displayEvidenceLabel(item.evidence_level)} -> ${lineOrDash(item.anchor)}${item.batch_id ? `/${item.batch_id}` : ""}`));
+  else data.thunder.items.forEach((item) => {
+    lines.push(`- [${item.rule}]：${lineOrDash(item.summary)} -> ${displayEvidenceLabel(item.evidence_level)} -> ${lineOrDash(item.anchor)}${item.batch_id ? `/${item.batch_id}` : ""}`);
+    pushContextReferenceLines(lines, item.context_references, "  ");
+  });
   lines.push("");
 
   lines.push("## 🟡 郁闷点清单（按严重度降序）");
   if (data.depression.items.length === 0) lines.push("- 无");
-  else data.depression.items.forEach((item) => lines.push(`- [${item.rule}]：${lineOrDash(item.summary)} -> ${item.severity} -> ${item.min_defense} -> ${displayEvidenceLabel(item.evidence_level)} -> ${lineOrDash(item.anchor)}${item.batch_id ? `/${item.batch_id}` : ""}`));
+  else data.depression.items.forEach((item) => {
+    lines.push(`- [${item.rule}]：${lineOrDash(item.summary)} -> ${item.severity} -> ${item.min_defense} -> ${displayEvidenceLabel(item.evidence_level)} -> ${lineOrDash(item.anchor)}${item.batch_id ? `/${item.batch_id}` : ""}`);
+    pushContextReferenceLines(lines, item.context_references, "  ");
+  });
   lines.push("");
 
   lines.push("## 🧩 事件候选复核");
   if (!data.events || !Array.isArray(data.events.items) || data.events.items.length === 0) lines.push("- 无");
   else {
     lines.push(`- 候选总数：${data.events.total_candidates}；已确认 ${data.events.confirmed}；排除 ${data.events.excluded}；待补证 ${data.events.pending}`);
-    data.events.items.forEach((event) => lines.push(`- [${lineOrDash(event.rule_candidate)}] #${lineOrDash(event.event_id)} -> ${eventDecisionLabel(event)} -> ${describeEvent(event)} -> 范围 ${lineOrDash(event.chapter_range)}${event.batch_id ? `/${event.batch_id}` : ""}`));
+    data.events.items.forEach((event) => {
+      lines.push(`- [${lineOrDash(event.rule_candidate)}] #${lineOrDash(event.event_id)} -> ${eventDecisionLabel(event)} -> ${describeEvent(event)} -> 范围 ${lineOrDash(event.chapter_range)}${event.batch_id ? `/${event.batch_id}` : ""}`);
+      pushContextReferenceLines(lines, event.context_references, "  ");
+    });
   }
   lines.push("");
 
@@ -129,7 +165,10 @@ export function renderMarkdown(data) {
 
   lines.push("## ⚠️ 未证实风险");
   if (data.risks_unconfirmed.length === 0) lines.push("- 无");
-  else data.risks_unconfirmed.forEach((item) => lines.push(`- [${item.risk}]：${lineOrDash(item.current_evidence)} -> ${lineOrDash(item.missing_evidence)} -> ${lineOrDash(item.impact)}`));
+  else data.risks_unconfirmed.forEach((item) => {
+    lines.push(`- [${item.risk}]：${lineOrDash(item.current_evidence)} -> ${lineOrDash(item.missing_evidence)} -> ${lineOrDash(item.impact)}`);
+    pushContextReferenceLines(lines, item.context_references, "  ");
+  });
   lines.push("");
   lines.push("## 📚 术语速查");
   if (!Array.isArray(data.term_wiki) || data.term_wiki.length === 0) {
