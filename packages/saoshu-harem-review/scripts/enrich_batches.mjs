@@ -4,6 +4,7 @@ import path from "node:path";
 import { execSync } from "node:child_process";
 import { getExitCode } from "./lib/exit_codes.mjs";
 import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
+import { writeUtf8Json } from "./lib/text_output.mjs";
 
 function usage() {
   console.log("Usage: node enrich_batches.mjs --batches <batch-dir> [--mode external|fallback] [--enricher-cmd \"your command with {batch_file}\"] [--dry-run]");
@@ -102,7 +103,7 @@ function main() {
       batch.metadata.enrichment_mode = args.mode;
       batch.metadata.enrichment_updated_at = new Date().toISOString();
 
-      if (!args.dryRun) fs.writeFileSync(file, JSON.stringify(batch, null, 2), "utf8");
+      if (!args.dryRun) writeUtf8Json(file, batch);
       ok++;
     } catch (err) {
       // graceful fallback if external fails
@@ -113,7 +114,7 @@ function main() {
           batch.metadata.enrichment_mode = "external_failed_fallback";
           batch.metadata.enrichment_error = String(err.message || err);
           batch.metadata.enrichment_updated_at = new Date().toISOString();
-          if (!args.dryRun) fs.writeFileSync(file, JSON.stringify(batch, null, 2), "utf8");
+          if (!args.dryRun) writeUtf8Json(file, batch);
           ok++;
           continue;
         } catch {

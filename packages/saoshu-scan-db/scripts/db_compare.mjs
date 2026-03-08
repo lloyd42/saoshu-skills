@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getModeDiffDbFile, readJsonl, splitTags, toNumber } from "./lib/mode_diff_db.mjs";
+import { writeUtf8File, writeUtf8Json } from "../../saoshu-harem-review/scripts/lib/text_output.mjs";
 
 function usage() {
   console.log("Usage: node db_compare.mjs --db <dir> [--dimensions author,tags,verdict,coverage_mode,coverage_template,pipeline_mode,coverage_unit,chapter_detect_used_mode,serial_status,target_defense,title,mode_diff_gain_window,mode_diff_band] [--top 20] [--output-dir <dir>]");
@@ -213,9 +214,9 @@ function main() {
   const jsonPath = path.join(outDir, "compare.json");
   const mdPath = path.join(outDir, "compare.md");
   const htmlPath = path.join(outDir, "compare.html");
-  fs.writeFileSync(jsonPath, JSON.stringify(result, null, 2), "utf8");
-  fs.writeFileSync(mdPath, renderMd(result), "utf8");
-  fs.writeFileSync(htmlPath, renderHtml(result), "utf8");
+  writeUtf8Json(jsonPath, result);
+  writeUtf8File(mdPath, renderMd(result));
+  writeUtf8File(htmlPath, renderHtml(result));
   console.log(`Compare JSON: ${jsonPath}`);
   console.log(`Compare MD:   ${mdPath}`);
   console.log(`Compare HTML: ${htmlPath}`);

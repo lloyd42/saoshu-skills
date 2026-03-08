@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { appendUtf8Jsonl } from "../../saoshu-harem-review/scripts/lib/text_output.mjs";
 
 function usage() {
   console.log("Usage: node db_promote_keyword.mjs --db <dir> --keyword <text> --rule <name> --bucket thunder-risk|thunder-strict|depression|title-signal [--patterns a,b,c] [--title-type risk|depression] [--weight 8] [--critical true|false] [--severity <text>] [--min-defense <text>] [--min-count 1] [--note <text>]");
@@ -52,7 +53,7 @@ function parseArgs(argv) {
 
 function appendJsonl(filePath, payload) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.appendFileSync(filePath, `${JSON.stringify(payload)}\n`, "utf8");
+  appendUtf8Jsonl(filePath, payload);
 }
 
 function parsePatterns(args) {

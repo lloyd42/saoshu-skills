@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { getExitCode } from "./lib/exit_codes.mjs";
 import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
+import { writeUtf8File } from "./lib/text_output.mjs";
 
 function usage() {
   console.log("Usage: node relation_graph.mjs --report <merged-report.json> --output <relation-graph.html> [--review-dir <review-pack-dir>] [--top-chars 20] [--top-signals 16] [--min-edge-weight 2] [--max-links 220] [--min-name-freq 2]");
@@ -379,7 +380,7 @@ function main() {
   });
   const out = path.resolve(args.output);
   fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, renderHtml(graph), "utf8");
+  writeUtf8File(out, renderHtml(graph));
   console.log(`Relation graph: ${out}`);
   console.log(`Nodes: ${graph.nodes.length}, Links: ${graph.links.length}/${graph.stats.raw_links}, Mode: ${graph.mode}`);
 }

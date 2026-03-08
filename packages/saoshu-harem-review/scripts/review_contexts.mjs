@@ -5,6 +5,7 @@ import { getExitCode } from "./lib/exit_codes.mjs";
 import { readJsonFile } from "./lib/json_input.mjs";
 import { parseChapters, readNovelText, readNovelWithChapterDetection } from "./lib/novel_input.mjs";
 import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
+import { writeUtf8File } from "./lib/text_output.mjs";
 
 function usage() {
   console.log("Usage: node review_contexts.mjs --input <novel.txt> --batches <batch-dir> --output <review-dir> [--max-snippets 3] [--window 70]");
@@ -267,12 +268,12 @@ function main() {
   for (const b of batches) {
     const lines = buildBatchReview(b.data, text, chapters, args);
     const outPath = path.join(outDir, `${b.data.batch_id || b.file.replace(/\.json$/i, "")}-review.md`);
-    fs.writeFileSync(outPath, lines.join("\n"), "utf8");
+    writeUtf8File(outPath, lines.join("\n"));
     indexLines.push(`- ${path.basename(outPath)}`);
   }
 
   const indexPath = path.join(outDir, "README-review-index.md");
-  fs.writeFileSync(indexPath, indexLines.join("\n"), "utf8");
+  writeUtf8File(indexPath, indexLines.join("\n"));
   console.log(`Input encoding: ${loaded.encoding}`);
   if (loaded.chapterDetect?.unit_type) console.log(`Review unit: ${loaded.chapterDetect.unit_type}`);
   console.log(`Generated review pack for ${batches.length} batches: ${outDir}`);

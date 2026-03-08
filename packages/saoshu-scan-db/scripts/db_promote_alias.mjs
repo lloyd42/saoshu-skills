@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { appendUtf8Jsonl } from "../../saoshu-harem-review/scripts/lib/text_output.mjs";
 
 function usage() {
   console.log("Usage: node db_promote_alias.mjs --db <dir> --canonical-name <name> --alias <name> [--gender <female|male|unknown>] [--role-hint <text>] [--relation-label <text>] [--note <text>]");
@@ -35,7 +36,7 @@ function parseArgs(argv) {
 
 function appendJsonl(filePath, payload) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.appendFileSync(filePath, `${JSON.stringify(payload)}\n`, "utf8");
+  appendUtf8Jsonl(filePath, payload);
 }
 
 function main() {

@@ -16,6 +16,7 @@ import {
   hasKeywordInContext,
 } from "./lib/rule_catalog.mjs";
 import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
+import { writeUtf8Json } from "./lib/text_output.mjs";
 
 function usage() {
   console.log("Usage: node scan_txt_batches.mjs --input <novel.txt> --output <batch-dir> [--batch-size 80] [--overlap 2] [--keyword-rules <json>] [--alias-map <json>] [--coverage-mode sampled|chapter-full|full-book] [--chapter-detect-mode script|assist|auto] [--chapter-assist-dir <dir>] [--chapter-assist-result <json>]");
@@ -278,7 +279,7 @@ function main() {
       delta_relation: [],
     };
 
-    fs.writeFileSync(path.join(output, `${batchId}.json`), JSON.stringify(payload, null, 2), "utf8");
+    writeUtf8Json(path.join(output, `${batchId}.json`), payload);
     batchIndex += 1;
     if (end >= chapters.length) break;
   }

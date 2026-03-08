@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { writeUtf8File, writeUtf8Json } from "../../saoshu-harem-review/scripts/lib/text_output.mjs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
@@ -35,7 +36,7 @@ function readJsonl(filePath) {
 
 function writeJson(filePath, payload) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  writeUtf8Json(filePath, payload, { newline: true });
 }
 
 function runNodeScript(scriptName, args) {
@@ -112,7 +113,7 @@ function main() {
   };
 
   writeJson(path.join(outDir, "feedback-assets.json"), summary);
-  fs.writeFileSync(path.join(outDir, "feedback-assets.md"), `${renderMarkdown(summary)}\n`, "utf8");
+  writeUtf8File(path.join(outDir, "feedback-assets.md"), `${renderMarkdown(summary)}\n`);
 
   console.log(`Feedback assets exported: ${outDir}`);
 }

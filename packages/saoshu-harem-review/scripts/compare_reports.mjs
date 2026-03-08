@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { appendModeDiffLedgerEntry, createModeDiffLedgerEntry } from "./lib/mode_diff_ledger.mjs";
+import { writeUtf8File, writeUtf8Json } from "./lib/text_output.mjs";
 
 function usage() {
   console.log("Usage: node compare_reports.mjs --perf <high-coverage-report.json> --econ <quick-look-report.json> --out-dir <dir> [--title <name>] [--ledger <mode-diff-ledger.jsonl>]");
@@ -321,9 +322,9 @@ function main() {
   const mdPath = path.join(outDir, "mode-diff.md");
   const htmlPath = path.join(outDir, "mode-diff.html");
 
-  fs.writeFileSync(jsonPath, JSON.stringify({ title: args.title, diff, assessment, hints }, null, 2), "utf8");
-  fs.writeFileSync(mdPath, renderMd(args.title, diff, assessment, hints), "utf8");
-  fs.writeFileSync(htmlPath, renderHtml(args.title, diff, assessment, hints), "utf8");
+  writeUtf8Json(jsonPath, { title: args.title, diff, assessment, hints });
+  writeUtf8File(mdPath, renderMd(args.title, diff, assessment, hints));
+  writeUtf8File(htmlPath, renderHtml(args.title, diff, assessment, hints));
 
   console.log(`Diff generated:`);
   console.log(`JSON: ${jsonPath}`);

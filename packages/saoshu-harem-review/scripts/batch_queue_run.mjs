@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { writeUtf8Json } from "./lib/text_output.mjs";
 
 function usage() {
   console.log("Usage: node batch_queue_run.mjs --queue <queue.json> [--out <summary.json>] [--stop-on-error]");
@@ -106,8 +107,7 @@ function main() {
   const out = args.out
     ? path.resolve(args.out)
     : path.resolve(path.dirname(args.queue), `queue-summary-${Date.now()}.json`);
-  fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, JSON.stringify(summary, null, 2), "utf8");
+  writeUtf8Json(out, summary);
   console.log(`Queue summary: ${out}`);
   console.log(`Success: ${summary.success}  Failed: ${summary.failed}`);
 }

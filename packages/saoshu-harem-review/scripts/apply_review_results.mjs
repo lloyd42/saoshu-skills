@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { getExitCode } from "./lib/exit_codes.mjs";
 import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
+import { writeUtf8Json } from "./lib/text_output.mjs";
 
 function usage() {
   console.log("Usage: node apply_review_results.mjs --batches <batch-dir> --reviews <review-dir> [--dry-run] [--accept-suggested]");
@@ -254,7 +255,7 @@ function main() {
     if (before !== after) {
       total.changedFiles++;
       if (!args.dryRun) {
-        fs.writeFileSync(batchPath, JSON.stringify(batch, null, 2), "utf8");
+        writeUtf8Json(batchPath, batch);
       }
     }
   }

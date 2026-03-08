@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { writeUtf8File } from "./lib/text_output.mjs";
 
 function parseArgs(argv) {
   const args = { skillPath: null, interfaces: [] };
@@ -62,7 +63,7 @@ function main() {
   const outDir = path.join(skillPath, "agents");
   const outPath = path.join(outDir, "openai.yaml");
   fs.mkdirSync(outDir, { recursive: true });
-  fs.writeFileSync(outPath, buildYaml(iface), "utf8");
+  writeUtf8File(outPath, buildYaml(iface));
   console.log(`Generated: ${outPath}`);
 }
 

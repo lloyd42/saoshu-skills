@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { readJsonFile } from "./lib/json_input.mjs";
 import { findFirstExisting, formatCommand, getScriptDir, pushArg, runNodeScript, runShellCommand } from "./lib/script_helpers.mjs";
 import { resolvePipelineManifest } from "./lib/pipeline_manifest.mjs";
+import { writeUtf8Json } from "./lib/text_output.mjs";
 import { runOptionalStage, runStageIfSelected } from "./lib/pipeline_stages.mjs";
 import { getExitCode } from "./lib/exit_codes.mjs";
 import { formatPipelineError, pipelineIo, pipelineUsage } from "./lib/pipeline_feedback.mjs";
@@ -39,8 +40,7 @@ function readJson(p) {
 }
 
 function writeJson(p, obj) {
-  fs.mkdirSync(path.dirname(p), { recursive: true });
-  fs.writeFileSync(p, JSON.stringify(obj, null, 2), "utf8");
+  writeUtf8Json(p, obj);
 }
 
 function now() {

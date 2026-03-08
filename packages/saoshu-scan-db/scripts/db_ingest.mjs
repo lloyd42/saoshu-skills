@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { readJsonFile } from "../../saoshu-harem-review/scripts/lib/json_input.mjs";
+import { appendUtf8Jsonl } from "../../saoshu-harem-review/scripts/lib/text_output.mjs";
 
 function usage() {
   console.log("Usage: node db_ingest.mjs --db <dir> --report <merged-report.json> [--state <pipeline-state.json>] [--manifest <manifest.json>] [--run-id <id>]");
@@ -37,7 +38,7 @@ function ensureDir(p) {
 }
 
 function appendJsonl(file, obj) {
-  fs.appendFileSync(file, `${JSON.stringify(obj)}\n`, "utf8");
+  appendUtf8Jsonl(file, obj);
 }
 
 function makeRunId(report, fallback = "") {

@@ -10,6 +10,10 @@
   - 通用脚本辅助
   - 包括路径引用、命令执行、参数读取、技能目录定位等
 
+- `text_output.mjs`
+  - 共享文本输出辅助
+  - 负责 `UTF-8 without BOM` 写入、JSON 输出与 JSONL 追加，避免脚本层四散直写
+
 - `cli_help.mjs`
   - CLI 帮助输出与公共参数拆分
 

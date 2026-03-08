@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { writeUtf8Json } from "./lib/text_output.mjs";
 
 function usage() {
   console.log("Usage: node mode_diff_discover_queue.mjs --root <dir> --output <queue.json> [--ledger <mode-diff-ledger.jsonl>] [--db <dir>] [--summary-dir <dir>] [--out-root <dir>]");
@@ -112,7 +113,7 @@ function main() {
     outRoot: path.resolve(args.outRoot || path.join(baseDir, "mode-diff")),
   });
   fs.mkdirSync(path.dirname(output), { recursive: true });
-  fs.writeFileSync(output, `${JSON.stringify(queue, null, 2)}\n`, "utf8");
+  writeUtf8Json(output, queue, { newline: true });
   console.log(`Queue: ${output}`);
   console.log(`Jobs: ${queue.jobs.length}`);
 }

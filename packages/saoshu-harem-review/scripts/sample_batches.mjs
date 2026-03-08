@@ -4,6 +4,7 @@ import path from "node:path";
 import { getExitCode } from "./lib/exit_codes.mjs";
 import { CRITICAL_RISK_RULES } from "./lib/rule_catalog.mjs";
 import { formatScriptError, scriptUsage } from "./lib/script_feedback.mjs";
+import { writeUtf8Json } from "./lib/text_output.mjs";
 
 const COVERAGE_TEMPLATES = ["opening-100", "head-tail", "head-tail-risk", "opening-latest"];
 const SERIAL_STATUSES = ["unknown", "ongoing", "completed"];
@@ -75,7 +76,7 @@ function readJson(p) {
 }
 
 function writeJson(p, payload) {
-  fs.writeFileSync(p, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  writeUtf8Json(p, payload, { newline: true });
 }
 
 function riskScore(batch) {

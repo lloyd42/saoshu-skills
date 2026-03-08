@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { aggregateModeDiffByDay, buildModeDiffSummaryFromRows, getModeDiffDbFile, readJsonl } from "./lib/mode_diff_db.mjs";
+import { writeUtf8File, writeUtf8Json } from "../../saoshu-harem-review/scripts/lib/text_output.mjs";
 
 function usage() {
   console.log("Usage: node db_trends.mjs --db <dir> [--by day] [--output-dir <dir>] [--top 10]");
@@ -166,9 +167,9 @@ function main() {
   const jsonPath = path.join(outDir, "trends.json");
   const mdPath = path.join(outDir, "trends.md");
   const htmlPath = path.join(outDir, "trends.html");
-  fs.writeFileSync(jsonPath, JSON.stringify(data, null, 2), "utf8");
-  fs.writeFileSync(mdPath, renderMd(data), "utf8");
-  fs.writeFileSync(htmlPath, renderHtml(data), "utf8");
+  writeUtf8Json(jsonPath, data);
+  writeUtf8File(mdPath, renderMd(data));
+  writeUtf8File(htmlPath, renderHtml(data));
   console.log(`Trends JSON: ${jsonPath}`);
   console.log(`Trends MD:   ${mdPath}`);
   console.log(`Trends HTML: ${htmlPath}`);

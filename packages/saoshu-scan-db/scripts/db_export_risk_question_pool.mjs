@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { writeUtf8Json } from "../../saoshu-harem-review/scripts/lib/text_output.mjs";
 
 function usage() {
   console.log("Usage: node db_export_risk_question_pool.mjs --db <dir> --output <risk-question-pool.json>");
@@ -52,7 +53,7 @@ function main() {
   };
   const outputPath = path.resolve(args.output);
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-  fs.writeFileSync(outputPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  writeUtf8Json(outputPath, payload, { newline: true });
   console.log(`Exported risk question pool: ${outputPath}`);
 }
 

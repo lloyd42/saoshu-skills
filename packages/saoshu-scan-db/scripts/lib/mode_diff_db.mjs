@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { summarizeModeDiffLedger, splitTags as sharedSplitTags } from "../../../saoshu-harem-review/scripts/lib/mode_diff_ledger.mjs";
+import { appendUtf8Jsonl } from "../../../saoshu-harem-review/scripts/lib/text_output.mjs";
 
 export function readJsonl(file) {
   if (!fs.existsSync(file)) return [];
@@ -13,7 +14,7 @@ export function readJsonl(file) {
 }
 
 export function appendJsonl(file, obj) {
-  fs.appendFileSync(file, `${JSON.stringify(obj)}\n`, "utf8");
+  appendUtf8Jsonl(file, obj);
 }
 
 export function splitTags(value) {

@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { readModeDiffLedger, renderModeDiffLedgerHtml, renderModeDiffLedgerMarkdown, summarizeModeDiffLedger } from "./lib/mode_diff_ledger.mjs";
+import { writeUtf8File, writeUtf8Json } from "./lib/text_output.mjs";
 
 function usage() {
   console.log("Usage: node mode_diff_ledger.mjs --ledger <mode-diff-ledger.jsonl> --output-dir <dir> [--title <name>]");
@@ -34,9 +35,9 @@ function main() {
   const mdPath = path.join(outputDir, "mode-diff-ledger-summary.md");
   const htmlPath = path.join(outputDir, "mode-diff-ledger-summary.html");
 
-  fs.writeFileSync(jsonPath, `${JSON.stringify({ title: args.title, ledger: path.basename(args.ledger), summary }, null, 2)}\n`, "utf8");
-  fs.writeFileSync(mdPath, `${renderModeDiffLedgerMarkdown(args.title, summary)}\n`, "utf8");
-  fs.writeFileSync(htmlPath, renderModeDiffLedgerHtml(args.title, summary), "utf8");
+  writeUtf8Json(jsonPath, { title: args.title, ledger: path.basename(args.ledger), summary }, { newline: true });
+  writeUtf8File(mdPath, `${renderModeDiffLedgerMarkdown(args.title, summary)}\n`);
+  writeUtf8File(htmlPath, renderModeDiffLedgerHtml(args.title, summary));
 
   console.log("Ledger summary generated:");
   console.log(`JSON: ${jsonPath}`);

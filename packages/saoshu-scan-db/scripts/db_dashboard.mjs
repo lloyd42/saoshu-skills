@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { buildModeDiffSummaryFromRows, getModeDiffDbFile, readJsonl } from "./lib/mode_diff_db.mjs";
+import { writeUtf8File } from "../../saoshu-harem-review/scripts/lib/text_output.mjs";
 
 function usage() {
   console.log("Usage: node db_dashboard.mjs --db <dir> --output <dashboard.html>");
@@ -75,8 +76,7 @@ function main() {
 </div></body></html>`;
 
   const out = path.resolve(args.output);
-  fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, html, "utf8");
+  writeUtf8File(out, html);
   console.log(`Dashboard: ${out}`);
 }
 

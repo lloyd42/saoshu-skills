@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runNodeScript } from "./lib/script_helpers.mjs";
+import { writeUtf8File, writeUtf8Json } from "./lib/text_output.mjs";
 
 function usage() {
   console.log("Usage: node mode_diff_queue_run.mjs --queue <queue.json> [--ledger <mode-diff-ledger.jsonl>] [--summary-dir <dir>] [--summary-title <name>] [--db <dir>] [--db-compare-dir <dir>] [--db-compare-dimensions <dims>] [--db-trends-dir <dir>] [--db-dashboard <html>] [--out <summary.json>] [--stop-on-error]");
@@ -141,9 +142,9 @@ function writeOverviewArtifacts(jsonPath, summary) {
   const base = jsonPath.replace(/\.json$/i, "");
   const mdPath = `${base}.md`;
   const htmlPath = `${base}.html`;
-  fs.writeFileSync(jsonPath, `${JSON.stringify(summary, null, 2)}\n`, "utf8");
-  fs.writeFileSync(mdPath, renderMarkdown(summary), "utf8");
-  fs.writeFileSync(htmlPath, renderHtml(summary), "utf8");
+  writeUtf8Json(jsonPath, summary, { newline: true });
+  writeUtf8File(mdPath, renderMarkdown(summary));
+  writeUtf8File(htmlPath, renderHtml(summary));
   return { jsonPath, mdPath, htmlPath };
 }
 

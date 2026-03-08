@@ -8,6 +8,7 @@ import {
   SERIAL_STATUSES,
   pipelineModeForCoverageMode,
 } from "./lib/pipeline_manifest.mjs";
+import { writeUtf8Json } from "./lib/text_output.mjs";
 
 const PIPELINE_MODES = ["economy", "performance"];
 const SAMPLE_MODES = ["fixed", "dynamic"];
@@ -299,7 +300,7 @@ function main() {
     validateManifest(manifest, { requireExistingInput: args.nonInteractive });
     const outputPath = path.resolve(args.output);
     fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-    fs.writeFileSync(outputPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    writeUtf8Json(outputPath, manifest, { newline: true });
     console.log(`Manifest written: ${outputPath}`);
   };
 

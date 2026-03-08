@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { appendUtf8Jsonl } from "./text_output.mjs";
 
 function arr(value) {
   return Array.isArray(value) ? value : [];
@@ -110,7 +111,7 @@ export function createModeDiffLedgerEntry({ title, perf, econ, diff, assessment,
 export function appendModeDiffLedgerEntry(ledgerPath, entry) {
   const absolutePath = path.resolve(ledgerPath);
   fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
-  fs.appendFileSync(absolutePath, `${JSON.stringify(entry)}\n`, "utf8");
+  appendUtf8Jsonl(absolutePath, entry);
   return absolutePath;
 }
 

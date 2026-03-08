@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { writeUtf8File, writeUtf8Json } from "./text_output.mjs";
 
 export const CHAPTER_DETECT_MODES = ["script", "assist", "auto"];
 
@@ -18,8 +19,8 @@ export function createChapterDetectAssistPack({ inputPath, assistDir, text, enco
   const metadataPath = path.join(outputDir, "chapter-detect-metadata.json");
   const resultPath = path.join(outputDir, "chapter-detect-result.json");
 
-  fs.writeFileSync(inputCopyPath, String(text || ""), "utf8");
-  fs.writeFileSync(schemaPath, `${JSON.stringify({
+  writeUtf8File(inputCopyPath, String(text || ""));
+  writeUtf8Json(schemaPath, {
     type: "object",
     required: ["chapters"],
     properties: {
@@ -41,8 +42,8 @@ export function createChapterDetectAssistPack({ inputPath, assistDir, text, enco
         },
       },
     },
-  }, null, 2)}\n`, "utf8");
-  fs.writeFileSync(templatePath, `${JSON.stringify({
+  }, { newline: true });
+  writeUtf8Json(templatePath, {
     source_input: inputCopyPath.replace(/\\/g, "/"),
     detected_by: "assist",
     confidence: "medium",
@@ -51,8 +52,8 @@ export function createChapterDetectAssistPack({ inputPath, assistDir, text, enco
       { num: 1, title: "第一章 标题", start_line: 1, end_line: 120 },
       { num: 2, title: "第二章 标题", start_line: 121, end_line: 240 },
     ],
-  }, null, 2)}\n`, "utf8");
-  fs.writeFileSync(metadataPath, `${JSON.stringify({
+  }, { newline: true });
+  writeUtf8Json(metadataPath, {
     input_path: path.resolve(inputPath),
     copied_input_path: inputCopyPath,
     suggested_result_path: resultPath,
@@ -61,7 +62,7 @@ export function createChapterDetectAssistPack({ inputPath, assistDir, text, enco
     line_count: String(text || "").split(/\n/u).length,
     diagnostics,
     error: errorMessage,
-  }, null, 2)}\n`, "utf8");
+  }, { newline: true });
 
   const request = `# 章节识别协作请求
 
@@ -91,7 +92,7 @@ export function createChapterDetectAssistPack({ inputPath, assistDir, text, enco
 回填完成后，可重跑当前 manifest；如果直接调用脚本，可加：
 \`--chapter-detect-mode assist --chapter-assist-dir ${outputDir.replace(/\\/g, "/")} --chapter-assist-result ${resultPath.replace(/\\/g, "/")}\`
 `;
-  fs.writeFileSync(requestPath, request, "utf8");
+  writeUtf8File(requestPath, request);
 
   return {
     outputDir,
