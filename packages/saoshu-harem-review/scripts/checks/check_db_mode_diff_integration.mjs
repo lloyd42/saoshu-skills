@@ -27,22 +27,41 @@ function runNode(scriptPath, args = []) {
 }
 
 function makeReport({ title, author, tags, verdict = "待补证", rating = 6, batchIds = [], totalBatches = batchIds.length, pipelineMode = "performance", eventCount = 2, relationCount = 1 }) {
+  const isEconomy = pipelineMode === "economy";
   return {
     novel: { title, author },
     overall: { verdict, rating },
+    reader_policy: {
+      preset: "community-default",
+      label: "默认社区 preset",
+      source: "fixture",
+      customized: false,
+      summary: "默认社区视角",
+      hard_blocks: [],
+      soft_risks: [],
+      relation_constraints: [],
+      evidence_threshold: "balanced",
+      coverage_preference: "balanced",
+      notes: [],
+    },
     scan: {
       batch_count: batchIds.length,
       batch_ids: batchIds,
       sampling: {
         pipeline_mode: pipelineMode,
-        sample_mode: pipelineMode === "economy" ? "dynamic" : "fixed",
-        sample_strategy: pipelineMode === "economy" ? "risk-aware" : "uniform",
+        sample_mode: isEconomy ? "dynamic" : "fixed",
+        sample_strategy: isEconomy ? "risk-aware" : "uniform",
         sample_level: "auto",
-        sample_level_effective: pipelineMode === "economy" ? "medium" : "high",
-        sample_level_recommended: pipelineMode === "economy" ? "medium" : "high",
+        sample_level_effective: isEconomy ? "medium" : "high",
+        sample_level_recommended: isEconomy ? "medium" : "high",
         total_batches: totalBatches,
         selected_batches: batchIds.length,
         coverage_ratio: totalBatches ? batchIds.length / totalBatches : 0,
+      },
+      coverage_decision: {
+        action: isEconomy ? "upgrade-chapter-full" : "keep-current",
+        confidence: isEconomy ? "cautious" : "stable",
+        reason_codes: isEconomy ? ["late_risk_uncovered", "latest_progress_uncertain"] : [],
       },
     },
     thunder: { total_candidates: 0, items: [] },
@@ -102,7 +121,7 @@ if (overviewPayload.recommendation?.action === "evaluate_middle_mode" && overvie
 else fail(`db_query mode-diff overview should expose recommendation and gray counts: ${JSON.stringify(overviewPayload)}`);
 
 const textOverview = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["--db", dbDir, "--metric", "overview", "--format", "text"]);
-if (textOverview.status === 0 && textOverview.stdout.includes("Mode-diff entries: 3")) ok("db overview text surfaces mode-diff summary");
+if (textOverview.status === 0 && textOverview.stdout.includes("Mode-diff 样本数：3")) ok("db overview text surfaces mode-diff summary");
 else fail(`db overview text should include mode-diff summary\nSTDOUT:\n${textOverview.stdout}\nSTDERR:\n${textOverview.stderr}`);
 
 const decisionOverview = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["--db", dbDir, "--metric", "coverage-decision-overview", "--format", "json"]);
@@ -114,15 +133,65 @@ if (Array.isArray(decisionPayload.action_dist)
   && decisionPayload.action_dist.some((item) => item[0] === "upgrade-chapter-full" && item[1] === 1)
   && Array.isArray(decisionPayload.reason_dist)
   && decisionPayload.reason_dist.some((item) => item[0] === "late_risk_uncovered" && item[1] === 1)
+  && Array.isArray(decisionPayload.calibration_by_action)
+  && decisionPayload.calibration_by_action.some((item) => item.key === "upgrade-chapter-full" && item.gray_rate === 1)
+  && Array.isArray(decisionPayload.calibration_by_reason)
+  && decisionPayload.calibration_by_reason.some((item) => item.key === "late_risk_uncovered" && item.gray_rate === 1)
+  && Array.isArray(decisionPayload.priority_review_actions)
+  && decisionPayload.priority_review_actions.some((item) => item.key === "upgrade-chapter-full" && item.priority_score === 3)
+  && Array.isArray(decisionPayload.priority_review_reasons)
+  && decisionPayload.priority_review_reasons.some((item) => item.key === "late_risk_uncovered" && item.priority_score === 3)
+  && decisionPayload.review_recommendation?.confidence_level === "strong"
+  && decisionPayload.review_recommendation?.confidence_label === "强建议"
+  && decisionPayload.review_recommendation?.evidence_strategy_type === "composite-bundle"
+  && decisionPayload.review_recommendation?.evidence_strategy_label === "组合证据包"
+  && decisionPayload.review_recommendation?.primary_focus_kind === "action-first"
+  && decisionPayload.review_recommendation?.action_focus?.key === "upgrade-chapter-full"
+  && decisionPayload.review_recommendation?.drill_down?.focus_dimension === "coverage_decision_action"
+  && decisionPayload.review_recommendation?.drill_down?.secondary_focus_dimension === "coverage_decision_reason"
+  && decisionPayload.review_recommendation?.evidence_preview?.type === "composite-bundle"
+  && Array.isArray(decisionPayload.review_recommendation?.evidence_preview?.action_examples)
+  && decisionPayload.review_recommendation.evidence_preview.action_examples[0]?.selection_label === "组合包-动作侧 · 同型 gray"
+  && decisionPayload.review_recommendation.evidence_preview.action_examples[0]?.cluster_size === 3
+  && Array.isArray(decisionPayload.review_recommendation?.evidence_preview?.reason_examples)
+  && decisionPayload.review_recommendation.evidence_preview.reason_examples[0]?.selection_label === "组合包-理由侧 · 同型 gray"
+  && decisionPayload.review_recommendation.evidence_preview.reason_examples[0]?.cluster_size === 3
+  && decisionPayload.review_recommendation?.summary?.includes("强建议：本轮先查动作偏差")
   && Array.isArray(decisionPayload.reader_policy_preset_dist)
   && decisionPayload.reader_policy_preset_dist.some((item) => item[0] === "community-default" && item[1] === 1)) ok("db_query coverage decision overview exposes action, reason, and reader-policy distribution");
 else fail(`db_query coverage decision overview should expose action and reason distribution: ${JSON.stringify(decisionPayload)}`);
 
 const decisionText = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["--db", dbDir, "--metric", "coverage-decision-overview", "--format", "text"]);
 if (decisionText.status === 0
-  && decisionText.stdout.includes("Coverage decision actions: 升级到 chapter-full(1)")
-  && decisionText.stdout.includes("Coverage decision reasons: 中后段关键风险未覆盖(1) / 最新进度仍可能改判(1)")
-  && decisionText.stdout.includes("Top reader policy presets: community-default(1)")) ok("db_query coverage decision overview renders readable text summary");
+  && decisionText.stdout.includes("覆盖升级建议：升级到章节级尽量完整(1)")
+  && decisionText.stdout.includes("高频升级理由：中后段关键风险未覆盖(1) / 最新进度仍可能改判(1)")
+  && decisionText.stdout.includes("升级动作校准快照：")
+  && decisionText.stdout.includes("升级到章节级尽量完整 | 样本 3 | 灰区 100.0%")
+  && decisionText.stdout.includes("升级理由校准快照：")
+  && decisionText.stdout.includes("优先复审动作：")
+  && decisionText.stdout.includes("优先分 3.00")
+  && decisionText.stdout.includes("优先复审理由：")
+  && decisionText.stdout.includes("建议强度：")
+  && decisionText.stdout.includes("强建议 | 已有 3 条样本")
+  && decisionText.stdout.includes("证据组织：")
+  && decisionText.stdout.includes("组合证据包 | 动作层和理由层都在起作用")
+  && decisionText.stdout.includes("自动建议：")
+  && decisionText.stdout.includes("强建议：本轮先查动作偏差：升级到章节级尽量完整")
+  && decisionText.stdout.includes("下钻建议：")
+  && decisionText.stdout.includes("coverage_decision_action=upgrade-chapter-full")
+  && decisionText.stdout.includes("再看 coverage_decision_reason=late_risk_uncovered")
+  && decisionText.stdout.includes("下钻命令：")
+  && decisionText.stdout.includes("compare-calibration")
+  && decisionText.stdout.includes("建议证据：")
+  && decisionText.stdout.includes("组合证据包 | 动作层和理由层都在起作用")
+  && decisionText.stdout.includes("动作层样本：")
+  && decisionText.stdout.includes("[组合包-动作侧 · 同型 gray]")
+  && decisionText.stdout.includes("等 3 本")
+  && decisionText.stdout.includes("理由层样本：")
+  && decisionText.stdout.includes("[组合包-理由侧 · 同型 gray]")
+  && decisionText.stdout.includes("高频读者策略预设：默认社区视角(1)")
+  && decisionText.stdout.includes("高频证据阈值：平衡阈值(1)")
+  && decisionText.stdout.includes("高频覆盖偏好：平衡覆盖(1)")) ok("db_query coverage decision overview renders readable text summary");
 else fail(`db_query coverage decision overview should render readable text summary\nSTDOUT:\n${decisionText.stdout}\nSTDERR:\n${decisionText.stderr}`);
 
 writeUtf8File(path.join(dbDir, "compare", "compare.html"), "<html><body>custom default compare</body></html>");
@@ -136,7 +205,7 @@ const dashboard = runNode("packages/saoshu-scan-db/scripts/db_dashboard.mjs", ["
 if (dashboard.status === 0 && fs.existsSync(dashboardPath)) ok("db_dashboard renders mode-diff aware dashboard");
 else fail(`db_dashboard failed\nSTDERR:\n${dashboard.stderr}`);
 
-if (fs.existsSync(path.join(dbDir, "compare", "compare.html")) && fs.existsSync(path.join(dbDir, "compare-context", "compare.html")) && fs.existsSync(path.join(dbDir, "compare-context-kinds", "compare.html")) && fs.existsSync(path.join(dbDir, "compare-policy", "compare.html")) && fs.existsSync(path.join(dbDir, "trends", "trends.html"))) ok("db_dashboard auto-refreshes missing compare detail pages and trends page");
+if (fs.existsSync(path.join(dbDir, "compare", "compare.html")) && fs.existsSync(path.join(dbDir, "compare-calibration", "compare.html")) && fs.existsSync(path.join(dbDir, "compare-context", "compare.html")) && fs.existsSync(path.join(dbDir, "compare-context-kinds", "compare.html")) && fs.existsSync(path.join(dbDir, "compare-policy", "compare.html")) && fs.existsSync(path.join(dbDir, "trends", "trends.html"))) ok("db_dashboard auto-refreshes missing compare detail pages and trends page");
 else fail("db_dashboard should auto-refresh missing compare detail pages");
 
 if (fs.readFileSync(path.join(dbDir, "compare", "compare.html"), "utf8").includes("custom default compare")) ok("db_dashboard preserves custom compare pages");
@@ -146,27 +215,39 @@ const dashboardHtml = fs.readFileSync(dashboardPath, "utf8");
 if (dashboardHtml.includes("覆盖口径") && dashboardHtml.includes("兼容执行层") && dashboardHtml.indexOf("覆盖口径") < dashboardHtml.indexOf("兼容执行层")) ok("db_dashboard recent-runs table prefers coverage-first column ordering");
 else fail("db_dashboard recent-runs table should prefer coverage-first column ordering");
 
-if (dashboardHtml.includes("升级建议") && dashboardHtml.includes("建议把握") && dashboardHtml.includes("升级到 chapter-full") && dashboardHtml.includes("谨慎")) ok("db_dashboard surfaces coverage decision defaults");
+if (dashboardHtml.includes("升级建议") && dashboardHtml.includes("建议把握") && dashboardHtml.includes("升级到章节级尽量完整") && dashboardHtml.includes("谨慎")) ok("db_dashboard surfaces coverage decision defaults");
 else fail("db_dashboard should surface coverage decision defaults");
 
 if (dashboardHtml.includes("高频升级理由") && dashboardHtml.includes("中后段关键风险未覆盖") && dashboardHtml.includes("最新进度仍可能改判")) ok("db_dashboard surfaces coverage decision reasons");
 else fail("db_dashboard should surface coverage decision reasons");
 
-if (dashboardHtml.includes("读者策略视角") && dashboardHtml.includes("community-default(1)") && dashboardHtml.includes("默认社区 preset") && dashboardHtml.includes("balanced")) ok("db_dashboard surfaces reader policy overview and latest-run details");
+if (dashboardHtml.includes("升级动作校准快照") && dashboardHtml.includes("升级理由校准快照") && dashboardHtml.includes("灰区率") && dashboardHtml.includes("差距过大率")) ok("db_dashboard surfaces coverage calibration snapshots");
+else fail("db_dashboard should surface coverage calibration snapshots");
+
+if (dashboardHtml.includes("优先复审动作") && dashboardHtml.includes("优先复审理由") && dashboardHtml.includes("优先分 = 样本量 × (灰区率 + 2 × 差距过大率)")) ok("db_dashboard surfaces coverage review priorities");
+else fail("db_dashboard should surface coverage review priorities");
+
+if (dashboardHtml.includes("自动建议") && dashboardHtml.includes("建议强度") && dashboardHtml.includes("强建议") && dashboardHtml.includes("证据组织") && dashboardHtml.includes("组合证据包") && dashboardHtml.includes("本轮先查动作偏差：升级到章节级尽量完整") && dashboardHtml.includes("建议分层") && dashboardHtml.includes("打开 coverage-calibration 详情") && dashboardHtml.includes("建议用法")) ok("db_dashboard surfaces coverage review recommendation");
+else fail("db_dashboard should surface coverage review recommendation");
+
+if (dashboardHtml.includes("建议证据") && dashboardHtml.includes("解释标签") && dashboardHtml.includes("组合包-动作侧 · 同型 gray") && dashboardHtml.includes("组合包-理由侧 · 同型 gray") && dashboardHtml.includes("动作层样本") && dashboardHtml.includes("理由层样本") && dashboardHtml.includes("等 3 本") && dashboardHtml.includes("证据解释")) ok("db_dashboard surfaces recommendation evidence preview");
+else fail("db_dashboard should surface recommendation evidence preview");
+
+if (dashboardHtml.includes("读者策略视角") && dashboardHtml.includes("默认社区视角(1)") && dashboardHtml.includes("默认社区 preset") && dashboardHtml.includes("平衡阈值") && dashboardHtml.includes("快速摸底") && dashboardHtml.includes("快速摸底链路") && dashboardHtml.includes("按章节") && dashboardHtml.includes("脚本识别") && dashboardHtml.includes("连载中")) ok("db_dashboard surfaces reader policy overview and latest-run details");
 else fail("db_dashboard should surface reader policy overview and latest-run details");
 
-if (dashboardHtml.includes("趋势报告入口") && dashboardHtml.includes("打开 trends 详情") && dashboardHtml.includes("href=\"scan-db/trends/trends.html\"")) ok("db_dashboard links trends detail page after refresh");
+if (dashboardHtml.includes("趋势报告入口") && dashboardHtml.includes("打开趋势详情") && dashboardHtml.includes("href=\"scan-db/trends/trends.html\"")) ok("db_dashboard links trends detail page after refresh");
 else fail("db_dashboard should link trends detail page after refresh");
 
 if (dashboardHtml.includes("Compare 详情入口") && !dashboardHtml.includes("saoshu_cli.mjs compare --db")) ok("db_dashboard prefers detail links over command snippets when compare pages are ready");
 else fail("db_dashboard should prefer detail links over command snippets when compare pages are ready");
 
-if (dashboardHtml.includes("点击查看详情") && dashboardHtml.includes("href=\"scan-db/compare/compare.html\"") && dashboardHtml.includes("href=\"scan-db/compare-context/compare.html\"") && dashboardHtml.includes("href=\"scan-db/compare-context-kinds/compare.html\"") && dashboardHtml.includes("href=\"scan-db/compare-policy/compare.html\"")) ok("db_dashboard links compare detail pages after refresh");
+if (dashboardHtml.includes("点击查看详情") && dashboardHtml.includes("href=\"scan-db/compare/compare.html\"") && dashboardHtml.includes("href=\"scan-db/compare-calibration/compare.html\"") && dashboardHtml.includes("href=\"scan-db/compare-context/compare.html\"") && dashboardHtml.includes("href=\"scan-db/compare-context-kinds/compare.html\"") && dashboardHtml.includes("href=\"scan-db/compare-policy/compare.html\"")) ok("db_dashboard links compare detail pages after refresh");
 else fail("db_dashboard should link compare detail pages after refresh");
 
 const trendsDir = path.join(tmpRoot, "trends");
 const trends = runNode("packages/saoshu-scan-db/scripts/db_trends.mjs", ["--db", dbDir, "--output-dir", trendsDir]);
-if (trends.status === 0 && fs.existsSync(path.join(trendsDir, "trends.json"))) ok("db_trends renders mode-diff aware trends outputs");
+if (trends.status === 0 && fs.existsSync(path.join(trendsDir, "trends.json")) && trends.stdout.includes("趋势 JSON：") && trends.stdout.includes("趋势 Markdown：") && trends.stdout.includes("趋势 HTML：")) ok("db_trends renders mode-diff aware trends outputs");
 else fail(`db_trends failed\nSTDERR:\n${trends.stderr}`);
 
 const trendsPayload = JSON.parse(fs.readFileSync(path.join(trendsDir, "trends.json"), "utf8"));
@@ -184,11 +265,11 @@ if (Array.isArray(trendsPayload.top_reader_policy_presets)
 else fail(`db_trends should include reader policy trend payload: ${JSON.stringify(trendsPayload)}`);
 
 const trendsMd = fs.readFileSync(path.join(trendsDir, "trends.md"), "utf8");
-if (trendsMd.includes("读者策略 preset Top") && trendsMd.includes("community-default: 1") && trendsMd.includes("自定义读者策略分布")) ok("db_trends markdown surfaces reader policy sections");
+if (trendsMd.includes("Mode-diff 样本数") && trendsMd.includes("高频读者策略预设") && trendsMd.includes("默认社区视角: 1") && trendsMd.includes("自定义读者策略分布") && trendsMd.includes("默认: 1") && trendsMd.includes("平衡阈值: 1") && trendsMd.includes("平衡覆盖: 1")) ok("db_trends markdown surfaces reader policy sections");
 else fail("db_trends markdown should surface reader policy sections");
 
 const trendsHtml = fs.readFileSync(path.join(trendsDir, "trends.html"), "utf8");
-if (trendsHtml.includes("读者策略 preset Top") && trendsHtml.includes("community-default") && trendsHtml.includes("证据阈值 Top") && trendsHtml.includes("自定义读者策略分布")) ok("db_trends html surfaces reader policy sections");
+if (trendsHtml.includes("Mode-diff 样本数") && trendsHtml.includes("高频读者策略预设") && trendsHtml.includes("默认社区视角") && trendsHtml.includes("高频证据阈值") && trendsHtml.includes("平衡阈值") && trendsHtml.includes("高频覆盖偏好") && trendsHtml.includes("平衡覆盖") && trendsHtml.includes("自定义读者策略分布") && trendsHtml.includes("默认")) ok("db_trends html surfaces reader policy sections");
 else fail("db_trends html should surface reader policy sections");
 
 if (!hasFailure) console.log("DB mode-diff integration check passed.");

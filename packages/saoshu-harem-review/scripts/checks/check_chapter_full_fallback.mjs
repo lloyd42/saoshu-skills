@@ -136,7 +136,9 @@ else fail(`db run should keep chapter-full segment fallback contract: ${JSON.str
 const dbOverview = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["--db", path.join(fixture.outputDir, "scan-db"), "--metric", "overview", "--format", "text"]);
 if (dbOverview.status === 0) ok("chapter-full fallback db overview query");
 else fail(`db overview failed\nSTDERR:\n${dbOverview.stderr}`);
-if (dbOverview.stdout.includes("Top coverage units: segment(1)") && dbOverview.stdout.includes("Top chapter detect modes: segment-fallback(1)")) ok("db overview surfaces segment fallback summary");
+if (dbOverview.stdout.includes("高频覆盖偏好：高覆盖优先(1)")
+  && dbOverview.stdout.includes("高频覆盖单元：按分段(1)")
+  && dbOverview.stdout.includes("高频识别路径：章节失败后按分段(1)")) ok("db overview surfaces segment fallback summary");
 else fail(`db overview should surface segment fallback summary\nSTDOUT:\n${dbOverview.stdout}`);
 
 if (!hasFailure) console.log("Chapter-full fallback check passed.");

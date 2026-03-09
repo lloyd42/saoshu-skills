@@ -2,6 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { getModeDiffDbFile, readJsonl, splitTags, toNumber } from "./mode_diff_db.mjs";
 import { writeUtf8File, writeUtf8Json } from "../../../saoshu-harem-review/scripts/lib/text_output.mjs";
+import { formatCoverageDecisionAction, formatCoverageDecisionConfidence, formatCoverageDecisionReason } from "./coverage_decision_view.mjs";
+import { formatCompareDimensionLabel, formatCompareDimensionValue, formatModeDiffBand } from "./display_labels.mjs";
 
 export const DEFAULT_COMPARE_TOP = 20;
 export const DEFAULT_COMPARE_DIMENSIONS = "author,tags,verdict,coverage_mode,coverage_template,coverage_decision_action,pipeline_mode,target_defense";
@@ -190,16 +192,27 @@ function formatDist(items) {
   return items.map((item) => `${item.name}(${item.count})`).join(" / ");
 }
 
+function formatModeDiffBandDist(items) {
+  return items.map((item) => `${formatModeDiffBand(item.name)}(${item.count})`).join(" / ");
+}
+
+function formatCompareCellValue(dimension, value) {
+  if (dimension === "coverage_decision_action") return formatCoverageDecisionAction(value);
+  if (dimension === "coverage_decision_confidence") return formatCoverageDecisionConfidence(value);
+  if (dimension === "coverage_decision_reason") return formatCoverageDecisionReason(value);
+  return formatCompareDimensionValue(dimension, value);
+}
+
 function renderCompareMarkdown(result) {
   const lines = [];
   lines.push("# 扫书多维对比");
   lines.push("");
   lines.push(`- 总运行数：${result.total_runs}`);
   lines.push(`- mode-diff 样本数：${result.total_mode_diff_entries}`);
-  lines.push(`- 维度：${result.dimensions.join(", ")}`);
+  lines.push(`- 维度：${result.dimensions.map((item) => formatCompareDimensionLabel(item)).join(" / ")}`);
   lines.push("");
   for (const block of result.groups) {
-    lines.push(`## 维度：${block.dimension}`);
+    lines.push(`## 维度：${formatCompareDimensionLabel(block.dimension)}`);
     if (!block.rows.length) {
       lines.push("- 无数据");
       lines.push("");
@@ -208,7 +221,7 @@ function renderCompareMarkdown(result) {
     lines.push("|值|运行数|均分|均雷点|均郁闷|均风险|均覆盖率|均关键词候选|均别名候选|均补证问题|均关系边|均引用数|均反证数|均偏移引用数|mode-diff数|灰区率|差距过大率|可接受率|均gap分|mode-diff均覆盖率|结论分布|mode-diff策略分布|");
     lines.push("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|");
     for (const row of block.rows) {
-      lines.push(`|${row.key}|${row.runs}|${row.avg_rating}|${row.avg_thunder}|${row.avg_depression}|${row.avg_risk}|${(row.avg_coverage * 100).toFixed(1)}%|${row.avg_keyword_candidates}|${row.avg_alias_candidates}|${row.avg_risk_questions}|${row.avg_relations}|${row.avg_context_references}|${row.avg_counter_evidence_refs}|${row.avg_offset_hint_refs}|${row.mode_diff_entries}|${(row.gray_rate * 100).toFixed(1)}%|${(row.too_wide_rate * 100).toFixed(1)}%|${(row.acceptable_rate * 100).toFixed(1)}%|${row.avg_mode_diff_score}|${(row.avg_mode_diff_coverage * 100).toFixed(1)}%|${formatDist(row.verdict_dist)}|${formatDist(row.mode_diff_band_dist)}|`);
+      lines.push(`|${formatCompareCellValue(block.dimension, row.key)}|${row.runs}|${row.avg_rating}|${row.avg_thunder}|${row.avg_depression}|${row.avg_risk}|${(row.avg_coverage * 100).toFixed(1)}%|${row.avg_keyword_candidates}|${row.avg_alias_candidates}|${row.avg_risk_questions}|${row.avg_relations}|${row.avg_context_references}|${row.avg_counter_evidence_refs}|${row.avg_offset_hint_refs}|${row.mode_diff_entries}|${(row.gray_rate * 100).toFixed(1)}%|${(row.too_wide_rate * 100).toFixed(1)}%|${(row.acceptable_rate * 100).toFixed(1)}%|${row.avg_mode_diff_score}|${(row.avg_mode_diff_coverage * 100).toFixed(1)}%|${formatDist(row.verdict_dist)}|${formatModeDiffBandDist(row.mode_diff_band_dist)}|`);
     }
     lines.push("");
   }
@@ -217,13 +230,13 @@ function renderCompareMarkdown(result) {
 
 function renderCompareHtml(result) {
   const sections = result.groups.map((block) => {
-    const rows = block.rows.map((row) => `<tr><td>${esc(row.key)}</td><td>${row.runs}</td><td>${row.avg_rating}</td><td>${row.avg_thunder}</td><td>${row.avg_depression}</td><td>${row.avg_risk}</td><td>${(row.avg_coverage * 100).toFixed(1)}%</td><td>${row.avg_keyword_candidates}</td><td>${row.avg_alias_candidates}</td><td>${row.avg_risk_questions}</td><td>${row.avg_relations}</td><td>${row.avg_context_references}</td><td>${row.avg_counter_evidence_refs}</td><td>${row.avg_offset_hint_refs}</td><td>${row.mode_diff_entries}</td><td>${(row.gray_rate * 100).toFixed(1)}%</td><td>${(row.too_wide_rate * 100).toFixed(1)}%</td><td>${(row.acceptable_rate * 100).toFixed(1)}%</td><td>${row.avg_mode_diff_score}</td><td>${(row.avg_mode_diff_coverage * 100).toFixed(1)}%</td><td>${esc(formatDist(row.verdict_dist))}</td><td>${esc(formatDist(row.mode_diff_band_dist))}</td></tr>`).join("");
-    return `<div class="card"><h2>维度：${esc(block.dimension)}</h2><table><thead><tr><th>值</th><th>运行数</th><th>均分</th><th>均雷点</th><th>均郁闷</th><th>均风险</th><th>均覆盖率</th><th>均关键词候选</th><th>均别名候选</th><th>均补证问题</th><th>均关系边</th><th>均引用数</th><th>均反证数</th><th>均偏移引用数</th><th>mode-diff数</th><th>灰区率</th><th>差距过大率</th><th>可接受率</th><th>均gap分</th><th>mode-diff均覆盖率</th><th>结论分布</th><th>mode-diff策略分布</th></tr></thead><tbody>${rows || '<tr><td colspan="22">无数据</td></tr>'}</tbody></table></div>`;
+    const rows = block.rows.map((row) => `<tr><td>${esc(formatCompareCellValue(block.dimension, row.key))}</td><td>${row.runs}</td><td>${row.avg_rating}</td><td>${row.avg_thunder}</td><td>${row.avg_depression}</td><td>${row.avg_risk}</td><td>${(row.avg_coverage * 100).toFixed(1)}%</td><td>${row.avg_keyword_candidates}</td><td>${row.avg_alias_candidates}</td><td>${row.avg_risk_questions}</td><td>${row.avg_relations}</td><td>${row.avg_context_references}</td><td>${row.avg_counter_evidence_refs}</td><td>${row.avg_offset_hint_refs}</td><td>${row.mode_diff_entries}</td><td>${(row.gray_rate * 100).toFixed(1)}%</td><td>${(row.too_wide_rate * 100).toFixed(1)}%</td><td>${(row.acceptable_rate * 100).toFixed(1)}%</td><td>${row.avg_mode_diff_score}</td><td>${(row.avg_mode_diff_coverage * 100).toFixed(1)}%</td><td>${esc(formatDist(row.verdict_dist))}</td><td>${esc(formatModeDiffBandDist(row.mode_diff_band_dist))}</td></tr>`).join("");
+    return `<div class="card"><h2>维度：${esc(formatCompareDimensionLabel(block.dimension))}</h2><table><thead><tr><th>值</th><th>运行数</th><th>均分</th><th>均雷点</th><th>均郁闷</th><th>均风险</th><th>均覆盖率</th><th>均关键词候选</th><th>均别名候选</th><th>均补证问题</th><th>均关系边</th><th>均引用数</th><th>均反证数</th><th>均偏移引用数</th><th>mode-diff数</th><th>灰区率</th><th>差距过大率</th><th>可接受率</th><th>均gap分</th><th>mode-diff均覆盖率</th><th>结论分布</th><th>mode-diff策略分布</th></tr></thead><tbody>${rows || '<tr><td colspan="22">无数据</td></tr>'}</tbody></table></div>`;
   }).join("");
 
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>扫书多维对比</title>
 <style>body{font:14px/1.5 "Microsoft YaHei",sans-serif;background:#f4f1ea;margin:0;color:#222}.wrap{max-width:1280px;margin:20px auto;padding:0 16px}.card{background:#fff;border:1px solid #e7dccd;border-radius:12px;padding:12px;margin-bottom:12px}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #eee;padding:7px;text-align:left;vertical-align:top}h1{margin:0 0 8px}</style>
-</head><body><div class="wrap"><div class="card"><h1>扫书多维对比</h1><div>总运行数：${result.total_runs} ｜ mode-diff 样本数：${result.total_mode_diff_entries} ｜ 维度：${esc(result.dimensions.join(", "))}</div></div>${sections}</div></body></html>`;
+</head><body><div class="wrap"><div class="card"><h1>扫书多维对比</h1><div>总运行数：${result.total_runs} ｜ mode-diff 样本数：${result.total_mode_diff_entries} ｜ 维度：${esc(result.dimensions.map((item) => formatCompareDimensionLabel(item)).join(" / "))}</div></div>${sections}</div></body></html>`;
 }
 
 export function buildCompareResult({ db, preset = "", dimensions = DEFAULT_COMPARE_DIMENSIONS, dimensionsExplicit = false, top = DEFAULT_COMPARE_TOP }) {

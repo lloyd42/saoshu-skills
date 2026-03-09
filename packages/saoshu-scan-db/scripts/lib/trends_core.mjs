@@ -1,6 +1,14 @@
 import path from "node:path";
 import { writeUtf8File, writeUtf8Json } from "../../../saoshu-harem-review/scripts/lib/text_output.mjs";
 import { aggregateModeDiffByDay, buildModeDiffSummaryFromRows, getModeDiffDbFile, readJsonl } from "./mode_diff_db.mjs";
+import {
+  formatCoverageMode,
+  formatCoverageTemplate,
+  formatCustomizationFlag,
+  formatReaderPolicyCoveragePreference,
+  formatReaderPolicyPreset,
+  formatReaderPolicyThreshold,
+} from "./display_labels.mjs";
 
 export const DEFAULT_TRENDS_TOP = 10;
 
@@ -93,8 +101,8 @@ export function renderTrendsMd(data) {
   lines.push("# 扫书趋势报告");
   lines.push("");
   lines.push(`- 总运行数：${data.runs_total}`);
-  lines.push(`- Mode-diff 台账数：${data.mode_diff.total_entries}`);
-  lines.push(`- Mode-diff 当前建议：${data.mode_diff.recommendation?.summary || "-"}`);
+  lines.push(`- Mode-diff 样本数：${data.mode_diff.total_entries}`);
+  lines.push(`- Mode-diff 建议：${data.mode_diff.recommendation?.summary || "-"}`);
   lines.push("");
   lines.push("## 按日趋势");
   if (!data.by_day.length) lines.push("- 无");
@@ -104,29 +112,29 @@ export function renderTrendsMd(data) {
   if (!data.mode_diff.by_day.length) lines.push("- 无");
   else data.mode_diff.by_day.forEach((x) => lines.push(`- ${x.day}: ${x.count}`));
   lines.push("");
-  lines.push("## 作者趋势 Top");
+  lines.push("## 高频作者");
   if (!data.top_authors.length) lines.push("- 无");
   else data.top_authors.forEach((x) => lines.push(`- ${x.name}: ${x.count}`));
   lines.push("");
-  lines.push("## 标签趋势 Top");
+  lines.push("## 高频标签");
   if (!data.top_tags.length) lines.push("- 无");
   else data.top_tags.forEach((x) => lines.push(`- ${x.name}: ${x.count}`));
   lines.push("");
-  lines.push("## 读者策略 preset Top");
+  lines.push("## 高频读者策略预设");
   if (!data.top_reader_policy_presets.length) lines.push("- 无");
-  else data.top_reader_policy_presets.forEach((x) => lines.push(`- ${x.name}: ${x.count}`));
+  else data.top_reader_policy_presets.forEach((x) => lines.push(`- ${formatReaderPolicyPreset(x.name)}: ${x.count}`));
   lines.push("");
-  lines.push("## 证据阈值 Top");
+  lines.push("## 高频证据阈值");
   if (!data.top_reader_policy_thresholds.length) lines.push("- 无");
-  else data.top_reader_policy_thresholds.forEach((x) => lines.push(`- ${x.name}: ${x.count}`));
+  else data.top_reader_policy_thresholds.forEach((x) => lines.push(`- ${formatReaderPolicyThreshold(x.name)}: ${x.count}`));
   lines.push("");
-  lines.push("## 覆盖偏好 Top");
+  lines.push("## 高频覆盖偏好");
   if (!data.top_reader_policy_coverage_preferences.length) lines.push("- 无");
-  else data.top_reader_policy_coverage_preferences.forEach((x) => lines.push(`- ${x.name}: ${x.count}`));
+  else data.top_reader_policy_coverage_preferences.forEach((x) => lines.push(`- ${formatReaderPolicyCoveragePreference(x.name)}: ${x.count}`));
   lines.push("");
   lines.push("## 自定义读者策略分布");
   if (!data.reader_policy_customization_dist.length) lines.push("- 无");
-  else data.reader_policy_customization_dist.forEach((x) => lines.push(`- ${x.name}: ${x.count}`));
+  else data.reader_policy_customization_dist.forEach((x) => lines.push(`- ${formatCustomizationFlag(x.name)}: ${x.count}`));
   lines.push("");
   lines.push("## Mode-diff 档位分布");
   lines.push(`- 可接受：${data.mode_diff.gain_window_counts?.acceptable || 0}`);
@@ -147,10 +155,10 @@ export function renderTrendsHtml(data) {
   }).join("");
   const authorRows = data.top_authors.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.count}</td></tr>`).join("");
   const tagRows = data.top_tags.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.count}</td></tr>`).join("");
-  const presetRows = data.top_reader_policy_presets.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.count}</td></tr>`).join("");
-  const thresholdRows = data.top_reader_policy_thresholds.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.count}</td></tr>`).join("");
-  const coveragePreferenceRows = data.top_reader_policy_coverage_preferences.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.count}</td></tr>`).join("");
-  const customizationRows = data.reader_policy_customization_dist.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.count}</td></tr>`).join("");
+  const presetRows = data.top_reader_policy_presets.map((x) => `<tr><td>${esc(formatReaderPolicyPreset(x.name))}</td><td>${x.count}</td></tr>`).join("");
+  const thresholdRows = data.top_reader_policy_thresholds.map((x) => `<tr><td>${esc(formatReaderPolicyThreshold(x.name))}</td><td>${x.count}</td></tr>`).join("");
+  const coveragePreferenceRows = data.top_reader_policy_coverage_preferences.map((x) => `<tr><td>${esc(formatReaderPolicyCoveragePreference(x.name))}</td><td>${x.count}</td></tr>`).join("");
+  const customizationRows = data.reader_policy_customization_dist.map((x) => `<tr><td>${esc(formatCustomizationFlag(x.name))}</td><td>${x.count}</td></tr>`).join("");
   const modeSummaryRows = [
     ["可接受", data.mode_diff.gain_window_counts?.acceptable || 0],
     ["灰区", data.mode_diff.gain_window_counts?.gray || 0],
@@ -159,21 +167,21 @@ export function renderTrendsHtml(data) {
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>扫书趋势报告</title>
 <style>body{font:14px/1.5 "Microsoft YaHei",sans-serif;background:#f4f1ea;margin:0;color:#222}.wrap{max-width:1180px;margin:20px auto;padding:0 16px}.card{background:#fff;border:1px solid #e7dccd;border-radius:12px;padding:12px;margin-bottom:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #eee;padding:7px;text-align:left}.bar{height:10px;background:#f2e8da;border-radius:999px;overflow:hidden}.bar>span{display:block;height:100%;background:#cc8f4a}</style>
 </head><body><div class="wrap">
-<div class="card"><h1>扫书趋势报告</h1><div>总运行数：${data.runs_total} ｜ Mode-diff 台账数：${data.mode_diff.total_entries}</div><div style="margin-top:8px">${esc(data.mode_diff.recommendation?.summary || "暂无 mode-diff 台账")}</div></div>
+<div class="card"><h1>扫书趋势报告</h1><div>总运行数：${data.runs_total} ｜ Mode-diff 样本数：${data.mode_diff.total_entries}</div><div style="margin-top:8px">${esc(data.mode_diff.recommendation?.summary || "暂无 Mode-diff 台账")}</div></div>
 <div class="grid">
 <div class="card"><h2>按日趋势</h2><table><thead><tr><th>日期</th><th>次数</th><th>趋势</th></tr></thead><tbody>${dayRows || "<tr><td colspan=3>-</td></tr>"}</tbody></table></div>
 <div class="card"><h2>Mode-diff 按日趋势</h2><table><thead><tr><th>日期</th><th>次数</th><th>趋势</th></tr></thead><tbody>${modeRows || "<tr><td colspan=3>-</td></tr>"}</tbody></table></div>
 </div>
 <div class="grid">
-<div class="card"><h2>作者 Top</h2><table><thead><tr><th>作者</th><th>次数</th></tr></thead><tbody>${authorRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
-<div class="card"><h2>标签 Top</h2><table><thead><tr><th>标签</th><th>次数</th></tr></thead><tbody>${tagRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
+<div class="card"><h2>高频作者</h2><table><thead><tr><th>作者</th><th>次数</th></tr></thead><tbody>${authorRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
+<div class="card"><h2>高频标签</h2><table><thead><tr><th>标签</th><th>次数</th></tr></thead><tbody>${tagRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
 </div>
 <div class="grid">
-<div class="card"><h2>读者策略 preset Top</h2><table><thead><tr><th>preset</th><th>次数</th></tr></thead><tbody>${presetRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
-<div class="card"><h2>证据阈值 Top</h2><table><thead><tr><th>阈值</th><th>次数</th></tr></thead><tbody>${thresholdRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
+<div class="card"><h2>高频读者策略预设</h2><table><thead><tr><th>预设</th><th>次数</th></tr></thead><tbody>${presetRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
+<div class="card"><h2>高频证据阈值</h2><table><thead><tr><th>阈值</th><th>次数</th></tr></thead><tbody>${thresholdRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
 </div>
 <div class="grid">
-<div class="card"><h2>覆盖偏好 Top</h2><table><thead><tr><th>偏好</th><th>次数</th></tr></thead><tbody>${coveragePreferenceRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
+<div class="card"><h2>高频覆盖偏好</h2><table><thead><tr><th>偏好</th><th>次数</th></tr></thead><tbody>${coveragePreferenceRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
 <div class="card"><h2>自定义读者策略分布</h2><table><thead><tr><th>是否自定义</th><th>次数</th></tr></thead><tbody>${customizationRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
 </div>
 <div class="card"><h2>Mode-diff 档位分布</h2><table><thead><tr><th>档位</th><th>次数</th></tr></thead><tbody>${modeSummaryRows}</tbody></table></div>

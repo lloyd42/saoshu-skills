@@ -78,7 +78,7 @@ function runIntegratedOptionalScenario() {
 
   const dbOverview = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["--db", path.join(fixture.outputDir, "scan-db"), "--metric", "overview", "--format", "text"]);
   expectSuccess(dbOverview, "integrated db overview query");
-  if (dbOverview.stdout.includes("Total runs: 1")) ok("integrated db overview reflects ingested run");
+  if (dbOverview.stdout.includes("总运行数：1")) ok("integrated db overview reflects ingested run");
   else fail("integrated db overview missing ingested run");
 }
 
@@ -140,7 +140,7 @@ function runCoverageTemplateMetadataScenario() {
   else fail(`db runs should keep coverage decision reasons: ${JSON.stringify(dbRun)}`);
   const dbOverview = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["--db", path.join(fixture.outputDir, "scan-db"), "--metric", "overview", "--format", "text"]);
   expectSuccess(dbOverview, "coverage template db overview query");
-  if (dbOverview.stdout.includes("Top coverage modes: sampled(1)") && dbOverview.stdout.includes("Top coverage templates: head-tail-risk(1)")) ok("db overview text surfaces coverage mode and template summary");
+  if (dbOverview.stdout.includes("高频覆盖模式：快速摸底(1)") && dbOverview.stdout.includes("高频覆盖模板：首尾窗口+风险热点(1)")) ok("db overview text surfaces coverage mode and template summary");
   else fail(`db overview should surface coverage mode and template summary\nSTDOUT:\n${dbOverview.stdout}`);
 }
 
@@ -418,4 +418,3 @@ try {
   fail(err.stderr || err.stdout || err.message || String(err));
   process.exitCode = 1;
 }
-

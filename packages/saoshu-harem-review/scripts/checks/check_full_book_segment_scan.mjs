@@ -138,7 +138,9 @@ else fail(`db run should keep full-book segment contract: ${JSON.stringify(dbRun
 const dbOverview = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["--db", path.join(fixture.outputDir, "scan-db"), "--metric", "overview", "--format", "text"]);
 if (dbOverview.status === 0) ok("full-book db overview query");
 else fail(`db overview failed\nSTDERR:\n${dbOverview.stderr}`);
-if (dbOverview.stdout.includes("Top coverage units: segment(1)") && dbOverview.stdout.includes("Top chapter detect modes: segment-full-book(1)")) ok("db overview surfaces full-book segment summary");
+if (dbOverview.stdout.includes("高频覆盖偏好：高覆盖优先(1)")
+  && dbOverview.stdout.includes("高频覆盖单元：按分段(1)")
+  && dbOverview.stdout.includes("高频识别路径：整书分段直扫(1)")) ok("db overview surfaces full-book segment summary");
 else fail(`db overview should surface full-book segment summary\nSTDOUT:\n${dbOverview.stdout}`);
 
 if (!hasFailure) console.log("Full-book segment scan check passed.");

@@ -126,6 +126,16 @@ export function formatContextReferenceSource(sourceKind) {
   return normalized || "未知来源";
 }
 
+export function formatContextReferenceOwnerKind(ownerKind) {
+  const normalized = normalizeText(ownerKind);
+  if (normalized === "coverage_decision") return "覆盖升级建议";
+  if (normalized === "decision_summary") return "结论佐证";
+  if (normalized === "thunder") return "雷点";
+  if (normalized === "depression") return "郁闷点";
+  if (normalized === "risk") return "未证实风险";
+  return normalized || "未知归属";
+}
+
 function ensureRows(input) {
   return Array.isArray(input) ? input : collectContextReferences(input || {});
 }
@@ -157,17 +167,17 @@ export function buildContextReferenceOverview(input, limit = 6) {
 }
 
 export function formatContextReferenceOverviewText(summary) {
-  const sourceKinds = arr(summary?.source_kind_dist).map((item) => `${item[0]}(${item[1]})`).join(" / ") || "-";
-  const owners = arr(summary?.owner_kind_dist).map((item) => `${item[0]}(${item[1]})`).join(" / ") || "-";
+  const sourceKinds = arr(summary?.source_kind_dist).map((item) => `${formatContextReferenceSource(item[0])}(${item[1]})`).join(" / ") || "-";
+  const owners = arr(summary?.owner_kind_dist).map((item) => `${formatContextReferenceOwnerKind(item[0])}(${item[1]})`).join(" / ") || "-";
   const latestCounter = arr(summary?.latest_counter_references)[0]?.formatted || "-";
   const latestOffset = arr(summary?.latest_offset_references)[0]?.formatted || "-";
   return [
-    `Context references: ${Number(summary?.total_references || 0)}`,
-    `Counter references: ${Number(summary?.counter_reference_count || 0)}`,
-    `Offset-hint references: ${Number(summary?.offset_hint_count || 0)}`,
-    `Context source kinds: ${sourceKinds}`,
-    `Context owners: ${owners}`,
-    `Latest counter reference: ${latestCounter}`,
-    `Latest offset reference: ${latestOffset}`,
+    `上下文引用总数：${Number(summary?.total_references || 0)}`,
+    `反证引用数：${Number(summary?.counter_reference_count || 0)}`,
+    `偏移定位引用数：${Number(summary?.offset_hint_count || 0)}`,
+    `引用来源分布：${sourceKinds}`,
+    `引用归属分布：${owners}`,
+    `最近反证引用：${latestCounter}`,
+    `最近偏移定位引用：${latestOffset}`,
   ].join("\n");
 }

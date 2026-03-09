@@ -114,7 +114,7 @@ function main() {
 
   const help = runNode(cliPath, ["--help"], { cwd: smokeRoot });
   if (help.status !== 0) fail(`installed CLI help failed\nSTDERR:\n${help.stderr}`);
-  if (help.stdout.includes("policy-audit") && help.stdout.includes("db trends")) ok("installed CLI help exposes current db/compare surfaces");
+  if (help.stdout.includes("coverage-calibration") && help.stdout.includes("policy-audit") && help.stdout.includes("db trends")) ok("installed CLI help exposes current db/compare surfaces");
   else fail(`installed CLI help output stale\nSTDOUT:\n${help.stdout}`);
 
   const scan = runNode(cliPath, ["scan", "--manifest", path.join(smokeRoot, "manifest.json"), "--stage", "all"], { cwd: smokeRoot });
@@ -132,6 +132,7 @@ function main() {
   ensureExists(path.join(dbDir, "dashboard.html"), "installed smoke scan-db dashboard.html");
   ensureExists(path.join(dbDir, "trends", "trends.json"), "installed smoke scan-db trends.json");
   ensureExists(path.join(dbDir, "compare", "compare.html"), "installed smoke scan-db compare.html");
+  ensureExists(path.join(dbDir, "compare-calibration", "compare.html"), "installed smoke scan-db compare-calibration html");
   ensureExists(path.join(dbDir, "compare-context", "compare.html"), "installed smoke scan-db compare-context html");
   ensureExists(path.join(dbDir, "compare-policy", "compare.html"), "installed smoke scan-db compare-policy html");
   assertStep(statePath, "db_ingest", "done");
@@ -140,7 +141,7 @@ function main() {
 
   const dbOverview = runNode(cliPath, ["db", "overview", "--db", dbDir], { cwd: smokeRoot });
   if (dbOverview.status !== 0) fail(`installed CLI db overview failed\nSTDERR:\n${dbOverview.stderr}`);
-  if (dbOverview.stdout.includes("Total runs: 1")) ok("installed CLI db overview reads local db");
+  if (dbOverview.stdout.includes("总运行数：1")) ok("installed CLI db overview reads local db");
   else fail(`installed CLI db overview output unexpected\nSTDOUT:\n${dbOverview.stdout}`);
 
   console.log(`Smoke root: ${smokeRoot}`);

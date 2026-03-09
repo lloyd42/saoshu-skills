@@ -148,6 +148,22 @@ expectSuccess(contextOverview, "db_query context reference overview run");
 const contextOverviewPayload = JSON.parse(contextOverview.stdout || "{}");
 expect(Number(contextOverviewPayload.counter_reference_count || 0) >= 1 && Number(contextOverviewPayload.offset_hint_count || 0) >= 1, "db_query context reference overview keeps counter and offset stats", "db_query context reference overview should keep counter and offset stats");
 
+const contextOverviewText = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["--db", dbDir, "--metric", "context-reference-overview", "--format", "text"]);
+expectSuccess(contextOverviewText, "db_query context reference overview text run");
+expect(
+  contextOverviewText.stdout.includes("上下文引用总数：")
+  && contextOverviewText.stdout.includes("反证引用数：")
+  && contextOverviewText.stdout.includes("偏移定位引用数：")
+  && contextOverviewText.stdout.includes("引用来源分布：")
+  && contextOverviewText.stdout.includes("事件反证")
+  && contextOverviewText.stdout.includes("引用归属分布：")
+  && contextOverviewText.stdout.includes("覆盖升级建议")
+  && contextOverviewText.stdout.includes("最近反证引用：")
+  && contextOverviewText.stdout.includes("最近偏移定位引用："),
+  "db_query context reference overview text keeps localized summary",
+  `db_query context reference overview text should keep localized summary\nSTDOUT:\n${contextOverviewText.stdout}\nSTDERR:\n${contextOverviewText.stderr}`
+);
+
 const counterCandidates = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["--db", dbDir, "--metric", "counter-evidence-candidates", "--format", "json"]);
 expectSuccess(counterCandidates, "db_query counter evidence candidates run");
 const counterPayload = JSON.parse(counterCandidates.stdout || "[]");

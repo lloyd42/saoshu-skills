@@ -11,6 +11,17 @@ import {
   collectContextReferences,
   formatContextReferenceOverviewText,
 } from "./lib/context_reference_view.mjs";
+import {
+  formatChapterDetectMode,
+  formatCoverageMode,
+  formatCoverageTemplate,
+  formatCoverageUnit,
+  formatPipelineMode,
+  formatReaderPolicyCoveragePreference,
+  formatReaderPolicyPreset,
+  formatReaderPolicyThreshold,
+  formatSerialStatus,
+} from "./lib/display_labels.mjs";
 
 function usage() {
   console.log("Usage: node db_query.mjs --db <dir> [--metric overview|coverage-decision-overview|context-reference-overview|context-references|counter-evidence-candidates|verdict|top-risks|top-tags|top-keywords|keyword-candidates|promoted-keywords|top-aliases|alias-candidates|promoted-aliases|top-risk-questions|risk-question-candidates|promoted-risk-questions|top-relations|relation-candidates|promoted-relations|runs|mode-diff-overview|mode-diff-entries] [--limit 10] [--format text|json]");
@@ -192,10 +203,10 @@ function topRelationCandidates(rows, limit) {
 
 function formatModeDiffText(summary) {
   return [
-    `Mode-diff entries: ${summary.total_entries}`,
-    `Mode-diff gain windows: 可接受(${summary.gain_window_counts?.acceptable || 0}) / 灰区(${summary.gain_window_counts?.gray || 0}) / 差距过大(${summary.gain_window_counts?.too_wide || 0})`,
-    `Mode-diff recommendation: ${summary.recommendation?.summary || "-"}`,
-    `Mode-diff top reasons: ${Array.isArray(summary.recurring_reasons) && summary.recurring_reasons.length ? summary.recurring_reasons.map((item) => `${item.reason}(${item.count})`).join(" / ") : "-"}`,
+    `Mode-diff 样本数：${summary.total_entries}`,
+    `Mode-diff 档位分布：可接受(${summary.gain_window_counts?.acceptable || 0}) / 灰区(${summary.gain_window_counts?.gray || 0}) / 差距过大(${summary.gain_window_counts?.too_wide || 0})`,
+    `Mode-diff 建议：${summary.recommendation?.summary || "-"}`,
+    `Mode-diff 高频原因：${Array.isArray(summary.recurring_reasons) && summary.recurring_reasons.length ? summary.recurring_reasons.map((item) => `${item.reason}(${item.count})`).join(" / ") : "-"}`,
   ].join("\n");
 }
 
@@ -249,7 +260,7 @@ function main() {
       top_coverage_units: topN(runs, "coverage_unit", 10),
       top_chapter_detect_modes: topN(runs, "chapter_detect_used_mode", 10),
       top_serial_statuses: topN(runs, "serial_status", 10),
-      coverage_decision_overview: buildCoverageDecisionOverview(runs, args.limit),
+      coverage_decision_overview: buildCoverageDecisionOverview(runs, modeDiffEntries, args.limit),
       context_reference_overview: contextReferenceOverview,
       coverage_gap_runs: countCoverageGapRuns(runs),
       promoted_keywords: promotions.slice(-Math.min(args.limit, 10)).reverse(),
@@ -274,7 +285,7 @@ function main() {
   else if (args.metric === "relation-candidates") out = topRelationCandidates(relations, args.limit);
   else if (args.metric === "promoted-relations") out = relationPromotions.slice(-args.limit).reverse();
   else if (args.metric === "runs") out = runs.slice(-args.limit).reverse();
-  else if (args.metric === "coverage-decision-overview") out = buildCoverageDecisionOverview(runs, args.limit);
+  else if (args.metric === "coverage-decision-overview") out = buildCoverageDecisionOverview(runs, modeDiffEntries, args.limit);
   else if (args.metric === "context-reference-overview") out = contextReferenceOverview;
   else if (args.metric === "context-references") out = contextRows.slice(0, args.limit);
   else if (args.metric === "counter-evidence-candidates") out = counterEvidenceCandidates;
@@ -287,30 +298,30 @@ function main() {
     return;
   }
   if (args.metric === "overview") {
-    console.log(`Total runs: ${out.total_runs}`);
-    console.log(`Verdict dist: ${out.verdict_dist.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
-    console.log(`Top risks: ${out.top_risks.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
-    console.log(`Top tags: ${out.top_tags.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
-    console.log(`Top keywords: ${out.top_keywords.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
-    console.log(`Top aliases: ${out.top_aliases.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
-    console.log(`Top risk questions: ${out.top_risk_questions.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
-    console.log(`Top relations: ${out.top_relations.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
-    console.log(`Top coverage modes: ${out.top_coverage_modes.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
-    console.log(`Top coverage templates: ${out.top_coverage_templates.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
-    console.log(`Top reader policy presets: ${out.top_reader_policy_presets.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
-    console.log(`Top reader policy thresholds: ${out.top_reader_policy_thresholds.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
-    console.log(`Top reader policy coverage preferences: ${out.top_reader_policy_coverage_preferences.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
-    console.log(`Top coverage units: ${out.top_coverage_units.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
-    console.log(`Top chapter detect modes: ${out.top_chapter_detect_modes.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
-    console.log(`Top serial statuses: ${out.top_serial_statuses.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
-    console.log(formatCoverageDecisionOverviewText(out.coverage_decision_overview));
+    console.log(`总运行数：${out.total_runs}`);
+    console.log(`结论分布：${out.verdict_dist.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`高频风险：${out.top_risks.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`高频标签：${out.top_tags.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`高频关键词：${out.top_keywords.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`高频别名：${out.top_aliases.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`高频追问：${out.top_risk_questions.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`高频关系：${out.top_relations.map((x) => `${x.name}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`高频覆盖模式：${out.top_coverage_modes.map((x) => `${formatCoverageMode(x.name)}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`高频覆盖模板：${out.top_coverage_templates.map((x) => `${formatCoverageTemplate(x.name)}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`高频读者策略预设：${out.top_reader_policy_presets.map((x) => `${formatReaderPolicyPreset(x.name)}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`高频证据阈值：${out.top_reader_policy_thresholds.map((x) => `${formatReaderPolicyThreshold(x.name)}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`高频覆盖偏好：${out.top_reader_policy_coverage_preferences.map((x) => `${formatReaderPolicyCoveragePreference(x.name)}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`高频覆盖单元：${out.top_coverage_units.map((x) => `${formatCoverageUnit(x.name)}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`高频识别路径：${out.top_chapter_detect_modes.map((x) => `${formatChapterDetectMode(x.name)}(${x.count})`).join(" / ") || "-"}`);
+    console.log(`高频连载状态：${out.top_serial_statuses.map((x) => `${formatSerialStatus(x.name)}(${x.count})`).join(" / ") || "-"}`);
+    console.log(formatCoverageDecisionOverviewText(out.coverage_decision_overview, { dbPath: db }));
     console.log(formatContextReferenceOverviewText(out.context_reference_overview));
-    console.log(`Coverage-gap runs: ${out.coverage_gap_runs}`);
+    console.log(`覆盖缺口运行数：${out.coverage_gap_runs}`);
     console.log(formatModeDiffText(out.mode_diff_overview));
     return;
   }
   if (args.metric === "coverage-decision-overview") {
-    console.log(formatCoverageDecisionOverviewText(out));
+    console.log(formatCoverageDecisionOverviewText(out, { dbPath: db }));
     return;
   }
   if (args.metric === "context-reference-overview") {

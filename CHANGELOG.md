@@ -8,6 +8,17 @@
 - 新增 `packages/saoshu-harem-review/scripts/dev/release_installed_smoke.mjs` 与 `npm run dev:release-installed-smoke`，把“发版后同步到 Codex 已安装 skill 并按真实用户路径做最小样例冒烟”收敛成可复用命令。
 - `saoshu_cli.mjs --help` 现同步到当前 `policy-audit`、`db trends` 等 surface，避免已安装副本 help 文案继续漂移。
 - `compare_reports.mjs -> mode_diff_entries.jsonl -> db_compare.mjs` 现在会把快速摸底报告的 `coverage_mode / coverage_template / coverage_decision_* / serial_status / target_defense / reader_policy` 关键字段带进 mode-diff 侧，`coverage_decision_action / reason` 维度终于可以直接聚合真实样本里的灰区率与差距过大率；`db_compare.mjs` 也新增 `coverage-calibration` preset 方便专门校准升级建议。
+- `db_dashboard.mjs` 现在会把 `coverage-calibration` 也作为 canonical compare 详情页自动补齐，CLI/help、installed smoke 与 `saoshu-scan-db` 文档也同步到这条入口，避免升级建议校准入口只停留在 README 说明层。
+- `db_query.mjs --metric coverage-decision-overview` 与 `db_dashboard.mjs` 首页现在会直接前置“升级动作 / 升级理由”的校准快照，让终端和 dashboard 都能先回答“哪些建议正在真实样本里发灰”，再决定是否打开 `compare-calibration` 深挖。
+- `coverage-decision-overview` 与 dashboard 现在还会给出“优先复审动作 / 优先复审理由”队列，用 `样本量 × (灰区率 + 2 × 差距过大率)` 把最该优先回放的升级建议排到前面。
+- `coverage-decision-overview` 与 dashboard 现在还会自动生成“本轮先复查什么、为什么”的建议文案，把动作层和理由层的最高优先项直接串成一句话。
+- 自动建议现在还会进一步区分“先查动作偏差”还是“先查理由失真”，并把对应的 `coverage-calibration` drill-down 入口一起带出来。
+- 自动建议现在也会给出 `强建议 / 弱建议 / 仅提示` 三档强度，让低样本偶发问题不再被说得过满。
+- 自动建议现在还会显式给出“证据组织方式”，区分该找同类代表证据，还是该按动作层 + 理由层的组合证据包去复查。
+- `coverage-decision-overview` 与 dashboard 现在还会直接回显建议证据；组合证据包会拆成动作层样本和理由层样本，避免重新退回简单 top3。
+- 建议证据现在还会先按同型信号聚类，再选代表项，避免同一类样本在终端和 dashboard 里重复刷屏。
+- 建议证据里的每条样本现在还会带一个“解释标签”，直接说明它为什么被选中；终端会在样本行前缀回显，dashboard 表格也会单列展示，便于区分 `低样本观察 · 同型 too_wide`、`组合包-动作侧 · 同型 gray` 这类角色化标签。
+- `scan-db` 的终端概览、`policy-audit` compare、趋势页与 dashboard 现进一步统一到中文用户视角标签；`high-coverage`、`segment-fallback` 这类内部值不会再直接漏到 reader-facing 输出里。
 
 ### 文档
 - `VERSIONING.md`、`docs/development-workflow.md`、`CONTRIBUTING.md`、`scripts/dev/README.md` 现明确要求 release 后先同步已安装 skill，再用已安装副本执行真实用户场景 smoke。

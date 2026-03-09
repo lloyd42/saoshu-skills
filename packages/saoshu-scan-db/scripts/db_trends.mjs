@@ -3,7 +3,7 @@ import path from "node:path";
 import { buildTrendsResult, DEFAULT_TRENDS_TOP, writeTrendsArtifacts } from "./lib/trends_core.mjs";
 
 function usage() {
-  console.log("Usage: node db_trends.mjs --db <dir> [--by day] [--output-dir <dir>] [--top 10]");
+  console.log("用法：node db_trends.mjs --db <dir> [--by day] [--output-dir <dir>] [--top 10]");
 }
 
 function parseArgs(argv) {
@@ -35,9 +35,9 @@ function main() {
 
   const outDir = path.resolve(args.outputDir);
   const { jsonPath, mdPath, htmlPath } = writeTrendsArtifacts(data, outDir);
-  console.log(`Trends JSON: ${jsonPath}`);
-  console.log(`Trends MD:   ${mdPath}`);
-  console.log(`Trends HTML: ${htmlPath}`);
+  console.log(`趋势 JSON：${jsonPath}`);
+  console.log(`趋势 Markdown：${mdPath}`);
+  console.log(`趋势 HTML：${htmlPath}`);
 }
 
 try {

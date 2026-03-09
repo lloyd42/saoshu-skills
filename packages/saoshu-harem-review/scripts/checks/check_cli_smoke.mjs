@@ -66,7 +66,7 @@ try {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
-  if (cliHelp.includes("Usage:") && cliHelp.includes("saoshu_cli.mjs scan") && cliHelp.includes("policy-audit") && cliHelp.includes("db trends")) ok("runtime help saoshu_cli.mjs");
+  if (cliHelp.includes("Usage:") && cliHelp.includes("saoshu_cli.mjs scan") && cliHelp.includes("coverage-calibration") && cliHelp.includes("policy-audit") && cliHelp.includes("db trends")) ok("runtime help saoshu_cli.mjs");
   else fail("runtime help output unexpected in packages/saoshu-harem-review/scripts/saoshu_cli.mjs");
 } catch (err) {
   fail(`runtime help failed for packages/saoshu-harem-review/scripts/saoshu_cli.mjs: ${err.stderr || err.message}`);

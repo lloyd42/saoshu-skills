@@ -186,12 +186,12 @@ else fail(`db_ingest_report_tree should skip duplicates on rerun\nSTDOUT:\n${ing
 
 const overview = runNode("packages/saoshu-scan-db/scripts/db_query.mjs", ["--db", dbDir, "--metric", "coverage-decision-overview", "--format", "text"]);
 if (overview.status === 0
-  && overview.stdout.includes("Coverage decision sources: reported(3) / legacy-inferred(2)")
-  && overview.stdout.includes("Coverage decision actions:")
-  && overview.stdout.includes("升级到 chapter-full(2)")
-  && overview.stdout.includes("升级到 full-book(1)")
+  && overview.stdout.includes("覆盖决策来源：报告直出(3) / 旧报告兼容推断(2)")
+  && overview.stdout.includes("覆盖升级建议：")
+  && overview.stdout.includes("升级到章节级尽量完整(2)")
+  && overview.stdout.includes("升级到整书最终确认(1)")
   && overview.stdout.includes("继续当前覆盖层(2)")
-  && overview.stdout.includes("Top reader policy presets: community-default(3) / custom-no-steal(2)")) ok("db_ingest_report_tree enables coverage decision overview after tree ingest");
+  && overview.stdout.includes("高频读者策略预设：默认社区视角(3) / 关键女主防抢视角(2)")) ok("db_ingest_report_tree enables coverage decision overview after tree ingest");
 else fail(`coverage decision overview should be available after tree ingest\nSTDOUT:\n${overview.stdout}\nSTDERR:\n${overview.stderr}`);
 
 if (!hasFailure) console.log("DB ingest report tree check passed.");
