@@ -112,12 +112,13 @@
 - `merged-report.json` / Markdown / HTML 已会展示“当前按哪种策略视角解释证据”
 - `follow_up_questions` 已会受 `reader_policy` 影响，优先追问策略视角更敏感的风险
 - `coverage_decision` 已会把 `evidence_threshold=strict` / `coverage_preference=conservative` 视为更保守的补证信号
+- `scan-db` 已能通过 `coverage-decision-overview`、`policy-audit` compare、dashboard、trends 对策略差异做最小复盘
 
 当前仍未落地的部分：
 
 - `reader_policy` 直接参与主裁决逻辑
 - 按不同策略视角并排输出多份结论
-- 数据库层对策略差异做正式复盘
+- 哪类风险最常因为策略差异而改变结论，当前仍缺更强的结构化复盘
 
 ### Phase 2：再决定是否进入 manifest / profile 文件
 
@@ -129,9 +130,11 @@
 - 允许显式传入 profile
 - 对同一份证据生成“默认视角 + 指定视角”的差异说明
 
-### Phase 3：让 scan-db 支持策略复盘
+### Phase 3：把 scan-db 的策略复盘从“可观察”补到“可解释”
 
-如果未来进入数据库层，重点不是统计“谁更敏感”，而是复盘：
+当前 `scan-db` 已经能看出策略 preset、证据阈值、覆盖偏好和自定义开关的分布，也能按作品集合做 `policy-audit` compare。
+
+下一步如果继续进入数据库层，重点不是统计“谁更敏感”，而是把复盘解释补强：
 
 - 哪类策略最常触发升级覆盖
 - 哪类风险最常因为策略差异而改变结论

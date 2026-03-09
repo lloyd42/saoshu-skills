@@ -46,6 +46,7 @@
 - `coverage_decision` 合同已经打通：报告 JSON、Markdown / HTML、scan-db 扁平字段、compare / dashboard 默认展示已对齐
 - `context_references` 合同已经打通：报告 JSON、Markdown / HTML、复核包、scan-db 查询与 dashboard 已对齐
 - `scan-db` 已能直接消费上下文引用、覆盖升级建议、mode-diff 台账与 compare preset
+- `scan-db` 已能通过 query / compare / dashboard / trends 复盘 `reader_policy` 的最小差异面，但仍停留在策略视角解释，不直接改写主裁决
 - feedback loop 已覆盖关键词、别名、补证问题池、关系边四条闭环，并支持统一导出资产
 - `reader_policy` 已进入 manifest 与最终报告合同，当前先承担“策略视角声明与解释”职责，为后续人机协同保留挂载点
 - 仓库读写基线已收敛为 `UTF-8 without BOM` + `LF`，共享 no-BOM 写入 helper 与检查链已落地
