@@ -33,6 +33,25 @@ const comparePayload = JSON.parse(fs.readFileSync(path.join(dbDir, "compare", "c
 if (JSON.stringify(comparePayload.dimensions) === JSON.stringify(["author", "tags", "coverage_mode", "coverage_template", "coverage_decision_action", "coverage_decision_confidence", "coverage_decision_reason", "serial_status", "target_defense", "mode_diff_gain_window", "mode_diff_band"])) ok("mode_diff_workflow default compare dimensions prefer coverage-decision calibration");
 else fail(`mode_diff_workflow should prefer coverage-decision calibration dimensions: ${JSON.stringify(comparePayload.dimensions)}`);
 
+const modeDiffRows = fs.readFileSync(path.join(dbDir, "mode_diff_entries.jsonl"), "utf8")
+  .split(/\r?\n/u)
+  .map((line) => line.trim())
+  .filter(Boolean)
+  .map((line) => JSON.parse(line));
+const modeDiffRow = modeDiffRows[0] || {};
+if (modeDiffRow.coverage_mode === "sampled"
+  && modeDiffRow.coverage_template === "opening-latest"
+  && modeDiffRow.coverage_decision_action === "upgrade-chapter-full"
+  && Array.isArray(modeDiffRow.coverage_decision_reasons)
+  && modeDiffRow.coverage_decision_reasons.includes("late_risk_uncovered")
+  && modeDiffRow.serial_status === "ongoing") ok("mode_diff_workflow ingests economy coverage decision fields into mode-diff rows");
+else fail(`mode_diff_workflow should ingest economy coverage decision fields: ${JSON.stringify(modeDiffRow)}`);
+
+const actionGroup = Array.isArray(comparePayload.groups) ? comparePayload.groups.find((item) => item.dimension === "coverage_decision_action") : null;
+const upgradeRow = Array.isArray(actionGroup?.rows) ? actionGroup.rows.find((item) => item.key === "upgrade-chapter-full") : null;
+if (upgradeRow?.runs === 0 && upgradeRow?.mode_diff_entries === 1) ok("mode_diff_workflow compare output calibrates mode-diff by coverage decision action");
+else fail(`mode_diff_workflow compare output should calibrate mode-diff by coverage decision action: ${JSON.stringify(upgradeRow)}`);
+
 const sync = runNode("packages/saoshu-harem-review/scripts/mode_diff_workflow.mjs", ["--ledger", ledgerPath, "--summary-dir", summaryDir, "--db", dbDir]);
 if (sync.status === 0) ok("mode_diff_workflow sync run");
 else fail(`mode_diff_workflow sync run failed\nSTDERR:\n${sync.stderr}`);

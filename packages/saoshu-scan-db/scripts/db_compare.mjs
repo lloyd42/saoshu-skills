@@ -8,7 +8,7 @@ import {
 } from "./lib/compare_core.mjs";
 
 function usage() {
-  console.log("Usage: node db_compare.mjs --db <dir> [--preset default|context-audit|context-source|policy-audit] [--dimensions author,tags,verdict,coverage_mode,coverage_template,coverage_decision_action,coverage_decision_confidence,coverage_decision_reason,pipeline_mode,coverage_unit,chapter_detect_used_mode,serial_status,target_defense,title,reader_policy_preset,reader_policy_label,reader_policy_evidence_threshold,reader_policy_coverage_preference,has_reader_policy_customization,reader_policy_hard_block,reader_policy_soft_risk,reader_policy_relation_constraint,has_counter_evidence,has_offset_hints,context_reference_source_kind,mode_diff_gain_window,mode_diff_band] [--top 20] [--output-dir <dir>]");
+  console.log("Usage: node db_compare.mjs --db <dir> [--preset default|coverage-calibration|context-audit|context-source|policy-audit] [--dimensions author,tags,verdict,coverage_mode,coverage_template,coverage_decision_action,coverage_decision_confidence,coverage_decision_reason,pipeline_mode,coverage_unit,chapter_detect_used_mode,serial_status,target_defense,title,reader_policy_preset,reader_policy_label,reader_policy_evidence_threshold,reader_policy_coverage_preference,has_reader_policy_customization,reader_policy_hard_block,reader_policy_soft_risk,reader_policy_relation_constraint,has_counter_evidence,has_offset_hints,context_reference_source_kind,mode_diff_gain_window,mode_diff_band] [--top 20] [--output-dir <dir>]");
 }
 
 function parseArgs(argv) {

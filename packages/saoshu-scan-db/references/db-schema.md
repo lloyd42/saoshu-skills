@@ -106,6 +106,12 @@
 ## mode_diff_entries.jsonl
 - entry_hash / ingested_at / recorded_at
 - compare_title / title / author / tags[]
+- pipeline_mode / coverage_mode / coverage_template / coverage_unit / chapter_detect_used_mode / serial_status
+- target_defense
+- reader_policy_preset / reader_policy_label / reader_policy_evidence_threshold / reader_policy_coverage_preference
+- has_reader_policy_customization
+- reader_policy_hard_blocks[] / reader_policy_soft_risks[] / reader_policy_relation_constraints[]
+- coverage_decision_action / coverage_decision_confidence / coverage_decision_reasons[]
 - gain_window / band / score / coverage_ratio
 - verdict_mismatch / risk_gap / follow_up_gap / relation_gap / event_gap / thunder_gap / depression_gap / rating_gap
 - top_reason / reasons[]

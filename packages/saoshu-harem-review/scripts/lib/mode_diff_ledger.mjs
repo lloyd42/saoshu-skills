@@ -35,6 +35,7 @@ export function splitTags(value) {
 
 function summarizeReport(report) {
   const sampling = report.scan?.sampling || {};
+  const coverageDecision = report.scan?.coverage_decision || {};
   return {
     verdict: report.overall?.verdict || "-",
     rating: report.overall?.rating ?? "-",
@@ -51,9 +52,26 @@ function summarizeReport(report) {
     sample_level: sampling.sample_level || "",
     sample_level_effective: sampling.sample_level_effective || "",
     sample_level_recommended: sampling.sample_level_recommended || "",
+    coverage_mode: sampling.coverage_mode || "",
+    coverage_template: sampling.coverage_template || "",
+    coverage_unit: sampling.coverage_unit || "",
+    chapter_detect_used_mode: sampling.chapter_detect_used_mode || "",
+    serial_status: sampling.serial_status || "",
     total_batches: sampling.total_batches ?? 0,
     selected_batches: sampling.selected_batches ?? 0,
     coverage_ratio: toNumber(sampling.coverage_ratio),
+    target_defense: report.novel?.target_defense || "",
+    reader_policy_preset: report.reader_policy?.preset || "",
+    reader_policy_label: report.reader_policy?.label || "",
+    reader_policy_evidence_threshold: report.reader_policy?.evidence_threshold || "",
+    reader_policy_coverage_preference: report.reader_policy?.coverage_preference || "",
+    has_reader_policy_customization: report.reader_policy?.customized ? "yes" : "no",
+    reader_policy_hard_blocks: arr(report.reader_policy?.hard_blocks).map((item) => String(item || "")),
+    reader_policy_soft_risks: arr(report.reader_policy?.soft_risks).map((item) => String(item || "")),
+    reader_policy_relation_constraints: arr(report.reader_policy?.relation_constraints).map((item) => String(item || "")),
+    coverage_decision_action: coverageDecision.action || "",
+    coverage_decision_confidence: coverageDecision.confidence || "",
+    coverage_decision_reasons: arr(coverageDecision.reason_codes).map((item) => String(item || "")),
   };
 }
 

@@ -8,6 +8,7 @@ export const DEFAULT_COMPARE_DIMENSIONS = "author,tags,verdict,coverage_mode,cov
 
 export const COMPARE_PRESETS = {
   default: DEFAULT_COMPARE_DIMENSIONS,
+  "coverage-calibration": "coverage_mode,coverage_template,coverage_decision_action,coverage_decision_confidence,coverage_decision_reason,serial_status,target_defense,reader_policy_evidence_threshold,reader_policy_coverage_preference,has_reader_policy_customization,mode_diff_gain_window,mode_diff_band",
   "context-audit": "author,tags,coverage_mode,coverage_decision_action,coverage_decision_reason,has_counter_evidence,has_offset_hints",
   "context-source": "author,tags,coverage_mode,context_reference_source_kind",
   "policy-audit": "author,tags,reader_policy_preset,reader_policy_evidence_threshold,reader_policy_coverage_preference,has_reader_policy_customization,coverage_decision_action",
@@ -80,12 +81,9 @@ function collectRunValues(row, dim) {
 }
 
 function collectModeDiffValues(row, dim) {
-  if (dim === "tags") return splitTags(row.tags);
   if (dim === "mode_diff_gain_window") return row.gain_window ? [String(row.gain_window)] : [];
   if (dim === "mode_diff_band") return row.band ? [String(row.band)] : [];
-  if (dim === "title") return row.title ? [String(row.title)] : [];
-  if (dim === "author") return row.author ? [String(row.author)] : [];
-  return [];
+  return collectRunValues(row, dim);
 }
 
 function ensureGroup(map, key) {

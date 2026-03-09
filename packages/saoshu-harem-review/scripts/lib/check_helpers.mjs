@@ -84,14 +84,40 @@ export function makeModeDiffFixtureReport({
   eventCount = 2,
   relationCount = 1,
 }) {
+  const coverageMode = pipelineMode === "economy" ? "sampled" : "chapter-full";
+  const coverageTemplate = pipelineMode === "economy" ? "opening-latest" : "";
+  const coverageDecisionAction = pipelineMode === "economy"
+    ? (batchIds.length < totalBatches ? "upgrade-chapter-full" : "keep-sampled")
+    : "keep-current";
+  const coverageDecisionConfidence = pipelineMode === "economy"
+    ? (batchIds.length < totalBatches ? "cautious" : "stable")
+    : "stable";
+  const coverageDecisionReasons = pipelineMode === "economy" && batchIds.length < totalBatches
+    ? ["late_risk_uncovered"]
+    : [];
   return {
-    novel: { title, author },
+    novel: { title, author, target_defense: "布甲" },
+    reader_policy: {
+      preset: "community-default",
+      label: "默认社区 preset",
+      evidence_threshold: "balanced",
+      coverage_preference: "balanced",
+      customized: false,
+      hard_blocks: [],
+      soft_risks: [],
+      relation_constraints: [],
+    },
     overall: { verdict, rating },
     scan: {
       batch_count: batchIds.length,
       batch_ids: batchIds,
       sampling: {
         pipeline_mode: pipelineMode,
+        coverage_mode: coverageMode,
+        coverage_template: coverageTemplate,
+        coverage_unit: "chapter",
+        chapter_detect_used_mode: "script",
+        serial_status: "ongoing",
         sample_mode: pipelineMode === "economy" ? "dynamic" : "fixed",
         sample_strategy: pipelineMode === "economy" ? "risk-aware" : "uniform",
         sample_level: "auto",
@@ -100,6 +126,11 @@ export function makeModeDiffFixtureReport({
         total_batches: totalBatches,
         selected_batches: batchIds.length,
         coverage_ratio: totalBatches ? batchIds.length / totalBatches : 0,
+      },
+      coverage_decision: {
+        action: coverageDecisionAction,
+        confidence: coverageDecisionConfidence,
+        reason_codes: coverageDecisionReasons,
       },
     },
     thunder: { total_candidates: 0, items: [] },

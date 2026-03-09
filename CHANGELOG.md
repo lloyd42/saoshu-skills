@@ -7,6 +7,7 @@
 ### 改进
 - 新增 `packages/saoshu-harem-review/scripts/dev/release_installed_smoke.mjs` 与 `npm run dev:release-installed-smoke`，把“发版后同步到 Codex 已安装 skill 并按真实用户路径做最小样例冒烟”收敛成可复用命令。
 - `saoshu_cli.mjs --help` 现同步到当前 `policy-audit`、`db trends` 等 surface，避免已安装副本 help 文案继续漂移。
+- `compare_reports.mjs -> mode_diff_entries.jsonl -> db_compare.mjs` 现在会把快速摸底报告的 `coverage_mode / coverage_template / coverage_decision_* / serial_status / target_defense / reader_policy` 关键字段带进 mode-diff 侧，`coverage_decision_action / reason` 维度终于可以直接聚合真实样本里的灰区率与差距过大率；`db_compare.mjs` 也新增 `coverage-calibration` preset 方便专门校准升级建议。
 
 ### 文档
 - `VERSIONING.md`、`docs/development-workflow.md`、`CONTRIBUTING.md`、`scripts/dev/README.md` 现明确要求 release 后先同步已安装 skill，再用已安装副本执行真实用户场景 smoke。

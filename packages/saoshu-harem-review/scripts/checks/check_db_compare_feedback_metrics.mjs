@@ -31,6 +31,7 @@ fs.rmSync(tmpRoot, { recursive: true, force: true });
 fs.mkdirSync(tmpRoot, { recursive: true });
 const dbDir = path.join(tmpRoot, "scan-db");
 const outDir = path.join(tmpRoot, "compare");
+const calibrationOutDir = path.join(tmpRoot, "compare-calibration");
 const presetOutDir = path.join(tmpRoot, "compare-preset");
 const policyPresetOutDir = path.join(tmpRoot, "compare-policy-preset");
 const overrideOutDir = path.join(tmpRoot, "compare-preset-override");
@@ -41,8 +42,44 @@ writeJsonl(path.join(dbDir, "runs.jsonl"), [
 ]);
 
 writeJsonl(path.join(dbDir, "mode_diff_entries.jsonl"), [
-  { title: "A", author: "甲", tags: ["后宫", "玄幻"], gain_window: "gray", band: "enhance_economy", score: 4.5, coverage_ratio: 0.75 },
-  { title: "B", author: "甲", tags: ["后宫", "都市"], gain_window: "too_wide", band: "fallback_to_performance", score: 8.2, coverage_ratio: 0.4 },
+  {
+    title: "A",
+    author: "甲",
+    tags: ["后宫", "玄幻"],
+    coverage_mode: "sampled",
+    coverage_template: "opening-100",
+    coverage_decision_action: "upgrade-chapter-full",
+    coverage_decision_confidence: "cautious",
+    coverage_decision_reasons: ["late_risk_uncovered", "too_many_unverified"],
+    serial_status: "ongoing",
+    reader_policy_preset: "community-default",
+    reader_policy_evidence_threshold: "balanced",
+    reader_policy_coverage_preference: "balanced",
+    has_reader_policy_customization: "no",
+    gain_window: "gray",
+    band: "enhance_economy",
+    score: 4.5,
+    coverage_ratio: 0.75,
+  },
+  {
+    title: "B",
+    author: "甲",
+    tags: ["后宫", "都市"],
+    coverage_mode: "sampled",
+    coverage_template: "head-tail",
+    coverage_decision_action: "keep-sampled",
+    coverage_decision_confidence: "stable",
+    coverage_decision_reasons: ["latest_progress_uncertain"],
+    serial_status: "completed",
+    reader_policy_preset: "custom-no-steal",
+    reader_policy_evidence_threshold: "strict",
+    reader_policy_coverage_preference: "conservative",
+    has_reader_policy_customization: "yes",
+    gain_window: "too_wide",
+    band: "fallback_to_performance",
+    score: 8.2,
+    coverage_ratio: 0.4,
+  },
 ]);
 
 const result = runNode("packages/saoshu-scan-db/scripts/db_compare.mjs", ["--db", dbDir, "--dimensions", "author,tags,coverage_mode,coverage_template,coverage_decision_action,coverage_decision_reason,reader_policy_preset,reader_policy_evidence_threshold,reader_policy_coverage_preference,has_reader_policy_customization,reader_policy_hard_block,reader_policy_relation_constraint,has_counter_evidence,has_offset_hints,context_reference_source_kind,serial_status,mode_diff_gain_window", "--output-dir", outDir]);
@@ -52,6 +89,10 @@ else fail(`db_compare feedback metrics run failed\nSTDERR:\n${result.stderr}`);
 const defaultResult = runNode("packages/saoshu-scan-db/scripts/db_compare.mjs", ["--db", dbDir]);
 if (defaultResult.status === 0) ok("db_compare default dimensions run");
 else fail(`db_compare default dimensions run failed\nSTDERR:\n${defaultResult.stderr}`);
+
+const calibrationPresetResult = runNode("packages/saoshu-scan-db/scripts/db_compare.mjs", ["--db", dbDir, "--preset", "coverage-calibration", "--output-dir", calibrationOutDir]);
+if (calibrationPresetResult.status === 0) ok("db_compare preset coverage-calibration run");
+else fail(`db_compare preset coverage-calibration run failed\nSTDERR:\n${calibrationPresetResult.stderr}`);
 
 const presetResult = runNode("packages/saoshu-scan-db/scripts/db_compare.mjs", ["--db", dbDir, "--preset", "context-audit", "--output-dir", presetOutDir]);
 if (presetResult.status === 0) ok("db_compare preset context-audit run");
@@ -95,6 +136,10 @@ const presetPayload = JSON.parse(fs.readFileSync(path.join(presetOutDir, "compar
 if (presetPayload.preset === "context-audit" && JSON.stringify(presetPayload.dimensions) === JSON.stringify(["author", "tags", "coverage_mode", "coverage_decision_action", "coverage_decision_reason", "has_counter_evidence", "has_offset_hints"])) ok("db_compare preset context-audit resolves expected dimensions");
 else fail(`db_compare preset context-audit should resolve expected dimensions: ${JSON.stringify(presetPayload)}`);
 
+const calibrationPresetPayload = JSON.parse(fs.readFileSync(path.join(calibrationOutDir, "compare.json"), "utf8"));
+if (calibrationPresetPayload.preset === "coverage-calibration" && JSON.stringify(calibrationPresetPayload.dimensions) === JSON.stringify(["coverage_mode", "coverage_template", "coverage_decision_action", "coverage_decision_confidence", "coverage_decision_reason", "serial_status", "target_defense", "reader_policy_evidence_threshold", "reader_policy_coverage_preference", "has_reader_policy_customization", "mode_diff_gain_window", "mode_diff_band"])) ok("db_compare preset coverage-calibration resolves expected dimensions");
+else fail(`db_compare preset coverage-calibration should resolve expected dimensions: ${JSON.stringify(calibrationPresetPayload)}`);
+
 const policyPresetPayload = JSON.parse(fs.readFileSync(path.join(policyPresetOutDir, "compare.json"), "utf8"));
 if (policyPresetPayload.preset === "policy-audit" && JSON.stringify(policyPresetPayload.dimensions) === JSON.stringify(["author", "tags", "reader_policy_preset", "reader_policy_evidence_threshold", "reader_policy_coverage_preference", "has_reader_policy_customization", "coverage_decision_action"])) ok("db_compare preset policy-audit resolves expected dimensions");
 else fail(`db_compare preset policy-audit should resolve expected dimensions: ${JSON.stringify(policyPresetPayload)}`);
@@ -110,12 +155,12 @@ else fail(`db_compare should expose coverage_template dimension: ${JSON.stringif
 
 const coverageDecisionGroup = Array.isArray(payload.groups) ? payload.groups.find((item) => item.dimension === "coverage_decision_action") : null;
 const upgradeRow = Array.isArray(coverageDecisionGroup?.rows) ? coverageDecisionGroup.rows.find((item) => item.key === "upgrade-chapter-full") : null;
-if (upgradeRow?.runs === 1 && upgradeRow?.avg_coverage === 0.8) ok("db_compare supports coverage_decision_action dimension");
+if (upgradeRow?.runs === 1 && upgradeRow?.avg_coverage === 0.8 && upgradeRow?.mode_diff_entries === 1 && upgradeRow?.gray_rate === 1) ok("db_compare supports coverage_decision_action dimension");
 else fail(`db_compare should expose coverage_decision_action dimension: ${JSON.stringify(upgradeRow)}`);
 
 const coverageReasonGroup = Array.isArray(payload.groups) ? payload.groups.find((item) => item.dimension === "coverage_decision_reason") : null;
 const lateRiskRow = Array.isArray(coverageReasonGroup?.rows) ? coverageReasonGroup.rows.find((item) => item.key === "late_risk_uncovered") : null;
-if (lateRiskRow?.runs === 1 && lateRiskRow?.avg_coverage === 0.8) ok("db_compare supports coverage_decision_reason dimension");
+if (lateRiskRow?.runs === 1 && lateRiskRow?.avg_coverage === 0.8 && lateRiskRow?.mode_diff_entries === 1 && lateRiskRow?.gray_rate === 1) ok("db_compare supports coverage_decision_reason dimension");
 else fail(`db_compare should expose coverage_decision_reason dimension: ${JSON.stringify(lateRiskRow)}`);
 
 const counterEvidenceGroup = Array.isArray(payload.groups) ? payload.groups.find((item) => item.dimension === "has_counter_evidence") : null;

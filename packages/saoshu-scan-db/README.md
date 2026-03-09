@@ -29,6 +29,7 @@
 常见多维对比建议优先按 coverage-first 口径看：
 
 - `node scripts/db_compare.mjs --db ./scan-db --preset default --output-dir ./scan-db/compare`
+- `node scripts/db_compare.mjs --db ./scan-db --preset coverage-calibration --output-dir ./scan-db/compare-calibration`
 - `node scripts/db_compare.mjs --db ./scan-db --preset context-audit --output-dir ./scan-db/compare-context`
 - `node scripts/db_compare.mjs --db ./scan-db --preset context-source --output-dir ./scan-db/compare-context-kinds`
 - `node scripts/db_compare.mjs --db ./scan-db --preset policy-audit --output-dir ./scan-db/compare-policy`
@@ -45,14 +46,16 @@
 ## Coverage 字段说明
 - `runs.jsonl` 当前会保留 `coverage_mode`、`coverage_template`、`coverage_unit`、`chapter_detect_used_mode`、`serial_status`、`total_batches`、`selected_batches`、`coverage_ratio`、`coverage_gap_summary`、`coverage_gap_risk_types`、`coverage_decision_action`、`coverage_decision_confidence`、`coverage_decision_reasons`。
 - `runs.jsonl` 也会保留 `reader_policy_preset`、`reader_policy_label`、`reader_policy_source`、`reader_policy_evidence_threshold`、`reader_policy_coverage_preference`、`has_reader_policy_customization` 与三类 reader-policy 列表字段。
+- `mode_diff_entries.jsonl` 现在也会镜像快速摸底报告的 `coverage_mode`、`coverage_template`、`coverage_decision_*`、`serial_status`、`target_defense` 与 reader-policy 关键字段，方便直接按“升级建议 -> 实际收益区间”做校准聚合。
 - 这些字段来自 `merged-report.json` 的 `scan.sampling` 与 `scan.coverage_decision`，上游再追到 manifest 兼容层、sampled 模板逻辑与升级建议合同。
-- 默认 compare 现在也会按 `coverage_decision_action` 分块，dashboard 的“最近运行”会直接展示升级建议与建议把握。
+- 默认 compare 现在也会按 `coverage_decision_action` 分块；当 `mode_diff_entries.jsonl` 由 `compare_reports.mjs` / `mode_diff_workflow.mjs` 生成时，这些分块也会同步带出对应的 `mode_diff` 灰区率、差距过大率与均分差信号。
+- `coverage-calibration` preset 适合专门回看“哪些 `coverage_decision_action / reason` 更容易在真实样本里落到 gray / too_wide”，优先用于校准升级建议而不是看题材分布。
 - 如果想先在终端里快速校准升级建议，而不是打开 HTML，可直接看 `db_query.mjs --metric coverage-decision-overview`；它会汇总动作、把握、理由分布，以及 reader-policy preset / 证据阈值 / 覆盖偏好分布，并列出最近几条运行的升级理由。
 - 如果想回看“这些结论到底引用了哪些正文/反证、哪些条目带了 `offset_hint` 定位”，可直接看 `db_query.mjs --metric context-reference-overview`；如果只想看反证线索，再看 `counter-evidence-candidates`。
 - 如果想直接拿到最近一批引用明细（含 `source_kind / anchor / chapter_num / chapter_title / offset_hint / snippet`），可再跑 `db_query.mjs --metric context-references --format json`。
 - `db_dashboard.mjs` 现在也会额外展示“读者策略视角 / 最近运行里的 reader-policy 字段 / 上下文引用概览 / 最近关键引用”，方便直接从 HTML 里复盘策略差异、`event_counter_evidence` 与带 `offset_hint` 的引用。
 - `db_query` 更适合看引用明细；`db_compare` 更适合按作品集合比较“哪些样本更依赖反证 / 偏移定位 / 特定引用来源”。这三类上下文维度目前建议按需手动加入，不默认挤进 compare 主维度集。
-- `db_compare.mjs` 现在支持 `--preset default|context-audit|context-source|policy-audit`；如果同时传 `--preset` 和 `--dimensions`，以显式 `--dimensions` 为准。
+- `db_compare.mjs` 现在支持 `--preset default|coverage-calibration|context-audit|context-source|policy-audit`；如果同时传 `--preset` 和 `--dimensions`，以显式 `--dimensions` 为准。
 - `policy-audit` 适合按样本集合比较不同读者策略 preset、证据阈值、覆盖偏好和自定义开关，判断是不是该拆分更细的策略层。
 - `db_dashboard.mjs` 现在会优先补齐缺失的 `compare/compare.html`、`compare-context/compare.html`、`compare-context-kinds/compare.html`、`compare-policy/compare.html` 与 `trends/trends.html`；如果对应目录里已经有现成结果，则不会覆盖已有自定义 compare 产物，而是直接给出“点击查看详情 / 打开 trends 详情”入口。只有自动补齐失败，或你显式关闭 compare 补齐时，才回退为命令兜底。可选开关：`--compare-presets`、`--compare-top`、`--skip-compare`。
 - `db_trends.mjs` 现在除了作者 / 标签 / mode-diff 外，也会带出 reader-policy preset、证据阈值、覆盖偏好和是否自定义的分布，方便看“最近这批样本差异到底来自作品本身，还是读者策略分层”。
