@@ -8,6 +8,7 @@
 - 根级 `npm run check` 现按 `repo / pipeline / feedback / analytics / runtime` 五类责任域归组，降低 `package.json` 中“脚本清单兼任产品叙事”的混层问题；全量入口仍保持 `npm run check` 不变。
 - `manifest`、`final report` 与报告渲染层现新增轻量 `reader_policy` 合同：主流程会把“当前按哪种读者策略视角解释证据”透传到 `merged-report.json` / Markdown / HTML，先为人机协同挂上策略层入口，但暂不直接改写现有主裁决逻辑。
 - `reader_policy` 现已开始影响报告行为：补证问题会优先照顾策略视角更敏感的风险，`coverage_decision` 在 `strict / conservative` 视角下也会更早提示“需要更多证据”。
+- 删除 `packages/saoshu-harem-review/scripts/` 顶层 40 个只负责 `import "./checks/*"` 或 `import "./dev/*"` 的薄 wrapper，统一把 `scripts/checks/` 与 `scripts/dev/` 作为 canonical 路径，减少重复脚本层。
 
 ### 修复
 - CLI、`mode-diff` 工作流与 info/db 子命令在仓库工作区内调用其他 skill 脚本时，现会优先使用 repo 内包路径，并只在显式指定或外部副本确有对应文件时才走已安装 skill，降低“本机旧副本抢路径”导致的交接偏差。
@@ -21,6 +22,7 @@
 - `VERSIONING.md` 现在只保留一套与当前仓库一致的手工 release 流程：手工整理 `CHANGELOG.md`、更新版本、准备 `.tmp/release-vX.Y.Z.md`、提交 release commit、打 tag、按需创建 GitHub Release。
 - installed-skill 同步触发条件已扩展到 `scripts/**` 逻辑变更，避免“仓库脚本已修、安装副本仍旧”的隐性漂移。
 - 新增 `docs/reader-policy-design.md`，并同步 `architecture / community-alignment / roadmap / workflow / contributing / product-manual`：当前固定防御档与固定风险口径统一降级为默认社区 `preset`，后续把“用户偏好多样性”收口到策略层设计，而不是继续硬编码进脚本默认判断。
+- `scripts/checks/README.md`、`scripts/dev/README.md` 与 `docs/roadmap.md` 现同步到“顶层 `scripts/` 只保留用户入口与核心流程入口”的新事实，不再把兼容 wrapper 当成基线。
 
 ## [0.5.4] - 2026-03-09
 

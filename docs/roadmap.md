@@ -50,7 +50,7 @@
 - feedback loop 已覆盖关键词、别名、补证问题池、关系边四条闭环，并支持统一导出资产
 - `reader_policy` 已进入 manifest 与最终报告合同，当前先承担“策略视角声明与解释”职责，为后续人机协同保留挂载点
 - 仓库读写基线已收敛为 `UTF-8 without BOM` + `LF`，共享 no-BOM 写入 helper 与检查链已落地
-- 脚本层分层已稳定：`scripts/checks/` 承载检查实现，`scripts/dev/` 承载开发辅助实现，顶层 `scripts/` 保留用户入口与兼容 wrapper
+- 脚本层分层已稳定：`scripts/checks/` 承载检查实现，`scripts/dev/` 承载开发辅助实现，顶层 `scripts/` 只保留用户入口与核心流程入口
 - 根级 `check` 已适合继续按责任域理解：`repo / pipeline / feedback / analytics / runtime`；脚本的定位应继续收敛为基建与自动化，而不是产品主叙事
 - installed-skill 同步链已稳定：`sync:installed-skills` + `check:installed-skill-sync`
 - 仓库内调用其他 skill 脚本时，当前已优先解析 repo 内包路径，并在显式 `SAOSHU_SKILLS_DIR` 或已安装副本确有对应文件时再走外部副本，降低“本机旧 skill 抢路径”造成的交接偏差

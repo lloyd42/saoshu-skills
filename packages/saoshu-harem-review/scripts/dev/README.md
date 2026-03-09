@@ -4,9 +4,9 @@
 
 当前约定：
 
-- `packages/saoshu-harem-review/scripts/*.mjs` 顶层仅保留对外仍有兼容价值的薄入口
-- 真正只服务维护者、本地验证或生成辅助的脚本，优先放在本目录
-- 如果某个开发脚本已经被 `package.json`、文档或其他脚本引用，迁移时先保留顶层 wrapper，再逐步把 canonical 路径切到本目录
+- `scripts/dev/` 是开发辅助脚本的 canonical 路径
+- 真正只服务维护者、本地验证或生成辅助的脚本，统一放在本目录
+- 如果某个开发脚本曾有旧路径引用，先迁移调用方，再删除旧 wrapper；不要把 wrapper 长期当成稳定层
 
 当前已落地：
 
