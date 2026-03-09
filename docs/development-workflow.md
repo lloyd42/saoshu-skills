@@ -117,6 +117,7 @@ run_pipeline.mjs
 - 这一步是本地开发辅助，用来让“仓库内容”和“本机已安装 skill”保持一致，方便重启 Codex 前做真实体验核对
 - 仓库里的 `npm run check` 只会通过 `check:installed-skill-sync` 在临时目录验证同步脚本本身，不会改动你的本机已安装 skill
 - 如果你想顺手确认安装副本没有坏，再对同步后的 skill 目录补跑一次 `packages/saoshu-harem-review/scripts/dev/quick_validate.mjs <skill-dir>` 或最小 smoke
+- 如果是 release 后验收，默认不要停在 repo 脚本自测；先 `npm run sync:installed-skills -- --skills saoshu-harem-review,saoshu-scan-db`，再跑 `npm run dev:release-installed-smoke`
 
 ## 8. 完成定义
 

@@ -56,7 +56,8 @@
 9. 打 tag：`git tag vX.Y.Z`
 10. 推送提交与 tag：`git push && git push --tags`
 11. 如使用 GitHub Release，先确认 `gh auth status`，再执行 `gh release create`
-12. 发版后做一次本地安装 / 干净目录实测，至少验证 CLI 帮助与最小样例主流程
+12. 先运行 `npm run sync:installed-skills -- --skills saoshu-harem-review,saoshu-scan-db`
+13. 发版后在干净目录执行一次已安装副本实测：`npm run dev:release-installed-smoke`
 
 建议额外确认：
 - `README.md` / `CONTRIBUTING.md` / `docs/development-workflow.md` 不存在过期流程
@@ -111,7 +112,8 @@ gh release view vX.Y.Z --json tagName,name,isDraft,isPrerelease,publishedAt,url
 8. 执行 `git tag vX.Y.Z`
 9. 推送提交与 tag
 10. 如需要，再发布 GitHub Release 或其他外部说明
-11. 在干净目录做一次本地安装 / 运行冒烟，确认发布后的真实使用路径没有被当前工作区状态掩盖
+11. 先同步已安装 skill 副本：`npm run sync:installed-skills -- --skills saoshu-harem-review,saoshu-scan-db`
+12. 在干净目录执行 `npm run dev:release-installed-smoke`，确认发布后的真实使用路径没有被当前工作区状态掩盖
 
 ## 回滚
 - 若发布后发现问题，优先新增修复版本，不直接改写已发布 tag

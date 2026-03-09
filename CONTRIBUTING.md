@@ -27,6 +27,7 @@
 - 如改动影响用户可见行为、报告语义、CLI 默认行为或维护流程，默认同一轮同步 `README.md`、产品手册、`docs/roadmap.md` 与 `CHANGELOG.md` `Unreleased`
 - 如改动会影响已安装 skill 的对外文案、说明、默认 prompt、脚本行为或依赖路径（例如 `SKILL.md`、`README.md`、`references/`、`packages/*/agents/openai.yaml`、`packages/*/scripts/**`），在仓库内验证完成后，再运行 `npm run sync:installed-skills -- --skills <skill-a,skill-b>`
 - 上面的 installed-skill 同步属于本地开发辅助，不是 CI 强制步骤；`npm run check` 只会在临时目录验证同步脚本本身，不会改动你的本机安装目录
+- 如果是 release 后验收，默认按真实用户路径做：先 `npm run sync:installed-skills -- --skills saoshu-harem-review,saoshu-scan-db`，再运行 `npm run dev:release-installed-smoke`
 - 新增脚本优先复用 `packages/*/scripts`
 - 如果问题本质属于“用户偏好多样性”而不是“证据抽取错误”，优先更新 `docs/reader-policy-design.md`，不要直接把新偏好硬编码成脚本默认判断
 - 提交的文档、脚本、JSON 默认保持 `UTF-8 without BOM` + `LF`；不要把 BOM 写回仓库

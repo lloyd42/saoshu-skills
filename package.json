@@ -18,6 +18,7 @@
         "check:skills": "node packages/saoshu-harem-review/scripts/dev/quick_validate.mjs packages/saoshu-harem-review && node packages/saoshu-harem-review/scripts/dev/quick_validate.mjs packages/saoshu-term-wiki && node packages/saoshu-harem-review/scripts/dev/quick_validate.mjs packages/saoshu-scan-db && node packages/saoshu-harem-review/scripts/dev/quick_validate.mjs packages/saoshu-orchestrator && node packages/saoshu-harem-review/scripts/dev/quick_validate.mjs packages/saoshu-mcp-enricher-adapter",
         "check:installed-skill-sync": "node packages/saoshu-harem-review/scripts/checks/check_installed_skill_sync.mjs",
         "sync:installed-skills": "node packages/saoshu-harem-review/scripts/dev/sync_installed_skills.mjs",
+        "dev:release-installed-smoke": "node packages/saoshu-harem-review/scripts/dev/release_installed_smoke.mjs",
         "dev:generate-openai-yaml": "node packages/saoshu-harem-review/scripts/dev/generate_openai_yaml.mjs",
         "check:docs": "node packages/saoshu-harem-review/scripts/checks/check_repo_docs.mjs",
         "check:boundaries": "node packages/saoshu-harem-review/scripts/checks/check_repo_boundaries.mjs",
