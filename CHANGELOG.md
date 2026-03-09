@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-03-09
+
 ### 改进
 - 根级 `npm run check` 现按 `repo / pipeline / feedback / analytics / runtime` 五类责任域归组，降低 `package.json` 中“脚本清单兼任产品叙事”的混层问题；全量入口仍保持 `npm run check` 不变。
 - `manifest`、`final report` 与报告渲染层现新增轻量 `reader_policy` 合同：主流程会把“当前按哪种读者策略视角解释证据”透传到 `merged-report.json` / Markdown / HTML，先为人机协同挂上策略层入口，但暂不直接改写现有主裁决逻辑。
