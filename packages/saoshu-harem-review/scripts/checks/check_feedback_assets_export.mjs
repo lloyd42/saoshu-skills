@@ -1,46 +1,11 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import { writeUtf8Jsonl } from "../lib/text_output.mjs";
+import { createNodeCheckContext } from "../lib/check_helpers.mjs";
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+const { repoRoot, ok, fail, runNode, expectSuccess, hasFailures } = createNodeCheckContext({ importMetaUrl: import.meta.url });
 const tmpRoot = path.join(repoRoot, ".tmp", "check-feedback-assets-export");
-
-let hasFailure = false;
-
-function ok(message) {
-  console.log(`OK: ${message}`);
-}
-
-function fail(message) {
-  hasFailure = true;
-  console.error(`FAIL: ${message}`);
-}
-
-function runNode(scriptPath, args = []) {
-  const absoluteScriptPath = path.isAbsolute(scriptPath) ? scriptPath : path.join(repoRoot, scriptPath);
-  try {
-    const stdout = execFileSync(process.execPath, [absoluteScriptPath, ...args], {
-      cwd: repoRoot,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    return { status: 0, stdout, stderr: "" };
-  } catch (error) {
-    return {
-      status: typeof error.status === "number" ? error.status : 1,
-      stdout: error.stdout ? String(error.stdout) : "",
-      stderr: error.stderr ? String(error.stderr) : String(error.message || error),
-    };
-  }
-}
-
-function expectSuccess(result, label) {
-  if (result.status === 0) ok(label);
-  else fail(`${label} failed\nSTDOUT:\n${result.stdout}\nSTDERR:\n${result.stderr}`);
-}
 
 function writeJsonl(filePath, rows) {
   writeUtf8Jsonl(filePath, rows);
@@ -93,7 +58,7 @@ else fail("feedback assets summary should count all promotion lanes");
 if (Array.isArray(summary.exports) && summary.exports.length === 4) ok("feedback assets summary lists four exported asset files");
 else fail("feedback assets summary should list four exported asset files");
 
-if (!hasFailure) {
+if (!hasFailures()) {
   console.log("Feedback assets export check passed.");
 } else {
   process.exitCode = 1;

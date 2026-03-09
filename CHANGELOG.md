@@ -9,6 +9,7 @@
 - `manifest`、`final report` 与报告渲染层现新增轻量 `reader_policy` 合同：主流程会把“当前按哪种读者策略视角解释证据”透传到 `merged-report.json` / Markdown / HTML，先为人机协同挂上策略层入口，但暂不直接改写现有主裁决逻辑。
 - `reader_policy` 现已开始影响报告行为：补证问题会优先照顾策略视角更敏感的风险，`coverage_decision` 在 `strict / conservative` 视角下也会更早提示“需要更多证据”。
 - 删除 `packages/saoshu-harem-review/scripts/` 顶层 40 个只负责 `import "./checks/*"` 或 `import "./dev/*"` 的薄 wrapper，统一把 `scripts/checks/` 与 `scripts/dev/` 作为 canonical 路径，减少重复脚本层。
+- 为 feedback-loop focused check 补出共享 `scripts/lib/check_helpers.mjs`，先收敛 `keyword / alias / risk-question / relation / feedback-assets` 这组脚本里重复的 `repoRoot/runNode/ok/fail` 样板。
 
 ### 修复
 - CLI、`mode-diff` 工作流与 info/db 子命令在仓库工作区内调用其他 skill 脚本时，现会优先使用 repo 内包路径，并只在显式指定或外部副本确有对应文件时才走已安装 skill，降低“本机旧副本抢路径”导致的交接偏差。

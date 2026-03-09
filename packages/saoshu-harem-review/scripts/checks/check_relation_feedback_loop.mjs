@@ -1,59 +1,11 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
-import { writeUtf8File, writeUtf8Json } from "../lib/text_output.mjs";
+import { writeUtf8File } from "../lib/text_output.mjs";
+import { createNodeCheckContext } from "../lib/check_helpers.mjs";
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+const { repoRoot, ok, fail, ensureCleanDir, writeJson, readJson, runNode, expectSuccess, hasFailures } = createNodeCheckContext({ importMetaUrl: import.meta.url });
 const tmpRoot = path.join(repoRoot, ".tmp", "check-relation-feedback-loop");
-
-let hasFailure = false;
-
-function ok(message) {
-  console.log(`OK: ${message}`);
-}
-
-function fail(message) {
-  hasFailure = true;
-  console.error(`FAIL: ${message}`);
-}
-
-function ensureCleanDir(dir) {
-  fs.rmSync(dir, { recursive: true, force: true });
-  fs.mkdirSync(dir, { recursive: true });
-}
-
-function writeJson(filePath, payload) {
-  writeUtf8Json(filePath, payload, { newline: true });
-}
-
-function readJson(filePath) {
-  return JSON.parse(fs.readFileSync(filePath, "utf8"));
-}
-
-function runNode(scriptPath, args = []) {
-  const absoluteScriptPath = path.isAbsolute(scriptPath) ? scriptPath : path.join(repoRoot, scriptPath);
-  try {
-    const stdout = execFileSync(process.execPath, [absoluteScriptPath, ...args], {
-      cwd: repoRoot,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    return { status: 0, stdout, stderr: "" };
-  } catch (error) {
-    return {
-      status: typeof error.status === "number" ? error.status : 1,
-      stdout: error.stdout ? String(error.stdout) : "",
-      stderr: error.stderr ? String(error.stderr) : String(error.message || error),
-    };
-  }
-}
-
-function expectSuccess(result, label) {
-  if (result.status === 0) ok(label);
-  else fail(`${label} failed\nSTDOUT:\n${result.stdout}\nSTDERR:\n${result.stderr}`);
-}
 
 function prepareReportFixture(baseDir) {
   ensureCleanDir(baseDir);
@@ -170,7 +122,7 @@ const relationHtml = fs.readFileSync(relationHtmlPath, "utf8");
 if (relationHtml.includes("未婚妻") && relationHtml.includes("苏梨") && relationHtml.includes("林舟")) ok("relation graph renders promoted relationship edge");
 else fail("relation graph should render promoted relationship edge");
 
-if (!hasFailure) {
+if (!hasFailures()) {
   console.log("Relation feedback loop check passed.");
 } else {
   process.exitCode = 1;

@@ -1,63 +1,11 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
-import { writeUtf8File, writeUtf8Json } from "../lib/text_output.mjs";
+import { writeUtf8File } from "../lib/text_output.mjs";
+import { createNodeCheckContext, makeModeDiffFixtureReport } from "../lib/check_helpers.mjs";
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+const { repoRoot, ok, fail, writeJson, runNode, hasFailures } = createNodeCheckContext({ importMetaUrl: import.meta.url });
 const tmpRoot = path.join(repoRoot, ".tmp", "check-mode-diff-queue");
-
-let hasFailure = false;
-function ok(message) { console.log(`OK: ${message}`); }
-function fail(message) { hasFailure = true; console.error(`FAIL: ${message}`); }
-
-function writeJson(filePath, payload) {
-  writeUtf8Json(filePath, payload, { newline: true });
-}
-
-function runNode(scriptPath, args = []) {
-  const absoluteScriptPath = path.isAbsolute(scriptPath) ? scriptPath : path.join(repoRoot, scriptPath);
-  try {
-    const stdout = execFileSync(process.execPath, [absoluteScriptPath, ...args], { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-    return { status: 0, stdout, stderr: "" };
-  } catch (error) {
-    return { status: typeof error.status === "number" ? error.status : 1, stdout: String(error.stdout || ""), stderr: String(error.stderr || error.message || error) };
-  }
-}
-
-function makeReport({ title, author, tags, verdict = "待补证", rating = 6, batchIds = [], totalBatches = batchIds.length, pipelineMode = "performance", eventCount = 2, relationCount = 1 }) {
-  return {
-    novel: { title, author },
-    overall: { verdict, rating },
-    scan: {
-      batch_count: batchIds.length,
-      batch_ids: batchIds,
-      sampling: {
-        pipeline_mode: pipelineMode,
-        sample_mode: pipelineMode === "economy" ? "dynamic" : "fixed",
-        sample_strategy: pipelineMode === "economy" ? "risk-aware" : "uniform",
-        sample_level: "auto",
-        sample_level_effective: pipelineMode === "economy" ? "medium" : "high",
-        sample_level_recommended: pipelineMode === "economy" ? "medium" : "high",
-        total_batches: totalBatches,
-        selected_batches: batchIds.length,
-        coverage_ratio: totalBatches ? batchIds.length / totalBatches : 0,
-      },
-    },
-    thunder: { total_candidates: 0, items: [] },
-    depression: { total: 0, items: [] },
-    risks_unconfirmed: [],
-    events: {
-      items: Array.from({ length: eventCount }, (_, index) => ({ rule_candidate: `事件${index + 1}`, event_id: `E${index + 1}`, chapter_range: `第${index + 1}章` })),
-    },
-    follow_up_questions: ["Q1"],
-    metadata_summary: {
-      tags,
-      relationships: Array.from({ length: relationCount }, (_, index) => ({ from: `甲${index + 1}`, to: `乙${index + 1}`, type: "关系" })),
-    },
-  };
-}
 
 fs.rmSync(tmpRoot, { recursive: true, force: true });
 fs.mkdirSync(tmpRoot, { recursive: true });
@@ -69,10 +17,10 @@ const econA = path.join(tmpRoot, "a-econ.json");
 const perfB = path.join(tmpRoot, "b-perf.json");
 const econB = path.join(tmpRoot, "b-econ.json");
 
-writeJson(perfA, makeReport({ title: "批量样本A", author: "作者甲", tags: ["玄幻"], pipelineMode: "performance", batchIds: ["B01", "B02", "B03", "B04"], totalBatches: 4, rating: 6, eventCount: 2, relationCount: 1 }));
-writeJson(econA, makeReport({ title: "批量样本A", author: "作者甲", tags: ["玄幻"], pipelineMode: "economy", batchIds: ["B01", "B02", "B03"], totalBatches: 4, rating: 5, eventCount: 1, relationCount: 0 }));
-writeJson(perfB, makeReport({ title: "批量样本B", author: "作者乙", tags: ["都市"], pipelineMode: "performance", batchIds: ["B01", "B02", "B03", "B04"], totalBatches: 4, rating: 6, eventCount: 2, relationCount: 1 }));
-writeJson(econB, makeReport({ title: "批量样本B", author: "作者乙", tags: ["都市"], pipelineMode: "economy", batchIds: ["B01", "B02"], totalBatches: 4, rating: 4, eventCount: 1, relationCount: 0 }));
+writeJson(perfA, makeModeDiffFixtureReport({ title: "批量样本A", author: "作者甲", tags: ["玄幻"], pipelineMode: "performance", batchIds: ["B01", "B02", "B03", "B04"], totalBatches: 4, rating: 6, eventCount: 2, relationCount: 1 }));
+writeJson(econA, makeModeDiffFixtureReport({ title: "批量样本A", author: "作者甲", tags: ["玄幻"], pipelineMode: "economy", batchIds: ["B01", "B02", "B03"], totalBatches: 4, rating: 5, eventCount: 1, relationCount: 0 }));
+writeJson(perfB, makeModeDiffFixtureReport({ title: "批量样本B", author: "作者乙", tags: ["都市"], pipelineMode: "performance", batchIds: ["B01", "B02", "B03", "B04"], totalBatches: 4, rating: 6, eventCount: 2, relationCount: 1 }));
+writeJson(econB, makeModeDiffFixtureReport({ title: "批量样本B", author: "作者乙", tags: ["都市"], pipelineMode: "economy", batchIds: ["B01", "B02"], totalBatches: 4, rating: 4, eventCount: 1, relationCount: 0 }));
 
 writeJson(queuePath, {
   ledger: ledgerPath,
@@ -104,5 +52,5 @@ else fail("mode_diff_queue_run should write markdown/html overview pages");
 if (fs.existsSync(path.join(tmpRoot, "mode-diff-summary", "mode-diff-ledger-summary.json")) && fs.existsSync(path.join(dbDir, "compare", "compare.json")) && fs.existsSync(path.join(dbDir, "trends", "trends.json")) && fs.existsSync(path.join(dbDir, "dashboard.html"))) ok("mode_diff_queue_run refreshes summary and db artifacts once batch finishes");
 else fail("mode_diff_queue_run should refresh summary/db artifacts");
 
-if (!hasFailure) console.log("Mode diff queue check passed.");
+if (!hasFailures()) console.log("Mode diff queue check passed.");
 else process.exitCode = 1;

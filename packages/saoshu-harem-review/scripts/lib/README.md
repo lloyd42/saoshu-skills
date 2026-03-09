@@ -14,6 +14,10 @@
   - 共享文本输出辅助
   - 负责 `UTF-8 without BOM` 写入、JSON 输出与 JSONL 追加，避免脚本层四散直写
 
+- `check_helpers.mjs`
+  - focused check 共享辅助
+  - 负责回归脚本常用的 `repoRoot` 解析、`runNode`、`ok/fail`、临时目录清理与 JSON 读写
+
 - `cli_help.mjs`
   - CLI 帮助输出与公共参数拆分
 
