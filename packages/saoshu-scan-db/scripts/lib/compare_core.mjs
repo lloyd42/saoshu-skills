@@ -10,6 +10,7 @@ export const COMPARE_PRESETS = {
   default: DEFAULT_COMPARE_DIMENSIONS,
   "context-audit": "author,tags,coverage_mode,coverage_decision_action,coverage_decision_reason,has_counter_evidence,has_offset_hints",
   "context-source": "author,tags,coverage_mode,context_reference_source_kind",
+  "policy-audit": "author,tags,reader_policy_preset,reader_policy_evidence_threshold,reader_policy_coverage_preference,has_reader_policy_customization,coverage_decision_action",
 };
 
 export function resolveComparePreset(preset) {
@@ -59,6 +60,19 @@ function collectRunValues(row, dim) {
     const single = String(row.context_reference_source_kind || row.context_reference_source_kinds || "").trim();
     return single ? [single] : [];
   }
+  if (dim === "reader_policy_hard_block" || dim === "reader_policy_hard_blocks") {
+    if (Array.isArray(row.reader_policy_hard_blocks)) return row.reader_policy_hard_blocks.map((item) => String(item || "").trim()).filter(Boolean);
+    return [];
+  }
+  if (dim === "reader_policy_soft_risk" || dim === "reader_policy_soft_risks") {
+    if (Array.isArray(row.reader_policy_soft_risks)) return row.reader_policy_soft_risks.map((item) => String(item || "").trim()).filter(Boolean);
+    return [];
+  }
+  if (dim === "reader_policy_relation_constraint" || dim === "reader_policy_relation_constraints") {
+    if (Array.isArray(row.reader_policy_relation_constraints)) return row.reader_policy_relation_constraints.map((item) => String(item || "").trim()).filter(Boolean);
+    return [];
+  }
+  if (dim === "has_reader_policy_customization") return [String(row.has_reader_policy_customization || "no")];
   if (dim === "has_counter_evidence") return [Number(row.counter_evidence_ref_total || 0) > 0 ? "yes" : "no"];
   if (dim === "has_offset_hints") return [Number(row.offset_hint_ref_total || 0) > 0 ? "yes" : "no"];
   const value = row[dim];

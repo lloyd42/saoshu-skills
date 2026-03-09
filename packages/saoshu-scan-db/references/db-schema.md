@@ -6,6 +6,10 @@
 - report_generated_at
 - title / author / tags
 - target_defense
+- reader_policy_preset / reader_policy_label / reader_policy_source
+- reader_policy_evidence_threshold / reader_policy_coverage_preference
+- has_reader_policy_customization
+- reader_policy_hard_blocks[] / reader_policy_soft_risks[] / reader_policy_relation_constraints[]
 - verdict / rating
 - batch_count
 - pipeline_mode / coverage_mode / coverage_template / coverage_unit / chapter_detect_used_mode / serial_status
@@ -113,6 +117,10 @@
 - verdict（可看/慎入/劝退）
 - pipeline_mode（economy/performance）
 - target_defense（目标防御）
+- reader_policy_preset（读者策略 preset）
+- reader_policy_evidence_threshold（读者策略证据阈值）
+- reader_policy_coverage_preference（读者策略覆盖偏好）
+- has_reader_policy_customization（是否声明了自定义策略视角）
 - title（按作品聚合）
 - coverage_mode（sampled / chapter-full / full-book）
 - coverage_template（如 opening-100 / head-tail / head-tail-risk / opening-latest）

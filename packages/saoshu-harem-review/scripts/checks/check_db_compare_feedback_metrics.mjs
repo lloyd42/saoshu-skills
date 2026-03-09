@@ -32,11 +32,12 @@ fs.mkdirSync(tmpRoot, { recursive: true });
 const dbDir = path.join(tmpRoot, "scan-db");
 const outDir = path.join(tmpRoot, "compare");
 const presetOutDir = path.join(tmpRoot, "compare-preset");
+const policyPresetOutDir = path.join(tmpRoot, "compare-policy-preset");
 const overrideOutDir = path.join(tmpRoot, "compare-preset-override");
 
 writeJsonl(path.join(dbDir, "runs.jsonl"), [
-  { title: "A", author: "甲", tags: "后宫/玄幻", verdict: "慎入", rating: 5, thunder_total: 1, depression_total: 2, risk_total: 3, coverage_mode: "sampled", coverage_template: "opening-100", coverage_decision_action: "upgrade-chapter-full", coverage_decision_confidence: "cautious", coverage_decision_reasons: ["late_risk_uncovered", "too_many_unverified"], serial_status: "ongoing", coverage_ratio: 0.8, keyword_candidate_total: 4, alias_candidate_total: 2, risk_question_candidate_total: 3, relation_candidate_total: 1, context_reference_total: 6, context_reference_source_kinds: ["event_evidence", "event_counter_evidence", "summary_only"], counter_evidence_ref_total: 2, offset_hint_ref_total: 1 },
-  { title: "B", author: "甲", tags: "后宫/都市", verdict: "可看", rating: 7, thunder_total: 0, depression_total: 1, risk_total: 1, coverage_mode: "sampled", coverage_template: "head-tail", coverage_decision_action: "keep-sampled", coverage_decision_confidence: "stable", coverage_decision_reasons: ["latest_progress_uncertain"], serial_status: "completed", coverage_ratio: 0.9, keyword_candidate_total: 6, alias_candidate_total: 4, risk_question_candidate_total: 2, relation_candidate_total: 5, context_reference_total: 3, context_reference_source_kinds: ["event_evidence", "summary_only"], counter_evidence_ref_total: 0, offset_hint_ref_total: 2 },
+  { title: "A", author: "甲", tags: "后宫/玄幻", verdict: "慎入", rating: 5, thunder_total: 1, depression_total: 2, risk_total: 3, coverage_mode: "sampled", coverage_template: "opening-100", coverage_decision_action: "upgrade-chapter-full", coverage_decision_confidence: "cautious", coverage_decision_reasons: ["late_risk_uncovered", "too_many_unverified"], serial_status: "ongoing", coverage_ratio: 0.8, keyword_candidate_total: 4, alias_candidate_total: 2, risk_question_candidate_total: 3, relation_candidate_total: 1, context_reference_total: 6, context_reference_source_kinds: ["event_evidence", "event_counter_evidence", "summary_only"], counter_evidence_ref_total: 2, offset_hint_ref_total: 1, reader_policy_preset: "community-default", reader_policy_label: "默认社区 preset", reader_policy_evidence_threshold: "balanced", reader_policy_coverage_preference: "balanced", has_reader_policy_customization: "no", reader_policy_hard_blocks: [], reader_policy_soft_risks: [], reader_policy_relation_constraints: [] },
+  { title: "B", author: "甲", tags: "后宫/都市", verdict: "可看", rating: 7, thunder_total: 0, depression_total: 1, risk_total: 1, coverage_mode: "sampled", coverage_template: "head-tail", coverage_decision_action: "keep-sampled", coverage_decision_confidence: "stable", coverage_decision_reasons: ["latest_progress_uncertain"], serial_status: "completed", coverage_ratio: 0.9, keyword_candidate_total: 6, alias_candidate_total: 4, risk_question_candidate_total: 2, relation_candidate_total: 5, context_reference_total: 3, context_reference_source_kinds: ["event_evidence", "summary_only"], counter_evidence_ref_total: 0, offset_hint_ref_total: 2, reader_policy_preset: "custom-no-steal", reader_policy_label: "不能接受关键女主被抢", reader_policy_evidence_threshold: "strict", reader_policy_coverage_preference: "conservative", has_reader_policy_customization: "yes", reader_policy_hard_blocks: ["送女"], reader_policy_soft_risks: [], reader_policy_relation_constraints: ["不能接受关键女主被抢/共享"] },
 ]);
 
 writeJsonl(path.join(dbDir, "mode_diff_entries.jsonl"), [
@@ -44,7 +45,7 @@ writeJsonl(path.join(dbDir, "mode_diff_entries.jsonl"), [
   { title: "B", author: "甲", tags: ["后宫", "都市"], gain_window: "too_wide", band: "fallback_to_performance", score: 8.2, coverage_ratio: 0.4 },
 ]);
 
-const result = runNode("packages/saoshu-scan-db/scripts/db_compare.mjs", ["--db", dbDir, "--dimensions", "author,tags,coverage_mode,coverage_template,coverage_decision_action,coverage_decision_reason,has_counter_evidence,has_offset_hints,context_reference_source_kind,serial_status,mode_diff_gain_window", "--output-dir", outDir]);
+const result = runNode("packages/saoshu-scan-db/scripts/db_compare.mjs", ["--db", dbDir, "--dimensions", "author,tags,coverage_mode,coverage_template,coverage_decision_action,coverage_decision_reason,reader_policy_preset,reader_policy_evidence_threshold,reader_policy_coverage_preference,has_reader_policy_customization,reader_policy_hard_block,reader_policy_relation_constraint,has_counter_evidence,has_offset_hints,context_reference_source_kind,serial_status,mode_diff_gain_window", "--output-dir", outDir]);
 if (result.status === 0) ok("db_compare feedback metrics run");
 else fail(`db_compare feedback metrics run failed\nSTDERR:\n${result.stderr}`);
 
@@ -55,6 +56,10 @@ else fail(`db_compare default dimensions run failed\nSTDERR:\n${defaultResult.st
 const presetResult = runNode("packages/saoshu-scan-db/scripts/db_compare.mjs", ["--db", dbDir, "--preset", "context-audit", "--output-dir", presetOutDir]);
 if (presetResult.status === 0) ok("db_compare preset context-audit run");
 else fail(`db_compare preset context-audit run failed\nSTDERR:\n${presetResult.stderr}`);
+
+const policyPresetResult = runNode("packages/saoshu-scan-db/scripts/db_compare.mjs", ["--db", dbDir, "--preset", "policy-audit", "--output-dir", policyPresetOutDir]);
+if (policyPresetResult.status === 0) ok("db_compare preset policy-audit run");
+else fail(`db_compare preset policy-audit run failed\nSTDERR:\n${policyPresetResult.stderr}`);
 
 const presetOverrideResult = runNode("packages/saoshu-scan-db/scripts/db_compare.mjs", ["--db", dbDir, "--preset", "context-audit", "--dimensions", "author,coverage_mode", "--output-dir", overrideOutDir]);
 if (presetOverrideResult.status === 0) ok("db_compare preset override run");
@@ -89,6 +94,10 @@ else fail(`db_compare default dimensions should prefer coverage-first ordering: 
 const presetPayload = JSON.parse(fs.readFileSync(path.join(presetOutDir, "compare.json"), "utf8"));
 if (presetPayload.preset === "context-audit" && JSON.stringify(presetPayload.dimensions) === JSON.stringify(["author", "tags", "coverage_mode", "coverage_decision_action", "coverage_decision_reason", "has_counter_evidence", "has_offset_hints"])) ok("db_compare preset context-audit resolves expected dimensions");
 else fail(`db_compare preset context-audit should resolve expected dimensions: ${JSON.stringify(presetPayload)}`);
+
+const policyPresetPayload = JSON.parse(fs.readFileSync(path.join(policyPresetOutDir, "compare.json"), "utf8"));
+if (policyPresetPayload.preset === "policy-audit" && JSON.stringify(policyPresetPayload.dimensions) === JSON.stringify(["author", "tags", "reader_policy_preset", "reader_policy_evidence_threshold", "reader_policy_coverage_preference", "has_reader_policy_customization", "coverage_decision_action"])) ok("db_compare preset policy-audit resolves expected dimensions");
+else fail(`db_compare preset policy-audit should resolve expected dimensions: ${JSON.stringify(policyPresetPayload)}`);
 
 const presetOverridePayload = JSON.parse(fs.readFileSync(path.join(overrideOutDir, "compare.json"), "utf8"));
 if (presetOverridePayload.preset === "context-audit" && JSON.stringify(presetOverridePayload.dimensions) === JSON.stringify(["author", "coverage_mode"])) ok("db_compare explicit dimensions override preset");
@@ -133,6 +142,26 @@ const gainWindowGroup = Array.isArray(payload.groups) ? payload.groups.find((ite
 const tooWideRow = Array.isArray(gainWindowGroup?.rows) ? gainWindowGroup.rows.find((item) => item.key === "too_wide") : null;
 if (tooWideRow?.mode_diff_entries === 1 && tooWideRow?.too_wide_rate === 1) ok("db_compare supports mode_diff_gain_window dimension");
 else fail(`db_compare should expose mode_diff_gain_window dimension: ${JSON.stringify(tooWideRow)}`);
+
+const readerPolicyPresetGroup = Array.isArray(payload.groups) ? payload.groups.find((item) => item.dimension === "reader_policy_preset") : null;
+const customPolicyRow = Array.isArray(readerPolicyPresetGroup?.rows) ? readerPolicyPresetGroup.rows.find((item) => item.key === "custom-no-steal") : null;
+if (customPolicyRow?.runs === 1 && customPolicyRow?.avg_rating === 7) ok("db_compare supports reader_policy_preset dimension");
+else fail(`db_compare should expose reader_policy_preset dimension: ${JSON.stringify(customPolicyRow)}`);
+
+const readerPolicyThresholdGroup = Array.isArray(payload.groups) ? payload.groups.find((item) => item.dimension === "reader_policy_evidence_threshold") : null;
+const strictPolicyRow = Array.isArray(readerPolicyThresholdGroup?.rows) ? readerPolicyThresholdGroup.rows.find((item) => item.key === "strict") : null;
+if (strictPolicyRow?.runs === 1 && strictPolicyRow?.avg_coverage === 0.9) ok("db_compare supports reader_policy_evidence_threshold dimension");
+else fail(`db_compare should expose reader_policy_evidence_threshold dimension: ${JSON.stringify(strictPolicyRow)}`);
+
+const readerPolicyCustomizationGroup = Array.isArray(payload.groups) ? payload.groups.find((item) => item.dimension === "has_reader_policy_customization") : null;
+const customYesRow = Array.isArray(readerPolicyCustomizationGroup?.rows) ? readerPolicyCustomizationGroup.rows.find((item) => item.key === "yes") : null;
+if (customYesRow?.runs === 1 && customYesRow?.avg_rating === 7) ok("db_compare supports has_reader_policy_customization dimension");
+else fail(`db_compare should expose has_reader_policy_customization dimension: ${JSON.stringify(customYesRow)}`);
+
+const readerPolicyHardBlockGroup = Array.isArray(payload.groups) ? payload.groups.find((item) => item.dimension === "reader_policy_hard_block") : null;
+const sendGirlBlockRow = Array.isArray(readerPolicyHardBlockGroup?.rows) ? readerPolicyHardBlockGroup.rows.find((item) => item.key === "送女") : null;
+if (sendGirlBlockRow?.runs === 1 && sendGirlBlockRow?.avg_coverage === 0.9) ok("db_compare supports reader_policy_hard_block dimension");
+else fail(`db_compare should expose reader_policy_hard_block dimension: ${JSON.stringify(sendGirlBlockRow)}`);
 
 if (!hasFailure) console.log("DB compare feedback metrics check passed.");
 else process.exitCode = 1;

@@ -30,6 +30,7 @@ function makeReport({ title, pipelineMode, coverageMode, coverageTemplate, actio
   return {
     generated_at: "2026-03-08T12:00:00Z",
     novel: { title, author: "作者甲", tags: "后宫/玄幻", target_defense: "布甲" },
+    reader_policy: { preset: "community-default", label: "默认社区 preset", source: "fixture", customized: false, summary: "默认社区视角", hard_blocks: [], soft_risks: [], relation_constraints: [], evidence_threshold: "balanced", coverage_preference: "balanced", notes: [] },
     overall: { verdict: action === "keep-sampled" ? "可看" : "慎入", rating: action === "keep-sampled" ? 7 : 5 },
     scan: {
       batch_count: 2,
@@ -65,6 +66,7 @@ function makeLegacyReport({ title, pipelineMode, coverageRatio, totalBatches, se
   return {
     generated_at: "2026-03-07T12:00:00Z",
     novel: { title, author: "作者乙", tags: pipelineMode === "economy" ? "真实样本/待补充 [ECONOMY-SAMPLED]" : "真实样本/待补充 [PERFORMANCE-FULL]", target_defense: "布甲" },
+    reader_policy: { preset: "custom-no-steal", label: "不能接受关键女主被抢", source: "fixture", customized: true, summary: "更关注关键女主关系主位", hard_blocks: ["送女"], soft_risks: [], relation_constraints: ["不能接受关键女主被抢/共享"], evidence_threshold: "strict", coverage_preference: "conservative", notes: [] },
     overall: { verdict, rating },
     decision_summary: {
       title: "决策区",
@@ -167,6 +169,9 @@ else fail(`db_ingest_report_tree should write five runs: ${runs.length}`);
 if (runs.some((row) => row.coverage_decision_action === "upgrade-chapter-full") && runs.some((row) => Array.isArray(row.coverage_decision_reasons) && row.coverage_decision_reasons.includes("chapter_boundary_unstable"))) ok("db_ingest_report_tree preserves coverage decision fields");
 else fail(`db_ingest_report_tree should preserve coverage decision fields: ${JSON.stringify(runs)}`);
 
+if (runs.some((row) => row.reader_policy_preset === "community-default") && runs.some((row) => row.reader_policy_preset === "custom-no-steal" && row.has_reader_policy_customization === "yes")) ok("db_ingest_report_tree preserves reader policy fields");
+else fail(`db_ingest_report_tree should preserve reader policy fields: ${JSON.stringify(runs)}`);
+
 const legacyEconomy = runs.find((row) => row.title === "作品C" && row.pipeline_mode === "economy");
 if (legacyEconomy?.coverage_contract_source === "legacy-inferred" && legacyEconomy?.coverage_mode === "sampled" && legacyEconomy?.coverage_decision_action === "upgrade-chapter-full") ok("db_ingest_report_tree infers legacy sampled coverage contract");
 else fail(`db_ingest_report_tree should infer legacy sampled contract: ${JSON.stringify(legacyEconomy)}`);
@@ -185,7 +190,8 @@ if (overview.status === 0
   && overview.stdout.includes("Coverage decision actions:")
   && overview.stdout.includes("升级到 chapter-full(2)")
   && overview.stdout.includes("升级到 full-book(1)")
-  && overview.stdout.includes("继续当前覆盖层(2)")) ok("db_ingest_report_tree enables coverage decision overview after tree ingest");
+  && overview.stdout.includes("继续当前覆盖层(2)")
+  && overview.stdout.includes("Top reader policy presets: community-default(3) / custom-no-steal(2)")) ok("db_ingest_report_tree enables coverage decision overview after tree ingest");
 else fail(`coverage decision overview should be available after tree ingest\nSTDOUT:\n${overview.stdout}\nSTDERR:\n${overview.stderr}`);
 
 if (!hasFailure) console.log("DB ingest report tree check passed.");

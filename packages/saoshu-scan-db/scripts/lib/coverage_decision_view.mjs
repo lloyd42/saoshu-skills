@@ -74,6 +74,9 @@ export function buildCoverageDecisionOverview(runs, limit = 10) {
     action_dist: topNScalar(runs, "coverage_decision_action", limit),
     confidence_dist: topNScalar(runs, "coverage_decision_confidence", limit),
     reason_dist: topNListValues(runs, "coverage_decision_reasons", limit),
+    reader_policy_preset_dist: topNScalar(runs, "reader_policy_preset", limit),
+    reader_policy_threshold_dist: topNScalar(runs, "reader_policy_evidence_threshold", limit),
+    reader_policy_coverage_preference_dist: topNScalar(runs, "reader_policy_coverage_preference", limit),
     latest_runs: latestRuns,
   };
 }
@@ -93,6 +96,9 @@ export function formatCoverageDecisionOverviewText(summary) {
     `Coverage decision actions: ${formatDist(summary.action_dist || [], formatCoverageDecisionAction)}`,
     `Coverage decision confidences: ${formatDist(summary.confidence_dist || [], formatCoverageDecisionConfidence)}`,
     `Coverage decision reasons: ${formatDist(summary.reason_dist || [], formatCoverageDecisionReason)}`,
+    `Top reader policy presets: ${formatDist(summary.reader_policy_preset_dist || [], (value) => String(value || "-").trim() || "-")}`,
+    `Top reader policy thresholds: ${formatDist(summary.reader_policy_threshold_dist || [], (value) => String(value || "-").trim() || "-")}`,
+    `Top reader policy coverage preferences: ${formatDist(summary.reader_policy_coverage_preference_dist || [], (value) => String(value || "-").trim() || "-")}`,
     "Latest coverage decisions:",
     latestText,
   ].join("\n");
