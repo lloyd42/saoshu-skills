@@ -170,5 +170,23 @@ const trendsPayload = JSON.parse(fs.readFileSync(path.join(trendsDir, "trends.js
 if (trendsPayload.mode_diff?.total_entries === 3 && Array.isArray(trendsPayload.mode_diff?.by_day)) ok("db_trends includes mode-diff trend payload");
 else fail(`db_trends should include mode-diff trend payload: ${JSON.stringify(trendsPayload.mode_diff)}`);
 
+if (Array.isArray(trendsPayload.top_reader_policy_presets)
+  && trendsPayload.top_reader_policy_presets.some((item) => item.name === "community-default" && item.count === 1)
+  && Array.isArray(trendsPayload.top_reader_policy_thresholds)
+  && trendsPayload.top_reader_policy_thresholds.some((item) => item.name === "balanced" && item.count === 1)
+  && Array.isArray(trendsPayload.top_reader_policy_coverage_preferences)
+  && trendsPayload.top_reader_policy_coverage_preferences.some((item) => item.name === "balanced" && item.count === 1)
+  && Array.isArray(trendsPayload.reader_policy_customization_dist)
+  && trendsPayload.reader_policy_customization_dist.some((item) => item.name === "no" && item.count === 1)) ok("db_trends includes reader policy trend payload");
+else fail(`db_trends should include reader policy trend payload: ${JSON.stringify(trendsPayload)}`);
+
+const trendsMd = fs.readFileSync(path.join(trendsDir, "trends.md"), "utf8");
+if (trendsMd.includes("读者策略 preset Top") && trendsMd.includes("community-default: 1") && trendsMd.includes("自定义读者策略分布")) ok("db_trends markdown surfaces reader policy sections");
+else fail("db_trends markdown should surface reader policy sections");
+
+const trendsHtml = fs.readFileSync(path.join(trendsDir, "trends.html"), "utf8");
+if (trendsHtml.includes("读者策略 preset Top") && trendsHtml.includes("community-default") && trendsHtml.includes("证据阈值 Top") && trendsHtml.includes("自定义读者策略分布")) ok("db_trends html surfaces reader policy sections");
+else fail("db_trends html should surface reader policy sections");
+
 if (!hasFailure) console.log("DB mode-diff integration check passed.");
 else process.exitCode = 1;

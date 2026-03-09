@@ -56,6 +56,10 @@ function aggregateRuns(runs, top) {
   const byDay = new Map();
   const byAuthor = new Map();
   const byTag = new Map();
+  const byReaderPolicyPreset = new Map();
+  const byReaderPolicyThreshold = new Map();
+  const byReaderPolicyCoveragePreference = new Map();
+  const byReaderPolicyCustomization = new Map();
 
   for (const r of runs) {
     const d = dayKey(r.ingested_at || r.report_generated_at);
@@ -63,6 +67,14 @@ function aggregateRuns(runs, top) {
     const a = String(r.author || "").trim();
     if (a) byAuthor.set(a, (byAuthor.get(a) || 0) + 1);
     for (const t of splitTags(r.tags)) byTag.set(t, (byTag.get(t) || 0) + 1);
+    const preset = String(r.reader_policy_preset || "").trim();
+    if (preset) byReaderPolicyPreset.set(preset, (byReaderPolicyPreset.get(preset) || 0) + 1);
+    const threshold = String(r.reader_policy_evidence_threshold || "").trim();
+    if (threshold) byReaderPolicyThreshold.set(threshold, (byReaderPolicyThreshold.get(threshold) || 0) + 1);
+    const coveragePreference = String(r.reader_policy_coverage_preference || "").trim();
+    if (coveragePreference) byReaderPolicyCoveragePreference.set(coveragePreference, (byReaderPolicyCoveragePreference.get(coveragePreference) || 0) + 1);
+    const customized = String(r.has_reader_policy_customization || "").trim();
+    if (customized) byReaderPolicyCustomization.set(customized, (byReaderPolicyCustomization.get(customized) || 0) + 1);
   }
 
   return {
@@ -70,6 +82,10 @@ function aggregateRuns(runs, top) {
     by_day: [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([day, count]) => ({ day, count })),
     top_authors: topN(byAuthor, top).map(([name, count]) => ({ name, count })),
     top_tags: topN(byTag, top).map(([name, count]) => ({ name, count })),
+    top_reader_policy_presets: topN(byReaderPolicyPreset, top).map(([name, count]) => ({ name, count })),
+    top_reader_policy_thresholds: topN(byReaderPolicyThreshold, top).map(([name, count]) => ({ name, count })),
+    top_reader_policy_coverage_preferences: topN(byReaderPolicyCoveragePreference, top).map(([name, count]) => ({ name, count })),
+    reader_policy_customization_dist: topN(byReaderPolicyCustomization, top).map(([name, count]) => ({ name, count })),
   };
 }
 
@@ -97,6 +113,22 @@ function renderMd(data) {
   if (!data.top_tags.length) lines.push("- 无");
   else data.top_tags.forEach((x) => lines.push(`- ${x.name}: ${x.count}`));
   lines.push("");
+  lines.push("## 读者策略 preset Top");
+  if (!data.top_reader_policy_presets.length) lines.push("- 无");
+  else data.top_reader_policy_presets.forEach((x) => lines.push(`- ${x.name}: ${x.count}`));
+  lines.push("");
+  lines.push("## 证据阈值 Top");
+  if (!data.top_reader_policy_thresholds.length) lines.push("- 无");
+  else data.top_reader_policy_thresholds.forEach((x) => lines.push(`- ${x.name}: ${x.count}`));
+  lines.push("");
+  lines.push("## 覆盖偏好 Top");
+  if (!data.top_reader_policy_coverage_preferences.length) lines.push("- 无");
+  else data.top_reader_policy_coverage_preferences.forEach((x) => lines.push(`- ${x.name}: ${x.count}`));
+  lines.push("");
+  lines.push("## 自定义读者策略分布");
+  if (!data.reader_policy_customization_dist.length) lines.push("- 无");
+  else data.reader_policy_customization_dist.forEach((x) => lines.push(`- ${x.name}: ${x.count}`));
+  lines.push("");
   lines.push("## Mode-diff 档位分布");
   lines.push(`- 可接受：${data.mode_diff.gain_window_counts?.acceptable || 0}`);
   lines.push(`- 灰区：${data.mode_diff.gain_window_counts?.gray || 0}`);
@@ -116,6 +148,10 @@ function renderHtml(data) {
   }).join("");
   const authorRows = data.top_authors.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.count}</td></tr>`).join("");
   const tagRows = data.top_tags.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.count}</td></tr>`).join("");
+  const presetRows = data.top_reader_policy_presets.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.count}</td></tr>`).join("");
+  const thresholdRows = data.top_reader_policy_thresholds.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.count}</td></tr>`).join("");
+  const coveragePreferenceRows = data.top_reader_policy_coverage_preferences.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.count}</td></tr>`).join("");
+  const customizationRows = data.reader_policy_customization_dist.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.count}</td></tr>`).join("");
   const modeSummaryRows = [
     ["可接受", data.mode_diff.gain_window_counts?.acceptable || 0],
     ["灰区", data.mode_diff.gain_window_counts?.gray || 0],
@@ -132,6 +168,14 @@ function renderHtml(data) {
 <div class="grid">
 <div class="card"><h2>作者 Top</h2><table><thead><tr><th>作者</th><th>次数</th></tr></thead><tbody>${authorRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
 <div class="card"><h2>标签 Top</h2><table><thead><tr><th>标签</th><th>次数</th></tr></thead><tbody>${tagRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
+</div>
+<div class="grid">
+<div class="card"><h2>读者策略 preset Top</h2><table><thead><tr><th>preset</th><th>次数</th></tr></thead><tbody>${presetRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
+<div class="card"><h2>证据阈值 Top</h2><table><thead><tr><th>阈值</th><th>次数</th></tr></thead><tbody>${thresholdRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
+</div>
+<div class="grid">
+<div class="card"><h2>覆盖偏好 Top</h2><table><thead><tr><th>偏好</th><th>次数</th></tr></thead><tbody>${coveragePreferenceRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
+<div class="card"><h2>自定义读者策略分布</h2><table><thead><tr><th>是否自定义</th><th>次数</th></tr></thead><tbody>${customizationRows || "<tr><td colspan=2>-</td></tr>"}</tbody></table></div>
 </div>
 <div class="card"><h2>Mode-diff 档位分布</h2><table><thead><tr><th>档位</th><th>次数</th></tr></thead><tbody>${modeSummaryRows}</tbody></table></div>
 </div></body></html>`;
