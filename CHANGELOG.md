@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-03-10
+
 ### 改进
 - 新增 `packages/saoshu-harem-review/scripts/dev/release_installed_smoke.mjs` 与 `npm run dev:release-installed-smoke`，把“发版后同步到 Codex 已安装 skill 并按真实用户路径做最小样例冒烟”收敛成可复用命令。
 - `saoshu_cli.mjs --help` 现同步到当前 `policy-audit`、`db trends` 等 surface，避免已安装副本 help 文案继续漂移。

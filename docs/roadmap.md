@@ -22,7 +22,7 @@
 
 ## 当前状态快照
 
-当前最近正式版本：`v0.6.0`。
+当前最近正式版本：`v0.7.0`。
 当前仓库根目录：以当前 clone 的 repo root 为准，不依赖固定盘符或用户名路径。
 
 ### 1. 产品主线
@@ -46,7 +46,9 @@
 - `coverage_decision` 合同已经打通：报告 JSON、Markdown / HTML、scan-db 扁平字段、compare / dashboard 默认展示已对齐
 - `context_references` 合同已经打通：报告 JSON、Markdown / HTML、复核包、scan-db 查询与 dashboard 已对齐
 - `scan-db` 已能直接消费上下文引用、覆盖升级建议、mode-diff 台账与 compare preset
+- `scan-db` 已能在 `coverage-decision-overview`、dashboard 首页与 `coverage-calibration / policy-audit` compare 里直接给出校准快照、优先复审队列、自动建议、证据组织方式与代表样本预览
 - `scan-db` 已能通过 query / compare / dashboard / trends 复盘 `reader_policy` 的最小差异面，但仍停留在策略视角解释，不直接改写主裁决
+- `scan-db` 的终端概览、趋势、policy compare 与 dashboard 已统一为中文 reader-facing 标签，不再把 `high-coverage`、`segment-fallback` 这类内部值直接暴露给用户
 - feedback loop 已覆盖关键词、别名、补证问题池、关系边四条闭环，并支持统一导出资产
 - `reader_policy` 已进入 manifest 与最终报告合同，当前先承担“策略视角声明与解释”职责，为后续人机协同保留挂载点
 - 仓库读写基线已收敛为 `UTF-8 without BOM` + `LF`，共享 no-BOM 写入 helper 与检查链已落地
@@ -109,6 +111,7 @@ git log --oneline --decorate -n 8
 当前主线不再是继续发散模式名，而是持续证明现有升级契约够不够稳：
 
 - 优先回看 `keep-sampled / upgrade-chapter-full / upgrade-full-book / keep-current` 的真实样本命中质量
+- 先看 `coverage-decision-overview` 或 dashboard 首页给出的校准快照、优先复审队列和自动建议，再决定是否打开 `compare-calibration` 深挖
 - 重点检查 `late_risk_uncovered`、`latest_progress_uncertain`、`chapter_boundary_unstable`、`sensitive_defense_needs_more_evidence` 等原因码是否站得住
 - 继续核对 `decision_summary.next_action`、报告首页文案、compare / dashboard 展示是否仍与结构化真源一致
 - 保持 `sampled` 的目标是“决策导向快速摸底”，不是无限逼近全文
