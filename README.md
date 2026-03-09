@@ -223,6 +223,10 @@ node packages/saoshu-harem-review/scripts/manifest_wizard.mjs --output ./manifes
 ```
 
 当前这组字段先承担“策略视角声明”与报告解释，不急着直接重写主裁决逻辑。
+当前已落地的最小行为差异有两条：
+
+- `reader_policy` 会影响“先补哪几个问题”的优先级
+- 对证据阈值更严格、覆盖偏好更保守的视角，`coverage_decision` 会更早提醒补证或升级覆盖
 
 ## 开发与校验
 

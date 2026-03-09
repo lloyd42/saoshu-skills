@@ -64,7 +64,31 @@ function buildRiskQuestionIndex(rows) {
   return index;
 }
 
-function scoreRiskUrgency(risk) {
+function normalizePolicyList(value) {
+  return Array.isArray(value) ? value.map((item) => String(item || "").trim()).filter(Boolean) : [];
+}
+
+function scorePolicyRiskPriority(riskName, readerPolicy) {
+  const policy = readerPolicy && typeof readerPolicy === "object" ? readerPolicy : {};
+  const name = String(riskName || "").trim();
+  if (!name) return 0;
+  let score = 0;
+  const hardBlocks = new Set(normalizePolicyList(policy.hard_blocks));
+  const softRisks = new Set(normalizePolicyList(policy.soft_risks));
+  const relationConstraints = normalizePolicyList(policy.relation_constraints).join(" ");
+
+  if (hardBlocks.has(name)) score += 120;
+  if (softRisks.has(name)) score += 35;
+
+  if (relationConstraints) {
+    if ((/抢|被抢|共享/.test(relationConstraints)) && ["送女", "绿帽", "wrq", "背叛"].includes(name)) score += 90;
+    if ((/关键女主|主位|关系主位/.test(relationConstraints)) && ["送女", "背叛", "绿帽", "wrq"].includes(name)) score += 70;
+    if ((/百合/.test(relationConstraints)) && name === "百合") score += 60;
+  }
+  return score;
+}
+
+function scoreRiskUrgency(risk, readerPolicy) {
   const criticalRules = new Set(CRITICAL_RISK_RULES);
   const riskName = String(risk?.risk || "").trim();
   const impact = String(risk?.impact || "");
@@ -73,10 +97,11 @@ function scoreRiskUrgency(risk) {
   if (criticalRules.has(riskName)) score += 100;
   if (/(劝退|改变结论|显著下调|直接劝退|关键)/.test(impact)) score += 40;
   if (missing) score += Math.min(20, 5 + missing.length / 10);
+  score += scorePolicyRiskPriority(riskName, readerPolicy);
   return score;
 }
 
-export function buildFollowUpQuestions(merged, riskQuestionPool) {
+export function buildFollowUpQuestions(merged, riskQuestionPool, readerPolicy) {
   const questionRows = [];
   const riskIndex = buildRiskQuestionIndex(riskQuestionPool);
   for (const risk of Array.isArray(merged.risks) ? merged.risks : []) {
@@ -84,10 +109,10 @@ export function buildFollowUpQuestions(merged, riskQuestionPool) {
     if (!riskName) continue;
     if (riskIndex.has(riskName)) {
       for (const question of riskIndex.get(riskName)) {
-        questionRows.push({ text: question, risk: riskName, score: scoreRiskUrgency(risk) + 30, source: "risk_pool" });
+        questionRows.push({ text: question, risk: riskName, score: scoreRiskUrgency(risk, readerPolicy) + 30, source: "risk_pool" });
       }
     } else if (risk.missing_evidence) {
-      questionRows.push({ text: `[${riskName}] ${String(risk.missing_evidence).trim()}`, risk: riskName, score: scoreRiskUrgency(risk) + 20, source: "risk_missing" });
+      questionRows.push({ text: `[${riskName}] ${String(risk.missing_evidence).trim()}`, risk: riskName, score: scoreRiskUrgency(risk, readerPolicy) + 20, source: "risk_missing" });
     }
   }
   for (const event of Array.isArray(merged.event_candidates) ? merged.event_candidates : []) {
@@ -95,7 +120,7 @@ export function buildFollowUpQuestions(merged, riskQuestionPool) {
     if (["已确认", "排除"].includes(decision)) continue;
     const riskName = String(event.rule_candidate || "").trim();
     const missing = Array.isArray(event.missing_evidence) ? event.missing_evidence : [];
-    const eventScore = (new Set(CRITICAL_RISK_RULES).has(riskName) ? 90 : 20) + Number(event.confidence_score || 0);
+    const eventScore = (new Set(CRITICAL_RISK_RULES).has(riskName) ? 90 : 20) + Number(event.confidence_score || 0) + scorePolicyRiskPriority(riskName, readerPolicy);
     for (const item of missing) {
       const text = String(item || "").trim();
       if (!text) continue;
@@ -248,6 +273,10 @@ export function hasCoverageDecisionImpact(risk) {
   const riskName = String(risk?.risk || "").trim();
   const impact = String(risk?.impact || "").trim();
   return CRITICAL_RISK_RULES.includes(riskName) || /(劝退|改变结论|显著下调|直接劝退|关键)/.test(impact);
+}
+
+export function hasPolicySensitiveRisk(risk, readerPolicy) {
+  return scorePolicyRiskPriority(String(risk?.risk || "").trim(), readerPolicy) >= 60;
 }
 
 export function describeCoverageDecisionNextAction(coverageDecision, coverageMode, verdict) {

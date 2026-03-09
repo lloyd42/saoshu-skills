@@ -35,12 +35,27 @@ ensureCleanDir(tmpRoot);
 const batchDir = path.join(tmpRoot, "batches");
 const reportJson = path.join(tmpRoot, "merged-report.json");
 const questionPoolPath = path.join(tmpRoot, "risk-question-pool.json");
+const readerPolicyPath = path.join(tmpRoot, "reader-policy.json");
 
 writeJson(questionPoolPath, {
   questions: [
     { risk: "背叛", questions: ["背叛是否只是伪装投敌，终局是否回到男主阵营？"] },
     { risk: "擦边", questions: ["擦边是否最终越界成实质雷点？"] },
   ],
+});
+
+writeJson(readerPolicyPath, {
+  preset: "custom-no-steal",
+  label: "不能接受关键女主被抢",
+  source: "test",
+  summary: "该视角重点关注关键女主被抢、共享或关系主位被改写。",
+  hard_blocks: ["送女"],
+  soft_risks: [],
+  relation_constraints: ["不能接受关键女主被抢/共享"],
+  scope_rules: [],
+  evidence_threshold: "balanced",
+  coverage_preference: "balanced",
+  notes: [],
 });
 
 writeJson(path.join(batchDir, "B01.json"), {
@@ -72,6 +87,7 @@ const result = runNode("packages/saoshu-harem-review/scripts/batch_merge.mjs", [
   "--tags", "测试",
   "--target-defense", "布甲",
   "--risk-question-pool", questionPoolPath,
+  "--reader-policy-file", readerPolicyPath,
 ]);
 
 if (result.status === 0) ok("report priority merge run");
@@ -86,8 +102,8 @@ const questions = Array.isArray(report.follow_up_questions) ? report.follow_up_q
 if (questions.length === 3) ok("follow-up questions are limited to the top three");
 else fail(`expected exactly 3 follow-up questions, got ${questions.length}`);
 
-if (questions[0]?.includes("背叛是否只是伪装投敌")) ok("most critical follow-up question ranks first");
-else fail(`expected 背叛 question first, got ${questions[0] || "(none)"}`);
+if (questions[0]?.includes("送女")) ok("reader policy elevates hard-block relation question to first");
+else fail(`expected 送女 question first under reader policy, got ${questions[0] || "(none)"}`);
 
 if (!hasFailure) console.log("Report priority focus check passed.");
 else process.exitCode = 1;

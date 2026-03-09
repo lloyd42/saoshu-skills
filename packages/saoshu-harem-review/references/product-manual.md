@@ -225,6 +225,11 @@ Manifest 向导（新手推荐）：
 
 如果你的阅读边界明显不同于默认社区 preset，当前可直接在 manifest 里补一个 `reader_policy` 对象，用来声明“这份报告按哪种读者策略视角解释证据”。当前这组字段先承担报告解释和人机协同输入，不急着直接改写主裁决逻辑。
 
+当前已落地的最小行为差异：
+
+- `follow_up_questions` 会优先照顾 `reader_policy` 里声明的绝对禁区、软风险和关系约束
+- `coverage_decision` 在遇到 `evidence_threshold=strict` 或 `coverage_preference=conservative` 这类更保守视角时，会更早提示“需要更多证据”
+
 如果使用 `opening-latest`，还建议同时设置 `serial_status=ongoing|completed|unknown`：
 
 - `ongoing`：更偏“开篇 + 最新进度”

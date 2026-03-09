@@ -28,7 +28,7 @@ function createBatch(batchDir, fileName, payload) {
   });
 }
 
-function buildMergeArgs({ batchDir, reportJson, reportMd, reportHtml, title, extraArgs }) {
+function buildMergeArgs({ batchDir, reportJson, reportMd, reportHtml, title, extraArgs, targetDefense = "布甲" }) {
   return [
     "--input", batchDir,
     "--output", reportMd,
@@ -36,13 +36,13 @@ function buildMergeArgs({ batchDir, reportJson, reportMd, reportHtml, title, ext
     "--html-out", reportHtml,
     "--title", title,
     "--author", "公开夹具",
-    "--target-defense", "布甲",
+    "--target-defense", targetDefense,
     "--pipeline-mode", "economy",
     ...extraArgs,
   ];
 }
 
-function runScenario({ scenarioKey, title, extraArgs, prepareBatches, assertReport }) {
+function runScenario({ scenarioKey, title, extraArgs, prepareBatches, assertReport, targetDefense }) {
   const scenarioRoot = path.join(tmpRoot, scenarioKey);
   ensureCleanDir(scenarioRoot);
   const batchDir = path.join(scenarioRoot, "batches");
@@ -60,6 +60,7 @@ function runScenario({ scenarioKey, title, extraArgs, prepareBatches, assertRepo
     reportHtml,
     title,
     extraArgs,
+    targetDefense,
   }));
   expectSuccess(result, `${scenarioKey}: merge run`);
   if (result.status !== 0) return;
@@ -235,6 +236,33 @@ function prepareFullBookScenario(batchDir) {
   });
 }
 
+function preparePolicySensitiveScenario(batchDir) {
+  createBatch(batchDir, "B01.json", {
+    batch_id: "B01",
+    range: "第1-90章",
+    risk_unconfirmed: [
+      { risk: "送女", current_evidence: "当前只看到政治联姻与交换筹码线索", missing_evidence: "需确认后期是否真实发生而非威胁", impact: "若实锤将直接劝退" },
+    ],
+    event_candidates: [{
+      event_id: "EP1",
+      rule_candidate: "送女",
+      category: "risk",
+      status: "待补证",
+      review_decision: "待补证",
+      certainty: "low",
+      confidence_score: 4,
+      chapter_range: "第1-90章",
+      timeline: "mainline",
+      polarity: "uncertain",
+      subject: { name: "苏梨", relation_label: "女主" },
+      target: { name: "外邦王子", relation_label: "风险对象" },
+      signals: ["送女"],
+      evidence: [{ chapter_num: 40, chapter_title: "议和", keyword: "送给", snippet: "群臣提议把苏梨送给外邦王子和亲" }],
+      missing_evidence: ["需确认后期是否真实执行"],
+    }],
+  });
+}
+
 function assertSampledScenario({ report, markdown, html }) {
   const coverageDecision = report.scan?.coverage_decision || {};
   const reasonCodes = Array.isArray(coverageDecision.reason_codes) ? coverageDecision.reason_codes : [];
@@ -307,6 +335,15 @@ function assertFullBookScenario({ report, markdown, html }) {
   expect(!markdown.includes("建议动作：升级到 full-book"), "full-book: markdown no longer self-upgrades", "full-book: markdown should not say upgrade to full-book");
   expect(html.includes("建议动作：当前已是 full-book"), "full-book: html renders keep-current wording", "full-book: html should render keep-current wording for full-book");
   expect(!html.includes("建议动作：升级到 full-book"), "full-book: html no longer self-upgrades", "full-book: html should not say upgrade to full-book");
+}
+
+function assertPolicySensitiveScenario({ report, markdown, html }) {
+  const coverageDecision = report.scan?.coverage_decision || {};
+  const reasonCodes = Array.isArray(coverageDecision.reason_codes) ? coverageDecision.reason_codes : [];
+  expect(reasonCodes.includes("sensitive_defense_needs_more_evidence"), "policy-sensitive: strict reader policy can trigger sensitive evidence reason", `policy-sensitive: expected sensitive reason in ${JSON.stringify(reasonCodes)}`);
+  expect((coverageDecision.reason_lines || []).some((item) => String(item).includes("证据阈值=strict")), "policy-sensitive: reason line mentions strict evidence threshold", `policy-sensitive: expected strict threshold line in ${JSON.stringify(coverageDecision.reason_lines)}`);
+  expect(markdown.includes("证据阈值=strict"), "policy-sensitive: markdown exposes strict reader policy in coverage reason", "policy-sensitive: markdown should mention strict threshold");
+  expect(html.includes("证据阈值=strict"), "policy-sensitive: html exposes strict reader policy in coverage reason", "policy-sensitive: html should mention strict threshold");
 }
 
 function main() {
@@ -406,6 +443,41 @@ function main() {
     ],
     prepareBatches: prepareFullBookScenario,
     assertReport: assertFullBookScenario,
+  });
+
+  const policySensitiveRoot = path.join(tmpRoot, "policy-sensitive");
+  ensureCleanDir(policySensitiveRoot);
+  const policyPath = path.join(policySensitiveRoot, "reader-policy.json");
+  writeJson(policyPath, {
+    preset: "strict-no-steal",
+    label: "证据严格且不能接受关键女主被抢",
+    source: "test",
+    summary: "该视角要求严格证据，并高度关注关键女主被抢/共享。",
+    hard_blocks: ["送女"],
+    soft_risks: [],
+    relation_constraints: ["不能接受关键女主被抢/共享"],
+    scope_rules: [],
+    evidence_threshold: "strict",
+    coverage_preference: "conservative",
+    notes: [],
+  });
+
+  runScenario({
+    scenarioKey: "sampled-policy-sensitive",
+    title: "升级建议聚焦：sampled-policy-sensitive",
+    targetDefense: "神防",
+    extraArgs: [
+      "--coverage-mode", "sampled",
+      "--sample-mode", "dynamic",
+      "--sample-level", "auto",
+      "--sample-level-effective", "medium",
+      "--total-batches", "10",
+      "--selected-batches", "3",
+      "--sample-coverage-rate", "0.3",
+      "--reader-policy-file", policyPath,
+    ],
+    prepareBatches: preparePolicySensitiveScenario,
+    assertReport: assertPolicySensitiveScenario,
   });
 
   if (!hasFailures()) console.log("Coverage decision focus check passed.");

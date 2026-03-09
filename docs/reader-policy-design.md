@@ -110,6 +110,8 @@
 - manifest 支持 `reader_policy`
 - `manifest_wizard` 默认会写出可编辑的 `reader_policy` 骨架
 - `merged-report.json` / Markdown / HTML 已会展示“当前按哪种策略视角解释证据”
+- `follow_up_questions` 已会受 `reader_policy` 影响，优先追问策略视角更敏感的风险
+- `coverage_decision` 已会把 `evidence_threshold=strict` / `coverage_preference=conservative` 视为更保守的补证信号
 
 当前仍未落地的部分：
 

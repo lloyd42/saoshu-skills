@@ -15,6 +15,7 @@ import {
   defenseRecommendation,
   describeCoverageDecisionNextAction,
   hasCoverageDecisionImpact,
+  hasPolicySensitiveRisk,
   inferHaremValidity,
   inferVerdict,
   lineOrDash,
@@ -38,14 +39,22 @@ function buildCoverageDecision({ meta, coverageGap, coverageRate, mergedRisks, p
   const serialStatus = String(meta.serialStatus || "").trim();
   const chapterDetectUsedMode = String(meta.chapterDetectUsedMode || "").trim();
   const targetDefense = String(meta.targetDefense || "").trim();
+  const readerPolicy = normalizeReaderPolicy(meta.readerPolicy, {
+    targetDefense,
+    coverageMode,
+  });
   const unresolvedRisks = Array.isArray(mergedRisks) ? mergedRisks : [];
   const pendingItems = Array.isArray(pendingEvents) ? pendingEvents : [];
   const unresolvedCount = unresolvedRisks.length;
   const pendingCount = pendingItems.length;
   const followUpCount = Array.isArray(followUpQuestions) ? followUpQuestions.length : 0;
   const impactfulRiskCount = unresolvedRisks.filter((item) => hasCoverageDecisionImpact(item)).length;
+  const policySensitiveRiskCount = unresolvedRisks.filter((item) => hasPolicySensitiveRisk(item, readerPolicy)).length;
   const hasCoverageGap = Boolean(String(coverageGap?.summary || "").trim());
   const sensitiveDefense = ["布甲", "轻甲", "低防", "负防", "极限负防"].includes(targetDefense);
+  const strictEvidencePolicy = String(readerPolicy.evidence_threshold || "") === "strict";
+  const conservativeCoveragePolicy = String(readerPolicy.coverage_preference || "") === "conservative";
+  const policySensitive = policySensitiveRiskCount >= 1 || strictEvidencePolicy || conservativeCoveragePolicy;
   const reasonCodes = [];
   const reasonLines = [];
   const addReason = (code, line) => {
@@ -69,8 +78,13 @@ function buildCoverageDecision({ meta, coverageGap, coverageRate, mergedRisks, p
   if (coverageMode !== "sampled" && chapterDetectUsedMode === "segment-fallback" && (impactfulRiskCount >= 1 || pendingCount >= 1)) {
     addReason("chapter_boundary_unstable", "章节边界仍不稳，当前章节级覆盖已退化到分段路径。");
   }
-  if (sensitiveDefense && (hasCoverageGap || impactfulRiskCount >= 1 || pendingCount >= 2)) {
-    addReason("sensitive_defense_needs_more_evidence", `当前目标防御为 ${targetDefense}，对未证实风险更敏感，建议补更多证据后再定。`);
+  if ((sensitiveDefense || policySensitive) && (hasCoverageGap || impactfulRiskCount >= 1 || pendingCount >= 2 || policySensitiveRiskCount >= 1)) {
+    const sensitiveCause = [];
+    if (sensitiveDefense) sensitiveCause.push(`目标防御 ${targetDefense}`);
+    if (policySensitiveRiskCount >= 1) sensitiveCause.push(`当前策略视角特别关注 ${policySensitiveRiskCount} 个风险`);
+    if (strictEvidencePolicy) sensitiveCause.push("证据阈值=strict");
+    if (conservativeCoveragePolicy) sensitiveCause.push("覆盖偏好=conservative");
+    addReason("sensitive_defense_needs_more_evidence", `${sensitiveCause.join("；")}，对未证实风险更敏感，建议补更多证据后再定。`);
   }
 
   let action = coverageMode === "sampled" ? "keep-sampled" : "keep-current";
@@ -411,7 +425,7 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
 
   const newbieCard = buildNewbieCard(verdict, rating, merged.thunders.length, merged.depressions.length, merged.risks.length, coverageRate);
   const eventHighlights = reviewedEvents.slice(0, 3).map((event) => `${event.rule_candidate}：${describeEvent(event)}`);
-  const followUpQuestions = buildFollowUpQuestions(merged, riskQuestionPool);
+  const followUpQuestions = buildFollowUpQuestions(merged, riskQuestionPool, readerPolicy);
   const coverageDecision = buildCoverageDecision({
     meta,
     coverageGap,
