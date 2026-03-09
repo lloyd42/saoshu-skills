@@ -60,7 +60,7 @@ function parseArgs(argv) {
 
 function printHelp() {
   console.log("Usage: node sync_installed_skills.mjs [--dest-root <dir>] [--skills name1,name2] [--validate]");
-  console.log("Default dest root: %CODEX_HOME%/skills or ~/.codex/skills");
+  console.log("Default dest root: $CODEX_HOME/skills (or the current user's Codex default skills directory when CODEX_HOME is unset)");
 }
 
 function listRepoSkills() {

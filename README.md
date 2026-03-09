@@ -49,7 +49,8 @@
 
 - 源目录：`packages/saoshu-harem-review`
 - 目标目录：`$CODEX_HOME/skills/saoshu-harem-review`
-- 常见本地路径：`~/.codex/skills/saoshu-harem-review`
+- 常见默认安装位置之一：`$CODEX_HOME/skills/saoshu-harem-review`
+- 如果未显式设置 `CODEX_HOME`，则使用当前用户的 Codex 默认目录
 
 其他包如 `saoshu-term-wiki`、`saoshu-scan-db`、`saoshu-orchestrator`、`saoshu-mcp-enricher-adapter` 也遵循同样方式。
 

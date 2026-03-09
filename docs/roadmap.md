@@ -23,7 +23,7 @@
 ## 当前状态快照
 
 当前最近正式版本：`v0.6.0`。
-当前仓库根目录：`D:\codex\saoshu-skills`。
+当前仓库根目录：以当前 clone 的 repo root 为准，不依赖固定盘符或用户名路径。
 
 ### 1. 产品主线
 
@@ -175,7 +175,7 @@ git log --oneline --decorate -n 8
 
 开始下一轮前，可以默认当前仓库已经具备：
 
-- 仓库根目录：`D:\codex\saoshu-skills`
+- 仓库根目录：当前 clone 的 repo root
 - 文本基线：`UTF-8 without BOM` + `LF`
 - 统一验证阶梯：focused check -> `npm run check:e2e` -> `npm run check`
 - 统一发版基线：手工整理 `CHANGELOG.md`、手工更新 `package.json.version`、准备 `.tmp/release-vX.Y.Z.md`、提交单独 release commit、打 tag、必要时 `gh release create`

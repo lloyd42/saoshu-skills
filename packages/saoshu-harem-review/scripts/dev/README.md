@@ -12,5 +12,5 @@
 
 - `quick_validate.mjs`：skill 包结构快速校验
 - `sync_installed_skills.mjs`：把仓库 skill 镜像到本机安装目录，并按需补跑校验
-- `release_installed_smoke.mjs`：在 `~/.codex/skills` 已安装副本上跑 CLI help、最小样例主流程与本地 DB 冒烟
+- `release_installed_smoke.mjs`：在 Codex 已安装副本上跑 CLI help、最小样例主流程与本地 DB 冒烟；默认走 `$CODEX_HOME/skills`，未设置时按当前用户的 Codex 默认目录解析
 - `generate_openai_yaml.mjs`：生成 `agents/openai.yaml`
