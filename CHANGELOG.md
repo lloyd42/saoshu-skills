@@ -7,6 +7,8 @@
 ### 修复
 - CLI、`mode-diff` 工作流与 info/db 子命令在仓库工作区内调用其他 skill 脚本时，现会优先使用 repo 内包路径，并只在显式指定或外部副本确有对应文件时才走已安装 skill，降低“本机旧副本抢路径”导致的交接偏差。
 - `saoshu-orchestrator` 与 `saoshu-mcp-enricher-adapter` 现已明确区分“已安装 skill 模式”和“仓库工作区模式”的入口路径，避免扩展 skill 安装后继续指向不存在的 sibling 路径。
+- `coverage_decision` 中原先命名为 `high_defense_needs_more_evidence` 的原因码已改为更符合实际语义的 `sensitive_defense_needs_more_evidence`；当前逻辑实际针对的是 `布甲/轻甲/低防/负防/极限负防` 这类更敏感档位，旧 reason code 仍保留展示兼容。
+- legacy `economy` 样本即使缺少 `coverage_template`，当前只要存在 partial coverage，也会生成通用 `coverage_gap_summary` 与 sampled 升级解释，避免旧 real-sample 校准资产出现“能推断 sampled，但解释层为空”的状态。
 
 ### 文档
 - 统一 `roadmap / workflow / contributing / versioning / changelog` 的职责边界；`roadmap` 现只保留当前事实快照和真实待办，移除了已经完成的流程标准化与 coverage-first 迁移计划。

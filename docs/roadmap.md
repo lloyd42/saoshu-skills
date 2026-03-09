@@ -93,7 +93,7 @@ git log --oneline --decorate -n 8
 当前主线不再是继续发散模式名，而是持续证明现有升级契约够不够稳：
 
 - 优先回看 `keep-sampled / upgrade-chapter-full / upgrade-full-book / keep-current` 的真实样本命中质量
-- 重点检查 `late_risk_uncovered`、`latest_progress_uncertain`、`chapter_boundary_unstable`、`high_defense_needs_more_evidence` 等原因码是否站得住
+- 重点检查 `late_risk_uncovered`、`latest_progress_uncertain`、`chapter_boundary_unstable`、`sensitive_defense_needs_more_evidence` 等原因码是否站得住
 - 继续核对 `decision_summary.next_action`、报告首页文案、compare / dashboard 展示是否仍与结构化真源一致
 - 保持 `sampled` 的目标是“决策导向快速摸底”，不是无限逼近全文
 

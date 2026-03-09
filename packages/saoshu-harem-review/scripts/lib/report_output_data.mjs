@@ -44,7 +44,7 @@ function buildCoverageDecision({ meta, coverageGap, coverageRate, mergedRisks, p
   const followUpCount = Array.isArray(followUpQuestions) ? followUpQuestions.length : 0;
   const impactfulRiskCount = unresolvedRisks.filter((item) => hasCoverageDecisionImpact(item)).length;
   const hasCoverageGap = Boolean(String(coverageGap?.summary || "").trim());
-  const lowDefense = ["布甲", "轻甲", "低防", "负防", "极限负防"].includes(targetDefense);
+  const sensitiveDefense = ["布甲", "轻甲", "低防", "负防", "极限负防"].includes(targetDefense);
   const reasonCodes = [];
   const reasonLines = [];
   const addReason = (code, line) => {
@@ -68,8 +68,8 @@ function buildCoverageDecision({ meta, coverageGap, coverageRate, mergedRisks, p
   if (coverageMode !== "sampled" && chapterDetectUsedMode === "segment-fallback" && (impactfulRiskCount >= 1 || pendingCount >= 1)) {
     addReason("chapter_boundary_unstable", "章节边界仍不稳，当前章节级覆盖已退化到分段路径。");
   }
-  if (lowDefense && (hasCoverageGap || impactfulRiskCount >= 1 || pendingCount >= 2)) {
-    addReason("high_defense_needs_more_evidence", `当前目标防御为 ${targetDefense}，建议补更多证据后再定。`);
+  if (sensitiveDefense && (hasCoverageGap || impactfulRiskCount >= 1 || pendingCount >= 2)) {
+    addReason("sensitive_defense_needs_more_evidence", `当前目标防御为 ${targetDefense}，对未证实风险更敏感，建议补更多证据后再定。`);
   }
 
   let action = coverageMode === "sampled" ? "keep-sampled" : "keep-current";
@@ -78,7 +78,7 @@ function buildCoverageDecision({ meta, coverageGap, coverageRate, mergedRisks, p
   } else if (coverageMode === "chapter-full") {
     const shouldUpgradeFullBook = reasonCodes.includes("chapter_boundary_unstable")
       || reasonCodes.includes("too_many_unverified")
-      || reasonCodes.includes("high_defense_needs_more_evidence")
+      || reasonCodes.includes("sensitive_defense_needs_more_evidence")
       || reasonCodes.includes("evidence_conflict");
     action = shouldUpgradeFullBook ? "upgrade-full-book" : "keep-current";
   } else if (coverageMode === "full-book") {
@@ -219,8 +219,13 @@ function summarizeSelectionWindows(selectionReasons) {
 }
 
 function buildCoverageGapHints(meta, totalBatches, selectedBatches) {
+  const coverageMode = resolveEffectiveCoverageMode(meta);
   const coverageTemplate = String(meta.coverageTemplate || "").trim();
   const serialStatus = String(meta.serialStatus || "").trim();
+  if (!coverageTemplate && coverageMode === "sampled" && totalBatches > selectedBatches) return {
+    summary: "当前 sampled 只覆盖部分批次，中后段仍非完整覆盖",
+    riskTypes: ["中后段关键风险", "慢热型关系变化", "后续反转"],
+  };
   if (!coverageTemplate || !(totalBatches > selectedBatches)) return { summary: "", riskTypes: [] };
   if (coverageTemplate === "opening-100") return {
     summary: "后段与结局段未覆盖",

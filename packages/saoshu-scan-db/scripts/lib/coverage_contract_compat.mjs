@@ -64,7 +64,7 @@ function inferLegacyCoverageDecision(report, coverageMode) {
   const riskCount = risks.length;
   const followUpCount = followUpQuestions.length;
   const targetDefense = line(report?.novel?.target_defense);
-  const lowDefense = ["布甲", "轻甲", "低防", "负防", "极限负防"].includes(targetDefense);
+  const sensitiveDefense = ["布甲", "轻甲", "低防", "负防", "极限负防"].includes(targetDefense);
   const reasonCodes = [];
   const addReason = (code) => {
     if (!reasonCodes.includes(code)) reasonCodes.push(code);
@@ -73,7 +73,7 @@ function inferLegacyCoverageDecision(report, coverageMode) {
   if (coverageMode === "sampled") {
     if (totalBatches > 0 && selectedBatches > 0 && selectedBatches < totalBatches && coverageRatio < 0.999) addReason("late_risk_uncovered");
     if (impactfulRiskCount >= 1 || riskCount >= 2 || followUpCount >= 2) addReason("too_many_unverified");
-    if (lowDefense && (coverageRatio < 0.999 || impactfulRiskCount >= 1 || followUpCount >= 2)) addReason("high_defense_needs_more_evidence");
+    if (sensitiveDefense && (coverageRatio < 0.999 || impactfulRiskCount >= 1 || followUpCount >= 2)) addReason("sensitive_defense_needs_more_evidence");
     const action = reasonCodes.length > 0 ? "upgrade-chapter-full" : "keep-sampled";
     const confidence = action === "upgrade-chapter-full"
       ? (impactfulRiskCount >= 1 || reasonCodes.length >= 2 ? "insufficient" : "cautious")
@@ -83,7 +83,7 @@ function inferLegacyCoverageDecision(report, coverageMode) {
 
   if (coverageMode === "chapter-full") {
     if (coverageRatio < 0.999 && (impactfulRiskCount >= 1 || followUpCount >= 2)) addReason("chapter_boundary_unstable");
-    if (lowDefense && impactfulRiskCount >= 1 && coverageRatio < 0.999) addReason("high_defense_needs_more_evidence");
+    if (sensitiveDefense && impactfulRiskCount >= 1 && coverageRatio < 0.999) addReason("sensitive_defense_needs_more_evidence");
     const action = reasonCodes.length > 0 ? "upgrade-full-book" : "keep-current";
     const confidence = action === "upgrade-full-book"
       ? (impactfulRiskCount >= 1 ? "insufficient" : "cautious")

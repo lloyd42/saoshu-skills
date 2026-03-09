@@ -45,7 +45,8 @@ export function formatCoverageDecisionReason(value) {
   if (normalized === "evidence_conflict") return "关键证据互相牵制";
   if (normalized === "too_many_unverified") return "待补证或未证实风险偏多";
   if (normalized === "chapter_boundary_unstable") return "章节边界不稳";
-  if (normalized === "high_defense_needs_more_evidence") return "高防御档需要更多证据";
+  if (normalized === "sensitive_defense_needs_more_evidence") return "敏感防御档需要更多证据";
+  if (normalized === "high_defense_needs_more_evidence") return "敏感防御档需要更多证据";
   return normalized || "-";
 }
 

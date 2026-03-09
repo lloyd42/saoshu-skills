@@ -178,6 +178,38 @@ function prepareSampledKeepScenario(batchDir) {
   });
 }
 
+function prepareLegacySampledScenario(batchDir) {
+  createBatch(batchDir, "B01.json", {
+    batch_id: "B01",
+    range: "第1-80章",
+    risk_unconfirmed: [
+      { risk: "送女", current_evidence: "当前只看到谈判筹码层面的暗示", missing_evidence: "需确认后段是否真实发生", impact: "若实锤将显著下调建议" },
+    ],
+    event_candidates: [{
+      event_id: "EL01",
+      rule_candidate: "送女",
+      category: "risk",
+      status: "待补证",
+      review_decision: "待补证",
+      certainty: "low",
+      confidence_score: 3,
+      chapter_range: "第1-80章",
+      timeline: "mainline",
+      polarity: "uncertain",
+      subject: { name: "苏梨", relation_label: "未婚妻" },
+      target: { name: "敌国世子", relation_label: "风险对象" },
+      signals: ["送女"],
+      evidence: [{ chapter_num: 32, chapter_title: "议和", keyword: "送给", snippet: "群臣建议把苏梨送给敌国世子换停战" }],
+      missing_evidence: ["需确认后段是否真实执行"],
+    }],
+  });
+
+  createBatch(batchDir, "B04.json", {
+    batch_id: "B04",
+    range: "第241-320章",
+  });
+}
+
 function prepareChapterFullKeepScenario(batchDir) {
   createBatch(batchDir, "B01.json", {
     batch_id: "B01",
@@ -208,7 +240,7 @@ function assertSampledScenario({ report, markdown, html }) {
   const reasonCodes = Array.isArray(coverageDecision.reason_codes) ? coverageDecision.reason_codes : [];
   expect(coverageDecision.action === "upgrade-chapter-full", "sampled: action upgrades to chapter-full", `sampled: expected upgrade-chapter-full, got ${JSON.stringify(coverageDecision)}`);
   expect(coverageDecision.confidence === "insufficient", "sampled: confidence is insufficient", `sampled: expected insufficient confidence, got ${JSON.stringify(coverageDecision)}`);
-  expect(["late_risk_uncovered", "latest_progress_uncertain", "too_many_unverified"].every((item) => reasonCodes.includes(item)), "sampled: keeps core reason codes", `sampled: missing core reason codes in ${JSON.stringify(reasonCodes)}`);
+  expect(["late_risk_uncovered", "latest_progress_uncertain", "too_many_unverified", "sensitive_defense_needs_more_evidence"].every((item) => reasonCodes.includes(item)), "sampled: keeps core reason codes", `sampled: missing core reason codes in ${JSON.stringify(reasonCodes)}`);
   expect(report.decision_summary?.next_action === "建议升级到 chapter-full。", "sampled: next action points to chapter-full", `sampled: unexpected next_action ${JSON.stringify(report.decision_summary?.next_action)}`);
 
   const coverageIndex = markdown.indexOf("## ⬆️ 覆盖升级建议");
@@ -240,6 +272,18 @@ function assertSampledKeepScenario({ report, markdown, html }) {
   expect(markdown.includes("建议动作：继续保持 sampled"), "sampled-keep: markdown renders keep-sampled wording", "sampled-keep: markdown should render keep-sampled wording");
   expect(html.includes("建议动作：继续保持 sampled"), "sampled-keep: html renders keep-sampled wording", "sampled-keep: html should render keep-sampled wording");
   expect(!markdown.includes("建议动作：升级到 chapter-full"), "sampled-keep: markdown avoids upgrade wording", "sampled-keep: markdown should not upgrade to chapter-full");
+}
+
+function assertLegacySampledScenario({ report, markdown, html }) {
+  const coverageDecision = report.scan?.coverage_decision || {};
+  const reasonCodes = Array.isArray(coverageDecision.reason_codes) ? coverageDecision.reason_codes : [];
+  expect(String(report.scan?.sampling?.coverage_mode || "") === "sampled", "legacy-sampled: inferred sampled coverage mode", `legacy-sampled: expected sampled coverage_mode, got ${JSON.stringify(report.scan?.sampling)}`);
+  expect(["", "-"].includes(String(report.scan?.sampling?.coverage_template || "")), "legacy-sampled: leaves coverage template unset", `legacy-sampled: expected unset coverage_template, got ${JSON.stringify(report.scan?.sampling)}`);
+  expect(coverageDecision.action === "upgrade-chapter-full", "legacy-sampled: action upgrades to chapter-full", `legacy-sampled: expected upgrade-chapter-full, got ${JSON.stringify(coverageDecision)}`);
+  expect(reasonCodes.includes("late_risk_uncovered"), "legacy-sampled: emits generic undercoverage reason", `legacy-sampled: missing late_risk_uncovered in ${JSON.stringify(reasonCodes)}`);
+  expect(Array.isArray(report.scan?.sampling?.basis_lines) && report.scan.sampling.basis_lines.some((item) => String(item).includes("当前 sampled 只覆盖部分批次，中后段仍非完整覆盖")), "legacy-sampled: basis lines expose generic coverage gap", `legacy-sampled: expected generic gap hint in ${JSON.stringify(report.scan?.sampling?.basis_lines)}`);
+  expect(markdown.includes("当前 sampled 只覆盖部分批次，中后段仍非完整覆盖"), "legacy-sampled: markdown exposes generic coverage gap", "legacy-sampled: markdown should include generic coverage gap hint");
+  expect(html.includes("当前 sampled 只覆盖部分批次，中后段仍非完整覆盖"), "legacy-sampled: html exposes generic coverage gap", "legacy-sampled: html should include generic coverage gap hint");
 }
 
 function assertChapterFullKeepScenario({ report, markdown, html }) {
@@ -302,6 +346,21 @@ function main() {
     ],
     prepareBatches: prepareSampledKeepScenario,
     assertReport: assertSampledKeepScenario,
+  });
+
+  runScenario({
+    scenarioKey: "sampled-legacy-partial",
+    title: "升级建议聚焦：sampled-legacy",
+    extraArgs: [
+      "--sample-mode", "dynamic",
+      "--sample-level", "auto",
+      "--sample-level-effective", "medium",
+      "--total-batches", "10",
+      "--selected-batches", "2",
+      "--sample-coverage-rate", "0.2",
+    ],
+    prepareBatches: prepareLegacySampledScenario,
+    assertReport: assertLegacySampledScenario,
   });
 
   runScenario({

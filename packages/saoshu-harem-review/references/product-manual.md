@@ -12,7 +12,7 @@
 适用：
 - 男主后宫文的雷点/郁闷点筛查。
 - 新书快速初筛（当前基线仍支持抽样模式）。
-- 章节级或整书级的更高覆盖率审查（下一阶段主线）。
+- 章节级或整书级的更高覆盖率审查（当前已可用主线）。
 
 不适用：
 - 非后宫作品直接复用“后宫结论”。
@@ -91,7 +91,7 @@
   - `current_conclusion`: 当前已能交付到什么程度
   - `risk_if_not_upgraded`: 如果不升级，最可能漏掉什么
   - `upgrade_benefit`: 升级后主要减少什么误判/漏判
-- 首批 `reason_codes` 建议先收敛为：`late_risk_uncovered`、`latest_progress_uncertain`、`evidence_conflict`、`too_many_unverified`、`chapter_boundary_unstable`、`high_defense_needs_more_evidence`。
+- 首批 `reason_codes` 建议先收敛为：`late_risk_uncovered`、`latest_progress_uncertain`、`evidence_conflict`、`too_many_unverified`、`chapter_boundary_unstable`、`sensitive_defense_needs_more_evidence`。
 - 这些原因应优先消费现有 coverage-first 信号：`coverage_gap_summary`、`coverage_gap_risk_types`、`serial_status`、`target_defense`、章节退化路径，以及现有“待补证 / 未证实风险”规模；`mode-diff` 则主要承担“为什么该升级”的证据层角色。
 - `scan-db` 落库建议同步准备扁平字段：`coverage_decision_action`、`coverage_decision_confidence`、`coverage_decision_reasons`，方便后续 compare / dashboard / trends 直接消费。
 
