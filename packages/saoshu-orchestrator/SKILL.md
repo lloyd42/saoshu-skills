@@ -6,7 +6,8 @@ description: 扫书编排技能。用于执行分阶段流水线（chunk/enrich/
 # 编排技能
 
 ## 使用方式
-- 使用 `saoshu-harem-review/scripts/run_pipeline.mjs` 作为统一入口。
+- 如果按已安装 skill 方式使用，先确保 `saoshu-harem-review` 与本 skill 位于同一 `skills/` 根目录，再使用 `../saoshu-harem-review/scripts/run_pipeline.mjs` 作为统一入口。
+- 如果在仓库工作区里直接运行，对应入口是 `packages/saoshu-harem-review/scripts/run_pipeline.mjs`。
 - 先准备 manifest，再按 stage 或 all 执行。
 
 ## 模式

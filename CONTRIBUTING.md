@@ -24,7 +24,7 @@
 - 保持改动聚焦，不顺手修无关问题
 - 功能改动需要同步更新相关文档
 - 如改动影响用户可见行为、报告语义、CLI 默认行为或维护流程，默认同一轮同步 `README.md`、产品手册、`docs/roadmap.md` 与 `CHANGELOG.md` `Unreleased`
-- 如改动会影响已安装 skill 的对外文案、说明或默认 prompt（例如 `SKILL.md`、`README.md`、`references/`、`packages/*/agents/openai.yaml`），在仓库内验证完成后，再运行 `npm run sync:installed-skills -- --skills <skill-a,skill-b>`
+- 如改动会影响已安装 skill 的对外文案、说明、默认 prompt、脚本行为或依赖路径（例如 `SKILL.md`、`README.md`、`references/`、`packages/*/agents/openai.yaml`、`packages/*/scripts/**`），在仓库内验证完成后，再运行 `npm run sync:installed-skills -- --skills <skill-a,skill-b>`
 - 上面的 installed-skill 同步属于本地开发辅助，不是 CI 强制步骤；`npm run check` 只会在临时目录验证同步脚本本身，不会改动你的本机安装目录
 - 新增脚本优先复用 `packages/*/scripts`
 - 提交的文档、脚本、JSON 默认保持 `UTF-8 without BOM` + `LF`；不要把 BOM 写回仓库
@@ -46,7 +46,7 @@
 1. 先看 `git status --short` 与 `git diff --stat`
 2. 先做最小复现，再改根因
 3. 先跑与改动直接相关的最小检查
-4. 再跑 `node packages/saoshu-harem-review/scripts/check_e2e_minimal.mjs`
+4. 再跑 `npm run check:e2e`
 5. 最后跑 `npm run check`
 6. 如本轮改动会影响已安装 skill 的对外表现，再运行一次 installed-skill 同步命令，并按需对安装副本补跑 `quick_validate.mjs` 或最小 smoke
 7. 如本轮改动改变了当前基线、流程或下一轮优先级，补齐 `roadmap / workflow / changelog`
@@ -57,7 +57,7 @@
 
 - 主问题已按根因修复
 - 相关 focused check 已通过
-- `check_e2e_minimal.mjs` 已按需通过
+- `npm run check:e2e` 已按需通过
 - 改动范围需要时，`npm run check` 已通过
 - 文档、状态同步、installed-skill 同步都已处理到位
 - 已说明当前完成面、风险点与下一轮建议起手点

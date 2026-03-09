@@ -4,7 +4,8 @@
 
 ## 当前定位
 
-- 统一入口仍是 `saoshu-harem-review/scripts/run_pipeline.mjs`
+- 已安装 skill 模式下，统一入口是 `../saoshu-harem-review/scripts/run_pipeline.mjs`
+- 仓库工作区模式下，对应入口是 `packages/saoshu-harem-review/scripts/run_pipeline.mjs`
 - 用户口径已进入 coverage-first：`sampled / chapter-full / full-book`
 - 当前最重要的边界是：
   - `sampled`：快速摸底
@@ -18,4 +19,3 @@
 ## Main Entry
 - 技能定义：`SKILL.md`
 - Agent 配置：`agents/openai.yaml`
-

@@ -5,7 +5,8 @@
 ## Main Entry
 - CLI 聚合入口：`scripts/saoshu_cli.mjs`
 - 主流水线：`scripts/run_pipeline.mjs`
-- 提交前校验：`scripts/dev/quick_validate.mjs`
+- 结构快检：`scripts/dev/quick_validate.mjs`
+- 提交 / 发版前总门禁：在仓库根目录执行 `npm run check`
 
 ## Input Compatibility
 - 正文输入采用“兼容读取 + 统一归一化”策略
@@ -24,4 +25,3 @@
 - 规则说明：`references/rules.md`
 - 产品手册：`references/product-manual.md`
 - 数据契约：`references/schemas/`
-

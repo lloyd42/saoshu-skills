@@ -25,11 +25,17 @@
 
 每次接手新任务或恢复中断开发，先做这一轮：
 
-先看 `docs/roadmap.md` 的“当前状态快照”与 `Now`，确认当前基线、最新已落地能力、下一轮起手点，再跑下面这组检查：
+先看 `docs/roadmap.md` 的“当前状态快照”与 `Now`，确认当前基线、最新已落地能力、下一轮起手点，再跑下面这组轻量检查：
 
 ```bash
 git status --short
 git diff --stat
+git log --oneline --decorate -n 8
+```
+
+如果仓库状态不明、刚经历异常中断、准备做跨包改动，或你怀疑基线已经漂移，再补跑一次：
+
+```bash
 npm run check
 ```
 
@@ -50,7 +56,7 @@ run_pipeline.mjs
 1. 接手：确认当前基线、工作树状态、任务是“继续功能开发”还是“恢复中断运行”
 2. 设计：明确本轮范围、会碰到的契约面、需要同步的文档与验证计划
 3. 实现：优先修根因，保持一轮只收一个主题，代码与文档同工作流推进
-4. 收口：先过 focused check，再过 `check_e2e_minimal.mjs`，最后视改动范围跑 `npm run check`
+4. 收口：先过 focused check，再过 `npm run check:e2e`，最后视改动范围跑 `npm run check`
 5. 同步：按需更新 `roadmap / workflow / contributing / changelog`，必要时同步本机 installed skills
 6. 交接：给出当前完成面、未完成面、下一轮推荐起手点；只有任务自然走到发版阶段时才进入 `VERSIONING.md`
 
@@ -77,7 +83,7 @@ run_pipeline.mjs
 功能开发默认按下面顺序验证：
 
 1. 先跑与改动直接相关的最小脚本
-2. 再跑 `node packages/saoshu-harem-review/scripts/check_e2e_minimal.mjs`
+2. 再跑 `npm run check:e2e`
 3. 最后跑仓库级 `npm run check`
 
 不要跳过最小验证直接跑全量，也不要只看局部通过就宣布完成。
@@ -94,7 +100,7 @@ run_pipeline.mjs
 
 如果改动会影响本机已安装 skill 的对外表现，也要补这一环：
 
-- 当 `packages/*/SKILL.md`、`packages/*/README.md`、`packages/*/references/` 或 `packages/*/agents/openai.yaml` 更新后，运行 `npm run sync:installed-skills -- --skills <skill-a,skill-b>`
+- 当 `packages/*/SKILL.md`、`packages/*/README.md`、`packages/*/references/`、`packages/*/agents/openai.yaml` 或对应 skill 的 `scripts/` 逻辑更新后，运行 `npm run sync:installed-skills -- --skills <skill-a,skill-b>`
 - 这一步是本地开发辅助，用来让“仓库内容”和“本机已安装 skill”保持一致，方便重启 Codex 前做真实体验核对
 - 仓库里的 `npm run check` 只会通过 `check:installed-skill-sync` 在临时目录验证同步脚本本身，不会改动你的本机已安装 skill
 - 如果你想顺手确认安装副本没有坏，再对同步后的 skill 目录补跑一次 `packages/saoshu-harem-review/scripts/dev/quick_validate.mjs <skill-dir>` 或最小 smoke
@@ -105,7 +111,7 @@ run_pipeline.mjs
 
 - 主问题已被根因修复，而不是只绕开表象
 - 相关 focused check 已通过
-- `check_e2e_minimal.mjs` 已按需通过
+- `npm run check:e2e` 已按需通过
 - 改动范围需要时，`npm run check` 已通过
 - 相关文档、`roadmap`、`changelog` 已同步
 - 如影响 installed skills，对应镜像已同步并按需 smoke
