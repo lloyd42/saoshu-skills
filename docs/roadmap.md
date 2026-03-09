@@ -22,7 +22,7 @@
 
 ## 当前状态快照
 
-当前最近正式版本：`v0.5.4`。
+当前最近正式版本：`v0.6.0`。
 当前仓库根目录：`D:\codex\saoshu-skills`。
 
 ### 1. 产品主线
@@ -53,6 +53,7 @@
 - 脚本层分层已稳定：`scripts/checks/` 承载检查实现，`scripts/dev/` 承载开发辅助实现，顶层 `scripts/` 只保留用户入口与核心流程入口
 - 根级 `check` 已适合继续按责任域理解：`repo / pipeline / feedback / analytics / runtime`；脚本的定位应继续收敛为基建与自动化，而不是产品主叙事
 - installed-skill 同步链已稳定：`sync:installed-skills` + `check:installed-skill-sync`
+- release 后的真实用户路径 smoke 已固化：先同步 `saoshu-harem-review` / `saoshu-scan-db` 到 Codex 已安装目录，再执行 `npm run dev:release-installed-smoke`
 - 仓库内调用其他 skill 脚本时，当前已优先解析 repo 内包路径，并在显式 `SAOSHU_SKILLS_DIR` 或已安装副本确有对应文件时再走外部副本，降低“本机旧 skill 抢路径”造成的交接偏差
 - `roadmap / workflow / contributing / versioning / changelog` 的职责已经明确，不再需要把“流程标准化”继续当作 `Now`
 
@@ -118,6 +119,7 @@ git log --oneline --decorate -n 8
 
 - 只要改动会影响已安装 skill 的对外表现、脚本行为或依赖路径，继续运行 `npm run sync:installed-skills -- --skills <skill-a,skill-b>`
 - 对同步后的安装副本按需补跑 `quick_validate.mjs` 或最小 smoke
+- 如果是 release 收口或 release 后回归，优先跑 `npm run dev:release-installed-smoke`，不要停在 repo 内脚本自测
 - 后续新增跨-skill 调用时，优先复用共享路径发现 helper，而不是各处重复拼接安装目录逻辑
 
 ### 3. 保持入口文档只说当前事实
@@ -177,6 +179,7 @@ git log --oneline --decorate -n 8
 - 文本基线：`UTF-8 without BOM` + `LF`
 - 统一验证阶梯：focused check -> `npm run check:e2e` -> `npm run check`
 - 统一发版基线：手工整理 `CHANGELOG.md`、手工更新 `package.json.version`、准备 `.tmp/release-vX.Y.Z.md`、提交单独 release commit、打 tag、必要时 `gh release create`
+- release 后验收基线：`npm run sync:installed-skills -- --skills saoshu-harem-review,saoshu-scan-db` -> `npm run dev:release-installed-smoke`
 - 统一维护文档分工：`README / roadmap / workflow / contributing / versioning / changelog`
 - installed-skill 同步闭环：`sync:installed-skills` + `check:installed-skill-sync`
 - 公开 contract 不依赖本地绝对路径、临时输出目录或未同步的已安装 skill 副本
