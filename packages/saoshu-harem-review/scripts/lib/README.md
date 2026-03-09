@@ -50,7 +50,7 @@
 
 - `pipeline_integrations.mjs`
   - 外部 skill/数据库集成发现辅助
-  - 负责 term-wiki 默认词典定位、scan-db 本地入库脚本定位与外部入库命令拼装
+  - 负责 term-wiki 默认词典定位、scan-db 本地入库/趋势/dashboard 脚本定位与外部入库命令拼装
 
 - `json_input.mjs`
   - JSON 输入读取辅助

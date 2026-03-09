@@ -67,7 +67,7 @@ description: 扫书结果数据库技能。用于把 merged-report/pipeline-stat
   - `db_mode: local|external|none`
   - `db_path`
   - `db_ingest_cmd`（external 模式）
-- 当 `db_mode=local` 时，`run_pipeline.mjs` 在 merge 后会自动刷新 `<db>/dashboard.html`；基础 compare 详情页若缺失，也会在 dashboard 渲染时自动补齐。
+- 当 `db_mode=local` 时，`run_pipeline.mjs` 在 merge 后会自动刷新 `<db>/trends/` 与 `<db>/dashboard.html`；基础 compare 详情页若缺失，也会在 dashboard 渲染时自动补齐。
 
 ## 5) 数据原则
 - 报告 JSON 是真源，数据库是投影。

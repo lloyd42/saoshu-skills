@@ -56,7 +56,7 @@
 - `policy-audit` 适合按样本集合比较不同读者策略 preset、证据阈值、覆盖偏好和自定义开关，判断是不是该拆分更细的策略层。
 - `db_dashboard.mjs` 现在会优先补齐缺失的 `compare/compare.html`、`compare-context/compare.html`、`compare-context-kinds/compare.html`、`compare-policy/compare.html`；如果对应目录里已经有现成结果，则不会覆盖已有产物，而是直接给出“点击查看详情”入口。只有自动补齐失败，或你显式关闭补齐时，才回退为命令兜底。可选开关：`--compare-presets`、`--compare-top`、`--skip-compare`。
 - `db_trends.mjs` 现在除了作者 / 标签 / mode-diff 外，也会带出 reader-policy preset、证据阈值、覆盖偏好和是否自定义的分布，方便看“最近这批样本差异到底来自作品本身，还是读者策略分层”。
-- `run_pipeline.mjs` 在 `db_mode=local` 下跑完整 merge 后，也会自动刷新 `<db>/dashboard.html`；默认 skill 流程下，不需要再额外手动敲一遍 dashboard 命令。
+- `run_pipeline.mjs` 在 `db_mode=local` 下跑完整 merge 后，也会自动刷新 `<db>/trends/` 和 `<db>/dashboard.html`；默认 skill 流程下，不需要再额外手动敲一遍 trends / dashboard 命令。
 - 如果你手头只有一批 `performance/economy` 报告目录，还没把 run-level 数据打进 `scan-db`，先跑一次 `db_ingest_report_tree.mjs`，再看 `coverage-decision-overview` 才会有数据。
 - 需要看完整字段合同与适用边界，优先看 `references/db-schema.md`；如果是旧报告补推断入库，`runs.jsonl` 还会带 `coverage_contract_source=legacy-inferred`。
 

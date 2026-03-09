@@ -206,7 +206,7 @@ node scripts/saoshu_cli.mjs db assets --db ./scan-db --output-dir ./workspace/fe
 - 如果报告目录里已经有 `performance/economy` 或 `perf/econ` 成对结果，可先自动发现生成队列：`node scripts/saoshu_cli.mjs compare discover --root ./reports --output ./workspace/mode-diff-queue.json --db ./scan-db`
 - 如果已经准备好一批 perf/econ 报告对，可以把它们写进 `queue.json` 后一次性跑完：`node scripts/saoshu_cli.mjs compare batch --queue ./workspace/mode-diff-queue.json --db ./scan-db`
 - 真实样本队列默认建议把 `coverage_decision_action`、`coverage_decision_confidence`、`coverage_decision_reason` 与 `mode_diff_gain_window` 一起放进 compare 维度，先看“为什么建议升层/保持当前层”，再看模式差距是否持续扩大。
-- 如果只是常规 `db_mode=local` 流程，跑完 `run_pipeline.mjs --stage all` 后会自动刷新 `scan-db/dashboard.html`；dashboard 渲染时还会补齐缺失的基础 compare 详情页，不要求再额外记 compare 命令。
+- 如果只是常规 `db_mode=local` 流程，跑完 `run_pipeline.mjs --stage all` 后会自动刷新 `scan-db/trends/` 与 `scan-db/dashboard.html`；dashboard 渲染时还会补齐缺失的基础 compare 详情页，不要求再额外记 compare 命令。
 - 批量执行结束后，会额外产出 `queue-summary.json`、`queue-summary.md`、`queue-summary.html`，方便直接查看成功/失败与重点输出路径。
 - 可以直接参考：`examples/minimal/mode-diff-queue.real-sample.template.json` 与 `examples/minimal/real-sample-batch-checklist.md`
 
@@ -261,7 +261,7 @@ Manifest 向导（新手推荐）：
 - `db_mode`: `none|local|external`
 - `db_path`: 本地数据库目录（local）
 - `db_ingest_cmd`: 外部入库命令（external）
-- 当 `db_mode=local` 时，merge 后会自动刷新 `<db>/dashboard.html`；若基础 compare 详情页缺失，也会在 dashboard 渲染时自动补齐，但不会覆盖已有 compare 结果。
+- 当 `db_mode=local` 时，merge 后会自动刷新 `<db>/trends/` 与 `<db>/dashboard.html`；若基础 compare 详情页缺失，也会在 dashboard 渲染时自动补齐，但不会覆盖已有 compare 结果。
 - `report_pdf`: 是否在 merge 后自动导出 PDF
 - `report_pdf_output`: PDF 输出路径
 - `report_pdf_engine_cmd`: 自定义导出引擎命令（可选）

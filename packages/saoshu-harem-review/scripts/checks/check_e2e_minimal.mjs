@@ -38,6 +38,7 @@ function runIntegratedOptionalScenario() {
   const reportHtml = path.join(fixture.outputDir, "merged-report.html");
   const statePath = path.join(fixture.outputDir, "pipeline-state.json");
   const dbRuns = path.join(fixture.outputDir, "scan-db", "runs.jsonl");
+  const dbTrends = path.join(fixture.outputDir, "scan-db", "trends", "trends.json");
   const dbDashboard = path.join(fixture.outputDir, "scan-db", "dashboard.html");
   const dbCompare = path.join(fixture.outputDir, "scan-db", "compare", "compare.html");
   const dbCompareContext = path.join(fixture.outputDir, "scan-db", "compare-context", "compare.html");
@@ -49,11 +50,13 @@ function runIntegratedOptionalScenario() {
   assertExists(statePath, "integrated pipeline-state.json");
   assertExists(path.join(fixture.outputDir, "review-pack"), "integrated review-pack");
   assertExists(dbRuns, "integrated scan-db runs.jsonl");
+  assertExists(dbTrends, "integrated scan-db trends.json");
   assertExists(dbDashboard, "integrated scan-db dashboard.html");
   assertExists(dbCompare, "integrated scan-db compare.html");
   assertExists(dbCompareContext, "integrated scan-db compare-context html");
   assertExists(dbCompareContextKinds, "integrated scan-db compare-context-kinds html");
   assertStep(statePath, "db_ingest", "done");
+  assertStep(statePath, "db_trends", "done");
   assertStep(statePath, "db_dashboard", "done");
 
   const report = readJson(reportJson);
@@ -90,9 +93,11 @@ function runCoverageTemplateMetadataScenario() {
   const reportJson = path.join(fixture.outputDir, "merged-report.json");
   const statePath = path.join(fixture.outputDir, "pipeline-state.json");
   const dbRuns = path.join(fixture.outputDir, "scan-db", "runs.jsonl");
+  const dbTrends = path.join(fixture.outputDir, "scan-db", "trends", "trends.json");
   assertExists(reportJson, "coverage template merged-report.json");
   assertExists(statePath, "coverage template pipeline-state.json");
   assertExists(dbRuns, "coverage template scan-db runs.jsonl");
+  assertExists(dbTrends, "coverage template scan-db trends.json");
 
   const report = readJson(reportJson);
   const state = readJson(statePath);
@@ -368,6 +373,7 @@ function runFallbackScenario() {
   assertExists(reportJson, "fallback merged-report.json");
   assertExists(statePath, "fallback pipeline-state.json");
   assertStep(statePath, "db_ingest", "skipped", "local ingest script not found");
+  assertStep(statePath, "db_trends", "skipped", "db_ingest skipped, trends not refreshed");
   if (!fs.existsSync(dbRuns)) ok("fallback leaves local scan-db absent when db skill missing");
   else fail("fallback unexpectedly created local scan-db runs.jsonl");
 
@@ -412,5 +418,4 @@ try {
   fail(err.stderr || err.stdout || err.message || String(err));
   process.exitCode = 1;
 }
-
 

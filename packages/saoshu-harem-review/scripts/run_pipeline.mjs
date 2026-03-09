@@ -25,6 +25,7 @@ import {
   resolveDefaultWikiPath,
   resolveLocalDbDashboardScript,
   resolveLocalDbIngestScript,
+  resolveLocalDbTrendsScript,
 } from "./lib/pipeline_integrations.mjs";
 
 function usage() {
@@ -327,6 +328,22 @@ function main() {
         const dbCmd = formatCommand(process.execPath, [path.resolve(localIngestScript), ...dbArgs.map((item) => String(item))]);
         runNodeScript(localIngestScript, dbArgs);
         mark("db_ingest", "done", dbCmd);
+        const localTrendsScript = resolveLocalDbTrendsScript({ projectRoot, home });
+        runOptionalStage({
+          enabled: Boolean(localTrendsScript && fs.existsSync(path.resolve(localTrendsScript))),
+          stepName: "db_trends",
+          skippedDetail: "local trends script not found: saoshu-scan-db/scripts/db_trends.mjs",
+          mark,
+          run: () => {
+            const trendsDir = path.join(dbPath, "trends");
+            const trendsArgs = ["--db", dbPath, "--output-dir", trendsDir];
+            const detail = formatCommand(process.execPath, [path.resolve(localTrendsScript), ...trendsArgs.map((item) => String(item))]);
+            return {
+              detail,
+              execute: () => runNodeScript(localTrendsScript, trendsArgs),
+            };
+          },
+        });
         const localDashboardScript = resolveLocalDbDashboardScript({ projectRoot, home });
         runOptionalStage({
           enabled: Boolean(localDashboardScript && fs.existsSync(path.resolve(localDashboardScript))),
@@ -345,11 +362,13 @@ function main() {
         });
       } else {
         mark("db_ingest", "skipped", "local ingest script not found: saoshu-scan-db/scripts/db_ingest.mjs");
+        mark("db_trends", "skipped", "db_ingest skipped, trends not refreshed");
         mark("db_dashboard", "skipped", "db_ingest skipped, dashboard not refreshed");
       }
     } else if (dbMode === "external") {
       if (!dbIngestCmd) {
         mark("db_ingest", "skipped", "db_mode=external but db_ingest_cmd empty");
+        mark("db_trends", "skipped", "db_mode=external but db_ingest_cmd empty");
         mark("db_dashboard", "skipped", "db_mode=external but db_ingest_cmd empty");
       } else {
         const ext = buildExternalDbIngestCommand(dbIngestCmd, {
@@ -360,10 +379,12 @@ function main() {
         });
         runShellCommand(ext);
         mark("db_ingest", "done", ext);
+        mark("db_trends", "skipped", "db_mode=external; trends refresh delegated to external db flow");
         mark("db_dashboard", "skipped", "db_mode=external; dashboard refresh delegated to external db flow");
       }
     } else {
       mark("db_ingest", "skipped", "db_mode=none");
+      mark("db_trends", "skipped", "db_mode=none");
       mark("db_dashboard", "skipped", "db_mode=none");
     }
 
