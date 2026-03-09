@@ -136,7 +136,7 @@ const dashboard = runNode("packages/saoshu-scan-db/scripts/db_dashboard.mjs", ["
 if (dashboard.status === 0 && fs.existsSync(dashboardPath)) ok("db_dashboard renders mode-diff aware dashboard");
 else fail(`db_dashboard failed\nSTDERR:\n${dashboard.stderr}`);
 
-if (fs.existsSync(path.join(dbDir, "compare", "compare.html")) && fs.existsSync(path.join(dbDir, "compare-context", "compare.html")) && fs.existsSync(path.join(dbDir, "compare-context-kinds", "compare.html")) && fs.existsSync(path.join(dbDir, "compare-policy", "compare.html"))) ok("db_dashboard auto-refreshes missing compare detail pages");
+if (fs.existsSync(path.join(dbDir, "compare", "compare.html")) && fs.existsSync(path.join(dbDir, "compare-context", "compare.html")) && fs.existsSync(path.join(dbDir, "compare-context-kinds", "compare.html")) && fs.existsSync(path.join(dbDir, "compare-policy", "compare.html")) && fs.existsSync(path.join(dbDir, "trends", "trends.html"))) ok("db_dashboard auto-refreshes missing compare detail pages and trends page");
 else fail("db_dashboard should auto-refresh missing compare detail pages");
 
 if (fs.readFileSync(path.join(dbDir, "compare", "compare.html"), "utf8").includes("custom default compare")) ok("db_dashboard preserves custom compare pages");
@@ -154,6 +154,9 @@ else fail("db_dashboard should surface coverage decision reasons");
 
 if (dashboardHtml.includes("读者策略视角") && dashboardHtml.includes("community-default(1)") && dashboardHtml.includes("默认社区 preset") && dashboardHtml.includes("balanced")) ok("db_dashboard surfaces reader policy overview and latest-run details");
 else fail("db_dashboard should surface reader policy overview and latest-run details");
+
+if (dashboardHtml.includes("趋势报告入口") && dashboardHtml.includes("打开 trends 详情") && dashboardHtml.includes("href=\"scan-db/trends/trends.html\"")) ok("db_dashboard links trends detail page after refresh");
+else fail("db_dashboard should link trends detail page after refresh");
 
 if (dashboardHtml.includes("Compare 详情入口") && !dashboardHtml.includes("saoshu_cli.mjs compare --db")) ok("db_dashboard prefers detail links over command snippets when compare pages are ready");
 else fail("db_dashboard should prefer detail links over command snippets when compare pages are ready");

@@ -57,7 +57,7 @@ description: 扫书结果数据库技能。用于把 merged-report/pipeline-stat
 - 如果你想按样本集合比较“哪些书更依赖反证 / 偏移定位 / 特定引用来源”，再使用 compare 的 `has_counter_evidence` / `has_offset_hints` / `context_reference_source_kind` 这些运行级维度。
 - `coverage-decision-overview` 现在也会带出 reader-policy preset / 证据阈值 / 覆盖偏好分布，适合先在终端里判断“这批结论差异是不是主要来自读者策略”。
 - `db_compare.mjs` 现在支持 `--preset default|context-audit|context-source|policy-audit`；如果同时传 `--preset` 和 `--dimensions`，以显式 `--dimensions` 为准。
-- `db_dashboard.mjs` 现在会优先补齐缺失的 compare 详情页；如果对应目录里已经有现成结果，则不会覆盖已有产物，而是直接给出“点击查看详情”入口。只有自动补齐失败，或你显式关闭补齐时，才回退为命令提示。可选开关：`--compare-presets`、`--compare-top`、`--skip-compare`。其中 `policy-audit` 会落到 `compare-policy/`。
+- `db_dashboard.mjs` 现在会优先补齐缺失的 compare 详情页与 `trends/trends.html`；如果对应目录里已经有现成结果，则不会覆盖已有产物，而是直接给出“点击查看详情 / 打开 trends 详情”入口。只有自动补齐失败，或你显式关闭 compare 补齐时，才回退为命令提示。可选开关：`--compare-presets`、`--compare-top`、`--skip-compare`。其中 `policy-audit` 会落到 `compare-policy/`。
 - `db_trends.mjs` 也会带出 reader-policy preset / 证据阈值 / 覆盖偏好 / 自定义开关的分布，适合补看长期样本里到底是哪层策略在漂移。
 - 趋势报告（日期/作者/标签）：
 `node scripts/db_trends.mjs --db ./scan-db --output-dir ./scan-db/trends`
