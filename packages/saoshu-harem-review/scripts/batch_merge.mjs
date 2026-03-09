@@ -36,10 +36,11 @@ import {
   renderMarkdown,
   SEV_RANK,
 } from "./lib/report_output.mjs";
+import { loadReaderPolicyFromFile } from "./lib/reader_policy.mjs";
 import { writeUtf8File } from "./lib/text_output.mjs";
 
 function usage() {
-  console.log("Usage: node batch_merge.mjs --input <batch-dir> [--output <report.md>] [--title <name>] [--author <name>] [--tags <text>] [--target-defense <defense>] [--covered <text>] [--json-out <report.json>] [--html-out <report.html>] [--pipeline-mode <performance|economy>] [--coverage-mode <sampled|chapter-full|full-book>] [--coverage-template <opening-100|head-tail|head-tail-risk|opening-latest>] [--coverage-unit <chapter|segment>] [--chapter-detect-used-mode <script|assist|segment-fallback|segment-full-book>] [--state-path <pipeline-state.json>] [--wiki-dict <glossary.json>] [--risk-question-pool <json>] [--relationship-map <json>] [--report-default-view newbie|expert]");
+  console.log("Usage: node batch_merge.mjs --input <batch-dir> [--output <report.md>] [--title <name>] [--author <name>] [--tags <text>] [--target-defense <defense>] [--covered <text>] [--json-out <report.json>] [--html-out <report.html>] [--pipeline-mode <performance|economy>] [--coverage-mode <sampled|chapter-full|full-book>] [--coverage-template <opening-100|head-tail|head-tail-risk|opening-latest>] [--coverage-unit <chapter|segment>] [--chapter-detect-used-mode <script|assist|segment-fallback|segment-full-book>] [--state-path <pipeline-state.json>] [--wiki-dict <glossary.json>] [--risk-question-pool <json>] [--relationship-map <json>] [--reader-policy-file <manifest-or-policy.json>] [--report-default-view newbie|expert]");
 }
 
 function parseArgs(argv) {
@@ -74,6 +75,7 @@ function parseArgs(argv) {
     wikiDict: "",
     riskQuestionPool: "",
     relationshipMap: "",
+    readerPolicyFile: "",
     reportDefaultView: "newbie",
   };
   for (let index = 2; index < argv.length; index++) {
@@ -109,6 +111,7 @@ function parseArgs(argv) {
     else if (key === "--wiki-dict") out.wikiDict = value, index++;
     else if (key === "--risk-question-pool") out.riskQuestionPool = value, index++;
     else if (key === "--relationship-map") out.relationshipMap = value, index++;
+    else if (key === "--reader-policy-file") out.readerPolicyFile = value, index++;
     else if (key === "--report-default-view") out.reportDefaultView = value, index++;
     else if (key === "--help" || key === "-h") return null;
     else throw new Error(`Unknown argument: ${key}`);
@@ -270,6 +273,10 @@ function main() {
   args.glossaryIndex = buildGlossaryIndex(args.glossaryRows);
   args.riskQuestionRows = loadRiskQuestionPool(args.riskQuestionPool);
   args.relationshipRows = loadRelationshipRows(args.relationshipMap);
+  args.readerPolicy = loadReaderPolicyFromFile(args.readerPolicyFile, {
+    targetDefense: args.targetDefense,
+    coverageMode: args.coverageMode,
+  });
 
   const merged = mergeBatches(batches);
   merged.metadata.relationships = mergeRelationshipRows(merged.metadata.relationships, args.relationshipRows);

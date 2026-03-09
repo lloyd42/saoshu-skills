@@ -72,6 +72,8 @@ else fail("manifest wizard should write manifest file");
 const manifest = readJson(outputManifest);
 if (manifest.coverage_mode === "sampled" && manifest.pipeline_mode === "economy" && manifest.sample_mode === "dynamic" && manifest.sample_level === "auto") ok("newbie preset keeps sampled coverage defaults aligned with economy dynamic auto path");
 else fail("newbie preset should keep sampled coverage defaults aligned with economy dynamic auto path");
+if (manifest.reader_policy?.preset === "community-default" && manifest.reader_policy?.label === "默认社区 preset") ok("wizard writes default reader_policy scaffold");
+else fail("wizard should write default reader_policy scaffold");
 
 const fullPresetManifestPath = path.join(tmpRoot, "manifest-full.json");
 const fullPreset = runWizard([

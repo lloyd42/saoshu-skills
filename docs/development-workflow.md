@@ -10,6 +10,7 @@
 - `docs/roadmap.md`：当前状态快照、Now / Next / Later、下一轮起手点
 - `docs/development-workflow.md`：标准任务生命周期、验证阶梯、完成定义
 - `CONTRIBUTING.md`：贡献约定、提交粒度、PR 清单、状态同步要求
+- `docs/reader-policy-design.md`：默认社区 preset 与读者策略层的设计记录
 - `CHANGELOG.md`：`Unreleased` 与正式版本变更摘要
 - `VERSIONING.md`：发版、打 tag、发布 Release 的正式流程
 
@@ -67,6 +68,7 @@ run_pipeline.mjs
 - 跨包调用优先走环境变量、相对路径和 `path.join()`
 - 编码兼容逻辑集中放在共享 helper，不分散到各脚本
 - 新增脚本优先复用 `packages/*/scripts/lib/`
+- 先判断当前改动属于证据层、策略层，还是自动化层；不要把用户偏好差异直接硬编码进脚本默认判断
 - 先明确“这一轮的主问题”，再决定代码、测试、文档怎么一起收口
 
 ## 5. 编码与跨平台约定
@@ -88,12 +90,23 @@ run_pipeline.mjs
 
 不要跳过最小验证直接跑全量，也不要只看局部通过就宣布完成。
 
+当前仓库也支持按责任域选择 focused check：
+
+- `npm run check:repo`：技能定义、文档、边界、编码、共享 helper、installed-skill 同步链
+- `npm run check:pipeline`：扫描、抽样、覆盖升级、报告结构、术语与命令模板
+- `npm run check:feedback`：关键词、别名、补证问题、关系边闭环
+- `npm run check:analytics`：scan-db、mode-diff、compare、dashboard 相关回归
+- `npm run check:runtime`：CLI 冒烟与最小端到端
+
+这些分组的定位是“基建验证入口”，不是新的产品模式层。
+
 ## 7. 进度同步与文档闭环
 
 以下变化要按固定口径同步，不再“想到哪里补到哪里”：
 
 - 当前基线、下一轮起手点、优先级变化：更新 `docs/roadmap.md`
 - 标准流程、任务生命周期、完成定义变化：更新 `docs/development-workflow.md` 与 `CONTRIBUTING.md`
+- 默认社区 preset、读者策略层边界或裁决模型变化：更新 `docs/reader-policy-design.md`
 - 用户可感知或维护者可感知的变化：更新 `CHANGELOG.md` 的 `Unreleased`
 - 发版流程变化：更新 `VERSIONING.md`
 - CLI 参数、schema、报告字段、状态字段变化：同步 `README.md`、`packages/*/README.md`、schema 与产品文档

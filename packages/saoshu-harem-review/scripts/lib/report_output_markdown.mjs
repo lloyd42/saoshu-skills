@@ -31,6 +31,21 @@ export function renderMarkdown(data) {
   }
   lines.push("");
 
+  if (data.reader_policy) {
+    lines.push("## 🎯 当前读者策略视角");
+    lines.push(`- 视角：${lineOrDash(data.reader_policy.label)}`);
+    lines.push(`- 来源：${lineOrDash(data.reader_policy.source)}`);
+    lines.push(`- 摘要：${lineOrDash(data.reader_policy.summary)}`);
+    lines.push(`- 证据阈值：${lineOrDash(data.reader_policy.evidence_threshold)}`);
+    lines.push(`- 覆盖偏好：${lineOrDash(data.reader_policy.coverage_preference)}`);
+    lines.push(`- 绝对禁区：${Array.isArray(data.reader_policy.hard_blocks) && data.reader_policy.hard_blocks.length > 0 ? data.reader_policy.hard_blocks.join("、") : "沿用默认社区 preset"}`);
+    lines.push(`- 可披露风险：${Array.isArray(data.reader_policy.soft_risks) && data.reader_policy.soft_risks.length > 0 ? data.reader_policy.soft_risks.join("、") : "无额外指定"}`);
+    lines.push(`- 关系约束：${Array.isArray(data.reader_policy.relation_constraints) && data.reader_policy.relation_constraints.length > 0 ? data.reader_policy.relation_constraints.join("、") : "无额外指定"}`);
+    if (Array.isArray(data.reader_policy.scope_rules) && data.reader_policy.scope_rules.length > 0) lines.push(`- 范围规则：${data.reader_policy.scope_rules.join("、")}`);
+    if (Array.isArray(data.reader_policy.notes) && data.reader_policy.notes.length > 0) lines.push(`- 备注：${data.reader_policy.notes.join("；")}`);
+    lines.push("");
+  }
+
   if (data.scan?.coverage_decision) {
     lines.push("## ⬆️ 覆盖升级建议");
     lines.push(`- 建议动作：${mapCoverageDecisionAction(data.scan.coverage_decision.action, data.scan?.sampling?.coverage_mode)}`);

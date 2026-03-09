@@ -15,6 +15,7 @@
 - `docs/roadmap.md`：当前状态快照、Now / Next / Later、下一轮起手点
 - `docs/development-workflow.md`：标准任务生命周期、验证阶梯、完成定义
 - `CONTRIBUTING.md`：贡献约定、提交粒度、状态同步与 PR 清单
+- `docs/reader-policy-design.md`：记录默认社区 preset 与读者策略层的拆分方向
 - `CHANGELOG.md`：`Unreleased` 与正式版本变更摘要
 - `VERSIONING.md`：发版、tag、GitHub Release 的正式流程
 - `packages/saoshu-harem-review/references/product-manual.md`：核心产品与 manifest 契约
@@ -31,6 +32,7 @@
 - 项目是 **skill-first**，不是 CLI-first
 - 用户第一视角统一为 `sampled / chapter-full / full-book`
 - `economy / performance` 仍保留，但只作为兼容执行层，不再承担产品第一叙事
+- 固定防御档、固定雷点与固定郁闷规则当前仍保留，但应统一理解为默认社区 `preset`，不是完整的用户策略模型
 - 输出真源优先是 `merged-report.json` 与 `pipeline-state.json`，Markdown / HTML / scan-db 都是在共享结构化真源上展开
 - `saoshu-term-wiki`、`saoshu-scan-db`、`saoshu-orchestrator`、`saoshu-mcp-enricher-adapter` 都是增强层或协作层，不应反客为主变成主产品
 
@@ -45,8 +47,10 @@
 - `context_references` 合同已经打通：报告 JSON、Markdown / HTML、复核包、scan-db 查询与 dashboard 已对齐
 - `scan-db` 已能直接消费上下文引用、覆盖升级建议、mode-diff 台账与 compare preset
 - feedback loop 已覆盖关键词、别名、补证问题池、关系边四条闭环，并支持统一导出资产
+- `reader_policy` 已进入 manifest 与最终报告合同，当前先承担“策略视角声明与解释”职责，为后续人机协同保留挂载点
 - 仓库读写基线已收敛为 `UTF-8 without BOM` + `LF`，共享 no-BOM 写入 helper 与检查链已落地
 - 脚本层分层已稳定：`scripts/checks/` 承载检查实现，`scripts/dev/` 承载开发辅助实现，顶层 `scripts/` 保留用户入口与兼容 wrapper
+- 根级 `check` 已适合继续按责任域理解：`repo / pipeline / feedback / analytics / runtime`；脚本的定位应继续收敛为基建与自动化，而不是产品主叙事
 - installed-skill 同步链已稳定：`sync:installed-skills` + `check:installed-skill-sync`
 - 仓库内调用其他 skill 脚本时，当前已优先解析 repo 内包路径，并在显式 `SAOSHU_SKILLS_DIR` 或已安装副本确有对应文件时再走外部副本，降低“本机旧 skill 抢路径”造成的交接偏差
 - `roadmap / workflow / contributing / versioning / changelog` 的职责已经明确，不再需要把“流程标准化”继续当作 `Now`
@@ -57,6 +61,7 @@
 
 - `sampled / chapter-full / full-book` 虽然已经是稳定用户口径，但底层仍共享 `economy / performance` 主执行链，并不是三套完全独立引擎
 - 升级建议的 reason code、阈值、默认文案仍主要基于启发式，需要持续拿真实样本校准
+- 固定防御档与固定风险口径仍然过于像“统一用户模型”；如果继续把读者偏好差异直接写死进脚本，后续会越补越乱
 - compare / dashboard 已经可用，但仍应继续服务于“回看覆盖决策是否站得住”，而不是重新膨胀成产品主叙事
 - installed-skill 路径兜底已经更稳，但它不能替代 `sync:installed-skills`；当 skill 的文档、prompt、脚本行为或依赖路径变化时，仍需同步镜像
 - 公开 contract 只应以仓库源码、正式文档和样例源文件为准；`.tmp/`、`scan-db/`、`workspace/`、`examples/**/workspace/` 都应视为运行时产物，不应反向主导文档或流程判断
@@ -88,7 +93,16 @@ git log --oneline --decorate -n 8
 
 ## Now
 
-### 0. 用真实样本继续校准 coverage 升级建议
+### 0. 先把读者策略层与默认社区 preset 分开
+
+当前更值得先收口的是模型边界，而不是继续往脚本里塞更多“特殊判断”：
+
+- 保持现有固定防御档、固定雷点、固定郁闷规则继续作为默认社区 `preset`
+- 明确后续新增“用户偏好多样性”需求时，优先记入 `docs/reader-policy-design.md`
+- 不再把“用户策略问题”伪装成“脚本参数再加一个 if 就能解决”的小修补
+- 为后续 `reader_profile` 或等价策略对象保留设计空间，但本轮先不急着进 schema
+
+### 1. 用真实样本继续校准 coverage 升级建议
 
 当前主线不再是继续发散模式名，而是持续证明现有升级契约够不够稳：
 
@@ -97,7 +111,7 @@ git log --oneline --decorate -n 8
 - 继续核对 `decision_summary.next_action`、报告首页文案、compare / dashboard 展示是否仍与结构化真源一致
 - 保持 `sampled` 的目标是“决策导向快速摸底”，不是无限逼近全文
 
-### 1. 继续压实 repo 与 installed skill 的双态一致性
+### 2. 继续压实 repo 与 installed skill 的双态一致性
 
 当前路径兜底已经补强，但真正的维护闭环仍然是“仓库源码、文档、安装副本”三者一致：
 
@@ -105,7 +119,7 @@ git log --oneline --decorate -n 8
 - 对同步后的安装副本按需补跑 `quick_validate.mjs` 或最小 smoke
 - 后续新增跨-skill 调用时，优先复用共享路径发现 helper，而不是各处重复拼接安装目录逻辑
 
-### 2. 保持入口文档只说当前事实
+### 3. 保持入口文档只说当前事实
 
 这轮已经把流程职责收拢，但后续仍要守住：
 

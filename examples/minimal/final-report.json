@@ -5,6 +5,20 @@
     "title": "最小样例",
     "author": "公开夹具"
   },
+  "reader_policy": {
+    "preset": "community-default",
+    "label": "默认社区 preset",
+    "source": "example",
+    "customized": false,
+    "summary": "按默认社区 preset 演示最小样例；如果读者偏好不同，可改这个对象。",
+    "hard_blocks": [],
+    "soft_risks": [],
+    "relation_constraints": [],
+    "scope_rules": [],
+    "evidence_threshold": "balanced",
+    "coverage_preference": "balanced",
+    "notes": []
+  },
   "scan": {
     "sampling": {
       "pipeline_mode": "economy",
@@ -52,6 +66,10 @@
   },
   "view_prefs": {
     "default_view": "newbie"
+  },
+  "decision_summary": {
+    "policy_label": "默认社区 preset",
+    "policy_summary": "按默认社区 preset 演示最小样例；如果读者偏好不同，可改这个对象。"
   },
   "risks_unconfirmed": [],
   "audit": {

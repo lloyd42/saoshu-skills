@@ -14,6 +14,7 @@
 ## Recommended Reading Order
 - `docs/architecture.md`：理解项目定位与边界
 - `docs/community-alignment.md`：理解扫书社区语境、模式边界与生态联动方向
+- `docs/reader-policy-design.md`：理解默认社区 preset 与读者策略层的边界
 - `docs/sampling-design.md`：理解采样 / 抽查模板的产品语义与后续实现方向
 - `docs/roadmap.md`：先看当前状态快照与 `Now`，确认当前阶段到底做到哪了
 - `docs/development-workflow.md`：再看标准任务生命周期、验证阶梯与完成定义
@@ -27,6 +28,7 @@
 - 如改动会影响已安装 skill 的对外文案、说明、默认 prompt、脚本行为或依赖路径（例如 `SKILL.md`、`README.md`、`references/`、`packages/*/agents/openai.yaml`、`packages/*/scripts/**`），在仓库内验证完成后，再运行 `npm run sync:installed-skills -- --skills <skill-a,skill-b>`
 - 上面的 installed-skill 同步属于本地开发辅助，不是 CI 强制步骤；`npm run check` 只会在临时目录验证同步脚本本身，不会改动你的本机安装目录
 - 新增脚本优先复用 `packages/*/scripts`
+- 如果问题本质属于“用户偏好多样性”而不是“证据抽取错误”，优先更新 `docs/reader-policy-design.md`，不要直接把新偏好硬编码成脚本默认判断
 - 提交的文档、脚本、JSON 默认保持 `UTF-8 without BOM` + `LF`；不要把 BOM 写回仓库
 - 正式代码与配置不得硬编码依赖用户本地路径
 - 运行产物不要提交到 Git
@@ -37,6 +39,7 @@
 
 - 当前基线或下一轮优先级变化：更新 `docs/roadmap.md`
 - 标准流程变化：更新 `docs/development-workflow.md` 与 `CONTRIBUTING.md`
+- 默认社区 preset、裁决层模型或读者偏好边界变化：更新 `docs/reader-policy-design.md`
 - 用户或维护者可感知的变化：更新 `CHANGELOG.md` `Unreleased`
 - 影响 installed skills 的改动：按需运行 `sync:installed-skills`
 
@@ -45,11 +48,11 @@
 
 1. 先看 `git status --short` 与 `git diff --stat`
 2. 先做最小复现，再改根因
-3. 先跑与改动直接相关的最小检查
+3. 先跑与改动直接相关的最小检查；能归到责任域时，优先用 `check:repo / check:pipeline / check:feedback / check:analytics / check:runtime`
 4. 再跑 `npm run check:e2e`
 5. 最后跑 `npm run check`
 6. 如本轮改动会影响已安装 skill 的对外表现，再运行一次 installed-skill 同步命令，并按需对安装副本补跑 `quick_validate.mjs` 或最小 smoke
-7. 如本轮改动改变了当前基线、流程或下一轮优先级，补齐 `roadmap / workflow / changelog`
+7. 如本轮改动改变了当前基线、流程、默认社区 preset 或下一轮优先级，补齐 `roadmap / workflow / reader-policy-design / changelog`
 8. 再准备提交或 PR
 
 ## Done Definition

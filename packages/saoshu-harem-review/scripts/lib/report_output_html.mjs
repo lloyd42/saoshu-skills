@@ -63,6 +63,19 @@ export function renderHtml(data) {
   const coverageDecision = data.scan?.coverage_decision || {};
   const coverageReasonHtml = (coverageDecision.reason_lines || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
   const coverageDecisionReferenceHtml = renderContextReferenceList(coverageDecision.context_references || []);
+  const readerPolicy = data.reader_policy || {};
+  const readerPolicyLines = [
+    `<div><b>视角：</b>${escapeHtml(readerPolicy.label || "-")}</div>`,
+    `<div><b>来源：</b>${escapeHtml(readerPolicy.source || "-")}</div>`,
+    `<div><b>摘要：</b>${escapeHtml(readerPolicy.summary || "-")}</div>`,
+    `<div><b>证据阈值：</b>${escapeHtml(readerPolicy.evidence_threshold || "-")}</div>`,
+    `<div><b>覆盖偏好：</b>${escapeHtml(readerPolicy.coverage_preference || "-")}</div>`,
+    `<div><b>绝对禁区：</b>${escapeHtml(Array.isArray(readerPolicy.hard_blocks) && readerPolicy.hard_blocks.length > 0 ? readerPolicy.hard_blocks.join("、") : "沿用默认社区 preset")}</div>`,
+    `<div><b>可披露风险：</b>${escapeHtml(Array.isArray(readerPolicy.soft_risks) && readerPolicy.soft_risks.length > 0 ? readerPolicy.soft_risks.join("、") : "无额外指定")}</div>`,
+    `<div><b>关系约束：</b>${escapeHtml(Array.isArray(readerPolicy.relation_constraints) && readerPolicy.relation_constraints.length > 0 ? readerPolicy.relation_constraints.join("、") : "无额外指定")}</div>`,
+    Array.isArray(readerPolicy.scope_rules) && readerPolicy.scope_rules.length > 0 ? `<div><b>范围规则：</b>${escapeHtml(readerPolicy.scope_rules.join("、"))}</div>` : "",
+    Array.isArray(readerPolicy.notes) && readerPolicy.notes.length > 0 ? `<div><b>备注：</b>${escapeHtml(readerPolicy.notes.join("；"))}</div>` : "",
+  ].filter(Boolean).join("");
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -146,6 +159,16 @@ body.view-newbie .expert-only{display:none}
       <div class="muted" style="margin-top:4px">升级收益：${escapeHtml(coverageDecision.upgrade_benefit || "-")}</div>
       ${coverageDecisionReferenceHtml ? `<div style="margin-top:8px"><b>升级佐证引用</b>${coverageDecisionReferenceHtml}</div>` : ""}
     </div>
+  </div>
+
+  <div class="section">
+    <h2>当前读者策略视角</h2>
+    <div class="grid">
+      <div class="kv"><div class="k">视角</div><div class="v">${escapeHtml(readerPolicy.label || "-")}</div></div>
+      <div class="kv"><div class="k">来源</div><div class="v">${escapeHtml(readerPolicy.source || "-")}</div></div>
+      <div class="kv"><div class="k">证据阈值 / 覆盖偏好</div><div class="v">${escapeHtml(readerPolicy.evidence_threshold || "-")} / ${escapeHtml(readerPolicy.coverage_preference || "-")}</div></div>
+    </div>
+    <div style="margin-top:10px">${readerPolicyLines || '<div class="muted">当前未提供额外读者策略。</div>'}</div>
   </div>
 
   <div class="section">

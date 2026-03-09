@@ -60,6 +60,8 @@ function runIntegratedOptionalScenario() {
   const state = readJson(statePath);
   if (report?.novel?.title === "最小样例-E2E") ok("integrated report metadata looks correct");
   else fail("integrated report metadata title mismatch");
+  if (report?.reader_policy?.preset === "community-default" && report?.decision_summary?.policy_label === "默认社区 preset") ok("integrated report keeps reader policy contract");
+  else fail(`integrated report should keep reader policy contract: ${JSON.stringify(report?.reader_policy || {})}`);
   if (report?.novel?.harem_validity && report.novel.harem_validity !== "合法 / 不合法（原因）") ok("integrated report harem_validity is no longer a placeholder");
   else fail("integrated report harem_validity should not be a placeholder");
   if (report?.audit?.pipeline_state?.finished_at && report.audit.pipeline_state.finished_at !== "-") ok("integrated report audit finished_at is finalized");
@@ -410,6 +412,5 @@ try {
   fail(err.stderr || err.stdout || err.message || String(err));
   process.exitCode = 1;
 }
-
 
 

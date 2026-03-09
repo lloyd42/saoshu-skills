@@ -36,6 +36,21 @@ const batchDir = path.join(tmpRoot, "batches");
 const reportMd = path.join(tmpRoot, "merged-report.md");
 const reportHtml = path.join(tmpRoot, "merged-report.html");
 const reportJson = path.join(tmpRoot, "merged-report.json");
+const readerPolicyPath = path.join(tmpRoot, "reader-policy.json");
+
+writeJson(readerPolicyPath, {
+  preset: "custom-accept-yuri-no-steal",
+  label: "可接受百合但不能接受抢关键女主",
+  source: "test",
+  summary: "该视角接受百合，但不能接受关键女主被抢、共享或关系主位被改写。",
+  hard_blocks: ["关键女主被抢"],
+  soft_risks: ["百合"],
+  relation_constraints: ["不能接受关键女主被抢/共享"],
+  scope_rules: ["只把关键女主纳入一票否决"],
+  evidence_threshold: "balanced",
+  coverage_preference: "balanced",
+  notes: ["仅用于报告视图回归"],
+});
 
 writeJson(path.join(batchDir, "B01.json"), {
   batch_id: "B01",
@@ -76,6 +91,7 @@ const result = runNode("packages/saoshu-harem-review/scripts/batch_merge.mjs", [
   "--target-defense", "布甲",
   "--pipeline-mode", "economy",
   "--coverage-mode", "sampled",
+  "--reader-policy-file", readerPolicyPath,
   "--report-default-view", "newbie",
 ]);
 
@@ -85,10 +101,14 @@ else fail(`report view structure merge run failed\nSTDERR:\n${result.stderr}`);
 const markdown = fs.readFileSync(reportMd, "utf8");
 if (markdown.includes("## ✅ 一眼结论") && markdown.includes("## 🔍 为什么这样判断") && markdown.includes("## ❓ 如果还不确定，先补这3个问题") && markdown.includes("## 🧠 深入查看")) ok("markdown groups content into decision evidence and deep-dive sections");
 else fail("markdown should group content into decision/evidence/deep-dive sections");
+if (markdown.includes("## 🎯 当前读者策略视角") && markdown.includes("可接受百合但不能接受抢关键女主")) ok("markdown renders reader policy view");
+else fail("markdown should render reader policy view");
 
 const html = fs.readFileSync(reportHtml, "utf8");
 if (html.includes(">决策区<") && html.includes(">证据区<") && html.includes(">深入查看<")) ok("html renders decision evidence and deep-dive sections");
 else fail("html should render decision/evidence/deep-dive sections");
+if (html.includes(">当前读者策略视角<") && html.includes("可接受百合但不能接受抢关键女主")) ok("html renders reader policy view");
+else fail("html should render reader policy view");
 
 if (html.includes("body.view-newbie .expert-only{display:none}") && html.includes(">事件候选复核<") && html.includes("expert-only")) ok("html keeps expert sections collapsible in newbie view");
 else fail("html should keep detailed sections hidden in newbie view");

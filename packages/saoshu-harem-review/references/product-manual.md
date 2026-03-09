@@ -5,7 +5,7 @@
 
 核心目标：
 - 降低读者踩雷概率。
-- 将主观讨论转为“证据 + 规则 + 结论”。
+- 将主观讨论转为“证据 + 默认社区 preset + 结论”。
 - 支持超长小说分批处理，避免上下文超限。
 
 ## 2. 适用范围与边界
@@ -17,17 +17,23 @@
 不适用：
 - 非后宫作品直接复用“后宫结论”。
 - 把“待补证”当成“已实锤”。
+- 把当前固定防御档与固定雷点口径误当成所有读者共享的唯一策略模型。
 - 将本工具当作法律、伦理、医学判断工具。
 
 术语约定：
 - 对外统一使用 `待补证`，`未知待证` 仅作为兼容旧字段的别名。
 - 对外统一使用 `未证实风险`，`高风险未证实` 仅作为旧称或内部别名。
+- 当前 `target_defense` 与固定风险规则仍是默认社区 `preset`；更细的读者偏好多样性设计另见仓库级 `docs/reader-policy-design.md`。
 
 ## 3. 系统架构总览
 系统分三层：
 - 编排层：`scripts/run_pipeline.mjs`
 - 分析层：切批、增强、复核、回填、归并
 - 渲染层：`merged-report.json` -> `md/html`（HTML可打印PDF）
+
+补充原则：
+- 脚本优先承担基建与自动化，不承担全部个体化裁决
+- 证据层尽量与读者偏好解耦，默认社区 `preset` 只是当前主线入口
 
 统一契约：
 - 输入契约：`references/schemas/novel_manifest.schema.json`
@@ -47,6 +53,7 @@
 - 郁闷点：前世雷、擦边、虐心、接盘等。
 - 证据等级：已确认 / 高概率 / 待补证。
 - 对 `送女 / 背叛 / 死女 / 绿帽 / wrq` 这类要求女性主体语境的待补证候选，若当前主体仍更像男性角色或未知角色，不自动升成 `未证实风险`；会继续保留在事件复核区与补证问题层，避免样本污染把无关片段提前写进结论层。
+- 当前固定风险口径仍是默认社区 `preset`，不应被误读为完整读者策略；同一份证据后续应允许被不同读者偏好重新解释。
 
 ### 4.3 当前 coverage-first 用户口径
 - `sampled`：快速摸底，保留现有抽样优势。
@@ -59,6 +66,7 @@
 - `performance`：当前高覆盖执行基线，对应 `chapter-full / full-book` 的兼容主链。
 
 这里仅保留当前契约与实现映射；如果想看更完整的模式边界与用户语义，优先读 `docs/community-alignment.md`，抽样模板设计细节再看 `docs/sampling-design.md`。
+- 如果想看“为什么固定防御档不再足够表达用户偏好多样性”，补看 `docs/reader-policy-design.md`。
 - 关键词、别名、补证问题、关系图等能力继续保留，但更多承担热点提示、排序、人工协同辅助职责。
 
 ### 4.5 当前抽样机制（兼容保留）
@@ -215,6 +223,8 @@ Manifest 向导（新手推荐）：
 
 如果当前想显式指定“这次快速摸底采用哪种抽查模板”，也可以额外写：`coverage_template=opening-100|head-tail|head-tail-risk|opening-latest`。当前这些模板会在 `sampled / economy` 路径中直接影响选批逻辑，并同时透传到 `pipeline-state.json`、`merged-report.scan.sampling` 与数据库 `runs.jsonl`。当前已落库的 coverage 相关字段至少包括 `coverage_mode`、`coverage_template`、`coverage_unit`、`chapter_detect_used_mode`、`serial_status`、`total_batches`、`selected_batches`、`coverage_ratio`、`coverage_gap_summary`、`coverage_gap_risk_types`。
 
+如果你的阅读边界明显不同于默认社区 preset，当前可直接在 manifest 里补一个 `reader_policy` 对象，用来声明“这份报告按哪种读者策略视角解释证据”。当前这组字段先承担报告解释和人机协同输入，不急着直接改写主裁决逻辑。
+
 如果使用 `opening-latest`，还建议同时设置 `serial_status=ongoing|completed|unknown`：
 
 - `ongoing`：更偏“开篇 + 最新进度”
@@ -229,6 +239,7 @@ Manifest 向导（新手推荐）：
 - `pipeline_mode`: `economy|performance`
 - `coverage_mode`: `sampled|chapter-full|full-book`（兼容字段）
 - `coverage_template`: `opening-100|head-tail|head-tail-risk|opening-latest`（当前用于 sampled / economy 路径的抽查模板）
+- `reader_policy`: 读者策略视角对象；当前可声明 `preset/label/hard_blocks/soft_risks/relation_constraints/scope_rules/evidence_threshold/coverage_preference/notes`
 - `coverage_unit`: `chapter|segment`（报告和数据库会标记当前到底按章节还是按分段覆盖）
 - `chapter_detect_used_mode`: `script|assist|segment-fallback|segment-full-book`（标记章节识别/执行路径）
 - `serial_status`: `unknown|ongoing|completed`（当前主要用于区分 `opening-latest` 是看最新进度还是结尾窗口）
@@ -327,6 +338,7 @@ Manifest 向导（新手推荐）：
 - `newbie_card`（新手摘要卡：红黄绿风险灯 + 3条建议）
 - `overall.verdict`（可看/慎入/劝退）
 - `overall.rating`（推荐指数）
+- `reader_policy`（当前按哪种读者策略视角在解释证据）
 - `scan.sampling`（模式、覆盖率、档位、抽样命中原因）
 
 再看：
@@ -347,6 +359,7 @@ Manifest 向导（新手推荐）：
 
 ### 9.2 推荐默认
 - 新人默认 `sampled + dynamic + auto + risk-aware`
+- 默认 `target_defense` / 固定规则当前仍只代表社区常用 `preset`，不是所有用户的完整偏好画像
 - 需要更高覆盖时升级到 `chapter-full`
 - 关键决策、争议文本或最终确认时切到 `full-book`
 - 如果 `sampled` 已命中标题高风险，建议直接查看对应批次复核包；必要时升级到 `chapter-full`，仍有争议再走 `full-book`

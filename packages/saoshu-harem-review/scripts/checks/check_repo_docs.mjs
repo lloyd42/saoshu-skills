@@ -14,6 +14,7 @@ const requiredFiles = [
   "package.json",
   "examples/minimal/report-reading-guide.md",
   "docs/architecture.md",
+  "docs/reader-policy-design.md",
   "docs/development-workflow.md",
   "docs/troubleshooting.md",
   "docs/roadmap.md",
@@ -26,6 +27,7 @@ const linkContracts = [
     file: "README.md",
     includes: [
       "`docs/architecture.md`",
+      "`docs/reader-policy-design.md`",
       "`docs/development-workflow.md`",
       "`docs/troubleshooting.md`",
       "`docs/roadmap.md`",
@@ -38,6 +40,7 @@ const linkContracts = [
     file: "CONTRIBUTING.md",
     includes: [
       "`docs/architecture.md`",
+      "`docs/reader-policy-design.md`",
       "`docs/development-workflow.md`",
       "`docs/troubleshooting.md`",
       "`docs/roadmap.md`",
@@ -50,6 +53,7 @@ const linkContracts = [
       "`docs/troubleshooting.md`",
       "`docs/roadmap.md`",
       "`CONTRIBUTING.md`",
+      "`docs/reader-policy-design.md`",
       "`VERSIONING.md`",
     ],
   },

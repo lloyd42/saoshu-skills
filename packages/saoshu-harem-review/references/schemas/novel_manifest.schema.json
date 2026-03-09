@@ -11,6 +11,23 @@
     "author": {"type": "string"},
     "tags": {"type": "string"},
     "target_defense": {"type": "string"},
+    "reader_policy": {
+      "type": "object",
+      "properties": {
+        "preset": {"type": "string"},
+        "label": {"type": "string"},
+        "source": {"type": "string"},
+        "summary": {"type": "string"},
+        "hard_blocks": {"type": "array", "items": {"type": "string"}},
+        "soft_risks": {"type": "array", "items": {"type": "string"}},
+        "relation_constraints": {"type": "array", "items": {"type": "string"}},
+        "scope_rules": {"type": "array", "items": {"type": "string"}},
+        "evidence_threshold": {"type": "string"},
+        "coverage_preference": {"type": "string"},
+        "notes": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
     "batch_size": {"type": "integer", "minimum": 10},
     "overlap": {"type": "integer", "minimum": 0},
     "enrich_mode": {"type": "string", "enum": ["external", "fallback"]},

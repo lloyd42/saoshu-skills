@@ -1,5 +1,6 @@
 import path from "node:path";
 import { pipelineUsage } from "./pipeline_feedback.mjs";
+import { normalizeReaderPolicy } from "./reader_policy.mjs";
 
 export const COVERAGE_MODES = ["sampled", "chapter-full", "full-book"];
 export const COVERAGE_TEMPLATES = ["opening-100", "head-tail", "head-tail-risk", "opening-latest"];
@@ -91,6 +92,10 @@ export function resolvePipelineManifest(manifestPath, manifest) {
   const reportDefaultView = manifest.report_default_view || "newbie";
   const enrichMode = manifest.enrich_mode || "fallback";
   const chapterDetectMode = manifest.chapter_detect_mode || "auto";
+  const readerPolicy = normalizeReaderPolicy(manifest.reader_policy, {
+    targetDefense: manifest.target_defense || "布甲",
+    coverageMode,
+  });
 
   assertEnum(sampleMode, ["fixed", "dynamic"], "sample_mode");
   assertEnum(sampleLevel, ["auto", "low", "medium", "high"], "sample_level");
@@ -147,6 +152,7 @@ export function resolvePipelineManifest(manifestPath, manifest) {
     reportRelationMinEdgeWeight: toNumber(manifest.report_relation_min_edge_weight, 2),
     reportRelationMaxLinks: toNumber(manifest.report_relation_max_links, 220),
     reportRelationMinNameFreq: toNumber(manifest.report_relation_min_name_freq, 2),
+    readerPolicy,
     chapterDetectMode,
     chapterAssistDir: manifest.chapter_assist_dir ? path.resolve(manifestDir, manifest.chapter_assist_dir) : path.join(outputDir, "chapter-detect-assist"),
     chapterAssistResult: manifest.chapter_assist_result ? path.resolve(manifestDir, manifest.chapter_assist_result) : "",

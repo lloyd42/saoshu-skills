@@ -6,6 +6,7 @@ import {
   pickTopContextReferences,
 } from "./report_context_references.mjs";
 import { describeEvent, eventDecisionLabel } from "./report_events.mjs";
+import { normalizeReaderPolicy } from "./reader_policy.mjs";
 import {
   CONFIRMED_LEVELS,
   DEFENSES,
@@ -145,7 +146,7 @@ function buildCoverageDecision({ meta, coverageGap, coverageRate, mergedRisks, p
     upgrade_benefit: upgradeBenefit,
   };
 }
-function buildDecisionSummary({ verdict, rating, newbieCard, coverage, coverageRate, sampleBasis, reviewedEvents, mergedRisks, coverageDecision, coverageMode, supportingReferences }) {
+function buildDecisionSummary({ verdict, rating, newbieCard, coverage, coverageRate, sampleBasis, reviewedEvents, mergedRisks, coverageDecision, coverageMode, supportingReferences, readerPolicy }) {
   const nextAction = describeCoverageDecisionNextAction(coverageDecision, coverageMode, verdict);
   return {
     title: "决策区",
@@ -159,8 +160,11 @@ function buildDecisionSummary({ verdict, rating, newbieCard, coverage, coverageR
     highlights: [
       `当前结论：${verdict}；推荐指数 ${rating}/10。`,
       `已确认关键事件 ${reviewedEvents.length} 项；未证实风险 ${mergedRisks.length} 项。`,
+      `当前策略视角：${readerPolicy.label}。`,
       `${Array.isArray(sampleBasis) && sampleBasis.length > 0 ? sampleBasis[0] : "当前为全量/当前抽样覆盖结论。"}`,
     ],
+    policy_label: String(readerPolicy.label || ""),
+    policy_summary: String(readerPolicy.summary || ""),
     next_action: nextAction,
     supporting_references: Array.isArray(supportingReferences) ? supportingReferences : [],
   };
@@ -254,6 +258,10 @@ function buildCoverageGapHints(meta, totalBatches, selectedBatches) {
 
 export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = []) {
   const effectiveCoverageMode = resolveEffectiveCoverageMode(meta);
+  const readerPolicy = normalizeReaderPolicy(meta.readerPolicy, {
+    targetDefense: meta.targetDefense,
+    coverageMode: effectiveCoverageMode,
+  });
   const eventCandidates = Array.isArray(merged.event_candidates) ? merged.event_candidates.map((event) => {
     const contextReferences = buildEventContextReferences(event, { limit: 3 });
     return {
@@ -433,6 +441,7 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
     mergedRisks: riskItems,
     coverageDecision,
     coverageMode: effectiveCoverageMode,
+    readerPolicy,
     supportingReferences: pickTopContextReferences([
       ...reviewedEvents.flatMap((event) => event.context_references || []),
       ...riskItems.flatMap((item) => item.context_references || []),
@@ -458,6 +467,7 @@ export function buildReportData(meta, merged, glossaryIndex, riskQuestionPool = 
       target_defense: lineOrDash(meta.targetDefense),
       harem_validity: inferHaremValidity(meta, merged),
     },
+    reader_policy: readerPolicy,
     scan: {
       coverage,
       batch_ids: merged.batchIds,

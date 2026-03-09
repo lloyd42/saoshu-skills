@@ -257,6 +257,7 @@ function main() {
         "--total-batches", totalBatches,
         "--selected-batches", selectedBatches,
         "--state-path", statePath,
+        "--reader-policy-file", manifestPath,
         "--report-default-view", reportDefaultView,
       ];
       if (coverageMode) args.push("--coverage-mode", coverageMode);

@@ -34,6 +34,7 @@ function usage() {
   console.log("  - 如需指定快速摸底采用的抽查模板，可传 --coverage-template opening-100|head-tail|head-tail-risk|opening-latest");
   console.log("  - 如需让 opening-latest 区分‘最新进度’与‘完结尾部’，可设置 serial_status=ongoing|completed|unknown");
   console.log("  - chapter_detect_mode 支持 auto|script|assist；auto 会在脚本识别失败或低置信时生成 AI 协作包");
+  console.log("  - manifest 默认会写出一个可编辑的 reader_policy 骨架，用来声明当前按哪种读者策略看报告");
   console.log("  - db_mode=external 时，db_ingest_cmd 支持 {report} {state} {manifest} {db}");
   console.log("  - enrich_mode=external 时，enricher_cmd 支持 {batch_file}");
   console.log("  - report_pdf_engine_cmd 支持 {input} {output} {input_url}");
@@ -81,6 +82,19 @@ function baseManifest() {
     author: "",
     tags: "",
     target_defense: "布甲",
+    reader_policy: {
+      preset: "community-default",
+      label: "默认社区 preset",
+      source: "wizard-default",
+      summary: "按默认社区 preset 解释证据；如果你的偏好不一样，直接编辑这个对象。",
+      hard_blocks: [],
+      soft_risks: [],
+      relation_constraints: [],
+      scope_rules: [],
+      evidence_threshold: "balanced",
+      coverage_preference: "balanced",
+      notes: [],
+    },
     batch_size: 80,
     overlap: 2,
     enrich_mode: "fallback",
