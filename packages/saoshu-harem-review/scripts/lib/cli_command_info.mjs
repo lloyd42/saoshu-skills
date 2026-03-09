@@ -1,9 +1,8 @@
 import fs from "node:fs";
-import path from "node:path";
 import {
-  getInstalledSkillPath,
   hasFlag,
   pushArg,
+  resolveSkillEntryPath,
   runNodeScript,
   valueOf,
 } from "./script_helpers.mjs";
@@ -14,8 +13,8 @@ export function handleWiki(rest, context) {
   const contains = hasFlag(rest, "--contains");
   const format = valueOf(rest, "--format", "text");
   const mcpCmd = valueOf(rest, "--mcp-cmd", "");
-  const wikiScript = path.join(getInstalledSkillPath("saoshu-term-wiki", context.importMetaUrl), "scripts/query_term_wiki.mjs");
-  if (!fs.existsSync(wikiScript)) failUsage(`未找到术语脚本：${wikiScript}`);
+  const wikiScript = resolveSkillEntryPath("saoshu-term-wiki", context.importMetaUrl, "scripts/query_term_wiki.mjs");
+  if (!fs.existsSync(wikiScript)) failUsage(`未找到 saoshu-term-wiki 的术语脚本：${wikiScript}`);
   const args = ["--term", term, "--format", format];
   if (contains) args.push("--contains");
   pushArg(args, "--mcp-cmd", mcpCmd);

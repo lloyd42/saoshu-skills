@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getInstalledSkillPath, runNodeScript } from "./lib/script_helpers.mjs";
+import { resolveSkillEntryPath, runNodeScript } from "./lib/script_helpers.mjs";
 
 function usage() {
   console.log("Usage: node mode_diff_workflow.mjs --ledger <mode-diff-ledger.jsonl> [--summary-dir <dir>] [--summary-title <name>] [--db <dir>] [--db-compare-dir <dir>] [--db-compare-dimensions <dims>] [--db-trends-dir <dir>] [--db-dashboard <html>] [--perf <report.json> --econ <report.json> --out-dir <dir> --title <name>]");
@@ -78,7 +78,12 @@ function main() {
   const reviewRoot = path.dirname(fileURLToPath(import.meta.url));
   const compareScript = path.join(reviewRoot, "compare_reports.mjs");
   const ledgerScript = path.join(reviewRoot, "mode_diff_ledger.mjs");
-  const dbRoot = args.db ? getInstalledSkillPath("saoshu-scan-db", import.meta.url) : "";
+  const dbScripts = args.db ? {
+    ingestModeDiff: resolveSkillEntryPath("saoshu-scan-db", import.meta.url, "scripts/db_ingest_mode_diff.mjs"),
+    compare: resolveSkillEntryPath("saoshu-scan-db", import.meta.url, "scripts/db_compare.mjs"),
+    trends: resolveSkillEntryPath("saoshu-scan-db", import.meta.url, "scripts/db_trends.mjs"),
+    dashboard: resolveSkillEntryPath("saoshu-scan-db", import.meta.url, "scripts/db_dashboard.mjs"),
+  } : null;
 
   if (args.perf) {
     runNodeScript(compareScript, ["--perf", args.perf, "--econ", args.econ, "--out-dir", args.outDir, "--ledger", paths.ledgerAbs, "--title", args.title]);
@@ -87,10 +92,10 @@ function main() {
   runNodeScript(ledgerScript, ["--ledger", paths.ledgerAbs, "--output-dir", paths.summaryDir, "--title", args.summaryTitle]);
 
   if (args.db) {
-    runNodeScript(path.join(dbRoot, "scripts", "db_ingest_mode_diff.mjs"), ["--db", paths.dbAbs, "--ledger", paths.ledgerAbs]);
-    runNodeScript(path.join(dbRoot, "scripts", "db_compare.mjs"), ["--db", paths.dbAbs, "--dimensions", args.dbCompareDimensions, "--output-dir", paths.dbCompareDir]);
-    runNodeScript(path.join(dbRoot, "scripts", "db_trends.mjs"), ["--db", paths.dbAbs, "--output-dir", paths.dbTrendsDir]);
-    runNodeScript(path.join(dbRoot, "scripts", "db_dashboard.mjs"), ["--db", paths.dbAbs, "--output", paths.dbDashboard]);
+    runNodeScript(dbScripts.ingestModeDiff, ["--db", paths.dbAbs, "--ledger", paths.ledgerAbs]);
+    runNodeScript(dbScripts.compare, ["--db", paths.dbAbs, "--dimensions", args.dbCompareDimensions, "--output-dir", paths.dbCompareDir]);
+    runNodeScript(dbScripts.trends, ["--db", paths.dbAbs, "--output-dir", paths.dbTrendsDir]);
+    runNodeScript(dbScripts.dashboard, ["--db", paths.dbAbs, "--output", paths.dbDashboard]);
   }
 
   console.log(`Ledger: ${paths.ledgerAbs}`);

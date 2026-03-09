@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { formatCommand, pushArg, pushFlag, runNodeScript } from "../lib/script_helpers.mjs";
+import { formatCommand, pushArg, pushFlag, resolveSkillEntryPath, runNodeScript } from "../lib/script_helpers.mjs";
 import { appendUtf8Jsonl, writeUtf8File, writeUtf8Json, writeUtf8Jsonl } from "../lib/text_output.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
@@ -92,6 +92,26 @@ else fail("writeUtf8Jsonl should write JSONL rows");
 
 if (fs.existsSync(helperTextPath) && fs.readFileSync(helperTextPath, "utf8").includes("第二行")) ok("writeUtf8File creates parent directories and writes text");
 else fail("writeUtf8File should create parent directories and write text");
+
+const originalSkillsDir = process.env.SAOSHU_SKILLS_DIR;
+const fakeSkillsRoot = path.join(tmpRoot, "fake skills");
+const fakeDbSkillRoot = path.join(fakeSkillsRoot, "saoshu-scan-db");
+const staleDbScript = path.join(fakeDbSkillRoot, "scripts", "db_dashboard.mjs");
+writeUtf8File(staleDbScript, "console.log('stale');\n");
+
+process.env.SAOSHU_SKILLS_DIR = fakeSkillsRoot;
+
+const repoFallbackScript = resolveSkillEntryPath("saoshu-scan-db", import.meta.url, "scripts/db_ingest_mode_diff.mjs");
+const expectedRepoFallback = path.join(repoRoot, "packages", "saoshu-scan-db", "scripts", "db_ingest_mode_diff.mjs");
+if (path.resolve(repoFallbackScript) === path.resolve(expectedRepoFallback)) ok("resolveSkillEntryPath falls back to repo script when installed skill is stale");
+else fail(`resolveSkillEntryPath should fall back to repo script: ${repoFallbackScript}`);
+
+const preferredInstalledScript = resolveSkillEntryPath("saoshu-scan-db", import.meta.url, "scripts/db_dashboard.mjs");
+if (path.resolve(preferredInstalledScript) === path.resolve(staleDbScript)) ok("resolveSkillEntryPath still prefers installed skill when requested script exists");
+else fail(`resolveSkillEntryPath should prefer installed skill when entry exists: ${preferredInstalledScript}`);
+
+if (originalSkillsDir === undefined) delete process.env.SAOSHU_SKILLS_DIR;
+else process.env.SAOSHU_SKILLS_DIR = originalSkillsDir;
 
 if (!hasFailure) {
   console.log("Script helper check passed.");

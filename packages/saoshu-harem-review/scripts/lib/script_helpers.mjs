@@ -46,18 +46,46 @@ export function findFirstExisting(paths) {
   return "";
 }
 
-export function getInstalledSkillPath(name, importMetaUrl) {
-  const scriptDir = getScriptDir(importMetaUrl);
+function resolveRepoSkillRoot(scriptDir, name) {
+  let current = path.resolve(scriptDir);
+  for (let depth = 0; depth < 8; depth += 1) {
+    const parent = path.dirname(current);
+    if (path.basename(parent) === "packages") return findFirstExisting([path.join(parent, name)]);
+    if (parent === current) break;
+    current = parent;
+  }
+  return "";
+}
+
+function getSkillRootCandidates(scriptDir, name) {
   const home = os.homedir();
   const codexHome = process.env.CODEX_HOME || "";
   const custom = process.env.SAOSHU_SKILLS_DIR || "";
-  const candidates = [
+  const repoSkillRoot = resolveRepoSkillRoot(scriptDir, name);
+  return [
     custom ? path.join(custom, name) : "",
+    // In repo-dev mode prefer workspace skills over stale installed copies.
+    repoSkillRoot || "",
     codexHome ? path.join(codexHome, "skills", name) : "",
     home ? path.join(home, ".codex", "skills", name) : "",
-    path.resolve(scriptDir, "..", "..", name),
   ];
+}
+
+export function getInstalledSkillPath(name, importMetaUrl) {
+  const scriptDir = getScriptDir(importMetaUrl);
+  const candidates = getSkillRootCandidates(scriptDir, name);
   return findFirstExisting(candidates) || candidates[candidates.length - 1];
+}
+
+export function resolveSkillEntryPath(name, importMetaUrl, relativePath = "") {
+  const scriptDir = getScriptDir(importMetaUrl);
+  const skillRoots = getSkillRootCandidates(scriptDir, name);
+  const skillRoot = findFirstExisting(skillRoots) || skillRoots[skillRoots.length - 1];
+  if (!relativePath) return skillRoot;
+  const entryCandidates = skillRoots.map((root) => (root ? path.join(root, relativePath) : ""));
+  const resolvedEntry = findFirstExisting(entryCandidates);
+  if (resolvedEntry) return resolvedEntry;
+  return path.join(skillRoot, relativePath);
 }
 
 export function valueOf(rest, key, fallback = "") {
