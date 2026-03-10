@@ -1,32 +1,26 @@
 # 开发工作流
 
-这份文档用于把 `saoshu` 的日常开发流程固定下来，减少因环境差异、异常中断、编码问题或验证遗漏带来的返工。
+本文件只负责“任务生命周期 + 验证阶梯”。其它内容去对应文档。
 
-## 0. 文档分工
+## 文档分工
 
-维护阶段默认按下面分工同步，不再靠临时记忆判断“该改哪份文档”：
+- `README.md`：对外入口与稳定能力
+- `docs/roadmap.md`：当前快照与优先级
+- `docs/development-workflow.md`：任务生命周期与验证阶梯
+- `docs/reader-policy-design.md`：读者策略层边界与演进记录
+- `CONTRIBUTING.md`：提交粒度与协作规则
+- `VERSIONING.md`：发版流程
 
-- `README.md`：对外入口、稳定能力总览、用户第一视角口径
-- `docs/roadmap.md`：当前状态快照、Now / Next / Later、下一轮起手点
-- `docs/development-workflow.md`：标准任务生命周期、验证阶梯、完成定义
-- `CONTRIBUTING.md`：贡献约定、提交粒度、PR 清单、状态同步要求
-- `docs/reader-policy-design.md`：默认社区 preset 与读者策略层的设计记录
-- `CHANGELOG.md`：`Unreleased` 与正式版本变更摘要
-- `VERSIONING.md`：发版、打 tag、发布 Release 的正式流程
-
-## 1. 基线环境
+## 基线环境
 
 - Node.js `20+`
 - 仓库根目录执行命令
-- 编辑器默认使用 `UTF-8 without BOM` 与 `LF`
-- Windows PowerShell 如出现中文乱码，先确认是终端显示问题而不是文件损坏；优先尝试 `chcp 65001 > $null`
-- 如需快速判断是否为编码/BOM/终端显示问题，先看 `docs/troubleshooting.md`
+- 文本基线：`UTF-8 without BOM` + `LF`
+- 编码/PowerShell 排障见 `docs/troubleshooting.md`
 
-## 2. 开发前检查
+## 接手或恢复中断
 
-每次接手新任务或恢复中断开发，先做这一轮：
-
-先看 `docs/roadmap.md` 的“当前状态快照”与 `Now`，确认当前基线、最新已落地能力、下一轮起手点，再跑下面这组轻量检查：
+先确认当前状态与基线：
 
 ```bash
 git status --short
@@ -34,117 +28,57 @@ git diff --stat
 git log --oneline --decorate -n 8
 ```
 
-如果仓库状态不明、刚经历异常中断、准备做跨包改动，或你怀疑基线已经漂移，再补跑一次：
+然后读 `docs/roadmap.md` 的“当前状态快照 / Now”。
+
+不确定时再补：
 
 ```bash
 npm run check
 ```
 
-如果是功能链路相关问题，再按主执行链排查：
+## 任务生命周期
 
-```text
-run_pipeline.mjs
--> scan_txt_batches.mjs
--> review_contexts.mjs
--> apply_review_results.mjs
--> batch_merge.mjs
-```
+1. 接手：确认基线与工作树状态
+2. 设计：明确本轮范围、契约面与验证计划
+3. 实现：一轮只收一个主题
+4. 验证：按验证阶梯逐级推进
+5. 同步：按需更新文档与 changelog
+6. 交接：说明完成面、未完成面与下一步
 
-## 3. 任务生命周期
-
-默认按下面节奏推进，不再把“收口同步”留到最后靠回忆补：
-
-1. 接手：确认当前基线、工作树状态、任务是“继续功能开发”还是“恢复中断运行”
-2. 设计：明确本轮范围、会碰到的契约面、需要同步的文档与验证计划
-3. 实现：优先修根因，保持一轮只收一个主题，代码与文档同工作流推进
-4. 收口：先过 focused check，再过 `npm run check:e2e`，最后视改动范围跑 `npm run check`
-5. 同步：按需更新 `roadmap / workflow / contributing / changelog`，必要时同步本机 installed skills
-6. 交接：给出当前完成面、未完成面、下一轮推荐起手点；只有任务自然走到发版阶段时才进入 `VERSIONING.md`
-
-## 4. 变更原则
-
-- 优先修根因，不做表层补丁
-- 不硬编码本地绝对路径、用户目录、临时目录
-- 跨包调用优先走环境变量、相对路径和 `path.join()`
-- 编码兼容逻辑集中放在共享 helper，不分散到各脚本
-- 新增脚本优先复用 `packages/*/scripts/lib/`
-- 先判断当前改动属于证据层、策略层，还是自动化层；不要把用户偏好差异直接硬编码进脚本默认判断
-- 先明确“这一轮的主问题”，再决定代码、测试、文档怎么一起收口
-
-## 5. 编码与跨平台约定
-
-- 文本文件统一保存为 `UTF-8 without BOM`
-- 仓库统一以 `UTF-8 without BOM` + `LF` 为基线，避免 CRLF/BOM 干扰脚本和 review
-- 输入侧允许兼容 `UTF-8`、`UTF-8 BOM`、`GBK`、`GB18030`
-- 输出侧统一落为标准 `UTF-8 without BOM`
-- 在 PowerShell / .NET 写文本时，优先显式使用 `System.Text.UTF8Encoding($false)` 或其他已确认 no-BOM 写入器
-- 浏览器、数据库、技能包路径优先自动探测，必要时再允许显式传参覆盖
-
-## 6. 验证阶梯
-
-功能开发默认按下面顺序验证：
+## 验证阶梯
 
 1. 先跑与改动直接相关的最小脚本
 2. 再跑 `npm run check:e2e`
-3. 最后跑仓库级 `npm run check`
+3. 最后跑 `npm run check`
 
-不要跳过最小验证直接跑全量，也不要只看局部通过就宣布完成。
+可按责任域选择 focused check：`check:repo` / `check:pipeline` / `check:feedback` / `check:analytics` / `check:runtime`。
 
-当前仓库也支持按责任域选择 focused check：
+## 已安装 skill 同步
 
-- `npm run check:repo`：技能定义、文档、边界、编码、共享 helper、installed-skill 同步链
-- `npm run check:pipeline`：扫描、抽样、覆盖升级、报告结构、术语与命令模板
-- `npm run check:feedback`：关键词、别名、补证问题、关系边闭环
-- `npm run check:analytics`：scan-db、mode-diff、compare、dashboard 相关回归
-- `npm run check:runtime`：CLI 冒烟与最小端到端
+当改动会影响已安装 skill 的对外表现（`SKILL.md`、`README.md`、`references/`、`agents/`、`scripts/`）时：
 
-这些分组的定位是“基建验证入口”，不是新的产品模式层。
+```bash
+npm run sync:installed-skills -- --skills <skill-a,skill-b>
+```
 
-## 7. 进度同步与文档闭环
+需要真实路径验证时，补跑：
 
-以下变化要按固定口径同步，不再“想到哪里补到哪里”：
+```bash
+npm run dev:release-installed-smoke
+```
 
-- 当前基线、下一轮起手点、优先级变化：更新 `docs/roadmap.md`
-- 标准流程、任务生命周期、完成定义变化：更新 `docs/development-workflow.md` 与 `CONTRIBUTING.md`
-- 默认社区 preset、读者策略层边界或裁决模型变化：更新 `docs/reader-policy-design.md`
-- 用户可感知或维护者可感知的变化：更新 `CHANGELOG.md` 的 `Unreleased`
-- 发版流程变化：更新 `VERSIONING.md`
-- CLI 参数、schema、报告字段、状态字段变化：同步 `README.md`、`packages/*/README.md`、schema 与产品文档
+## 完成定义
 
-如果改动会影响本机已安装 skill 的对外表现，也要补这一环：
-
-- 当 `packages/*/SKILL.md`、`packages/*/README.md`、`packages/*/references/`、`packages/*/agents/openai.yaml` 或对应 skill 的 `scripts/` 逻辑更新后，运行 `npm run sync:installed-skills -- --skills <skill-a,skill-b>`
-- 这一步是本地开发辅助，用来让“仓库内容”和“本机已安装 skill”保持一致，方便重启 Codex 前做真实体验核对
-- 仓库里的 `npm run check` 只会通过 `check:installed-skill-sync` 在临时目录验证同步脚本本身，不会改动你的本机已安装 skill
-- 如果你想顺手确认安装副本没有坏，再对同步后的 skill 目录补跑一次 `packages/saoshu-harem-review/scripts/dev/quick_validate.mjs <skill-dir>` 或最小 smoke
-- 如果是 release 后验收，默认不要停在 repo 脚本自测；先 `npm run sync:installed-skills -- --skills saoshu-harem-review,saoshu-scan-db`，再跑 `npm run dev:release-installed-smoke`
-
-## 8. 完成定义
-
-一轮工作默认满足下面这些条件，才算真正“完成”：
-
-- 主问题已被根因修复，而不是只绕开表象
+- 主问题已被根因修复
 - 相关 focused check 已通过
-- `npm run check:e2e` 已按需通过
-- 改动范围需要时，`npm run check` 已通过
-- 相关文档、`roadmap`、`changelog` 已同步
-- 如影响 installed skills，对应镜像已同步并按需 smoke
-- 已明确当前完成面、未完成面与下一轮起手点
+- `npm run check:e2e` 按需通过
+- 变更范围需要时，`npm run check` 已通过
+- 相关文档与 `CHANGELOG.md` 已同步
+- 若影响已安装 skill，对应镜像已同步并按需 smoke
+- 已明确下一轮起手点
 
-## 9. 发布前清单
+## 常见误判
 
-- `CHANGELOG.md` 的 `Unreleased` 已更新
-- `npm run check` 全绿
-- 无本地绝对路径、无临时调试输出、无编码污染
-- 关键样例与回退路径都验证过
-- 已按 `VERSIONING.md` 明确版本级别、tag 与 release 步骤
-
-如果已经完成当前任务，想找下一轮最值得推进的工作，直接看 `docs/roadmap.md`。
-
-## 10. 常见误判
-
-- PowerShell 里看到中文乱码，不代表仓库文件本身损坏
-- `BOM` 引起的 JSON 解析失败，优先查输入写入方式
-- 跨批次聚合异常，优先查共享归并逻辑而不是只看最终报告层
-- 回退能力可用，不代表主路径就已经验证完成
-- `CHANGELOG.md`、`roadmap`、`workflow` 里只有一份更新，并不代表状态同步已经做完
+- 终端乱码不等于文件损坏
+- BOM 失败优先查写入方式
+- 回退能力可用不代表主路径已验证
