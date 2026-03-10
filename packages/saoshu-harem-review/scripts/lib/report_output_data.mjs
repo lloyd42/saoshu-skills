@@ -91,10 +91,7 @@ function buildCoverageDecision({ meta, coverageGap, coverageRate, mergedRisks, p
   if (coverageMode === "sampled") {
     if (reasonCodes.length > 0) action = "upgrade-chapter-full";
   } else if (coverageMode === "chapter-full") {
-    const shouldUpgradeFullBook = reasonCodes.includes("chapter_boundary_unstable")
-      || reasonCodes.includes("too_many_unverified")
-      || reasonCodes.includes("sensitive_defense_needs_more_evidence")
-      || reasonCodes.includes("evidence_conflict");
+    const shouldUpgradeFullBook = reasonCodes.includes("chapter_boundary_unstable");
     action = shouldUpgradeFullBook ? "upgrade-full-book" : "keep-current";
   } else if (coverageMode === "full-book") {
     action = "keep-current";
@@ -110,6 +107,11 @@ function buildCoverageDecision({ meta, coverageGap, coverageRate, mergedRisks, p
     else if (unresolvedCount > 0 || pendingCount > 0) confidence = "cautious";
   } else if (unresolvedCount > 0 || pendingCount > 0 || (coverageMode === "sampled" && coverageRate < 0.75)) {
     confidence = "cautious";
+  }
+  if (coverageMode === "chapter-full" && action === "keep-current") {
+    if (reasonCodes.includes("too_many_unverified") || reasonCodes.includes("sensitive_defense_needs_more_evidence")) {
+      confidence = "insufficient";
+    }
   }
 
   let currentConclusion = "当前覆盖已足以支撑本次阅读决策。";

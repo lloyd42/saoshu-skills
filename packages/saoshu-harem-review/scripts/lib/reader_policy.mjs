@@ -12,30 +12,31 @@ function normalizeList(value) {
 
 export function normalizeReaderPolicy(input, options = {}) {
   const policy = input && typeof input === "object" && !Array.isArray(input) ? input : {};
-  const hasCustomInput = Object.keys(policy).length > 0;
-  const targetDefense = text(options.targetDefense);
+  const hasExplicitInput = Object.keys(policy).length > 0;
   const coverageMode = text(options.coverageMode);
   const preset = text(policy.preset) || "community-default";
-  const label = text(policy.label) || (preset === "community-default" ? "默认社区 preset" : preset);
-  const source = text(policy.source) || (hasCustomInput ? "manifest" : "system-default");
+  const defaultLabel = preset === "community-default" ? "默认社区 preset" : preset;
+  const label = text(policy.label) || defaultLabel;
+  const source = text(policy.source) || (hasExplicitInput ? "manifest" : "system-default");
   const hardBlocks = normalizeList(policy.hard_blocks);
   const softRisks = normalizeList(policy.soft_risks);
   const relationConstraints = normalizeList(policy.relation_constraints);
   const scopeRules = normalizeList(policy.scope_rules);
   const notes = normalizeList(policy.notes);
   const evidenceThreshold = text(policy.evidence_threshold) || "balanced";
-  const coveragePreference = text(policy.coverage_preference) || (coverageMode === "sampled" ? "balanced" : "high-coverage");
+  const defaultCoveragePreference = coverageMode === "sampled" ? "balanced" : "high-coverage";
+  const coveragePreference = text(policy.coverage_preference) || defaultCoveragePreference;
   const customized = preset !== "community-default"
     || hardBlocks.length > 0
     || softRisks.length > 0
     || relationConstraints.length > 0
     || scopeRules.length > 0
-    || notes.length > 0
-    || hasCustomInput;
+    || evidenceThreshold !== "balanced"
+    || coveragePreference !== defaultCoveragePreference;
   const summary = text(policy.summary) || (
     customized
-      ? `当前按“${label}”视角解释证据；目标防御 ${targetDefense || "未指定"}。`
-      : `当前按默认社区 preset 解释证据；目标防御 ${targetDefense || "未指定"}。`
+      ? `当前按“${label}”视角解释证据。`
+      : "当前按默认社区 preset 解释证据。"
   );
 
   return {

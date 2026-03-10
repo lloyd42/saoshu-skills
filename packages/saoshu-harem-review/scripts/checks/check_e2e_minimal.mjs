@@ -61,10 +61,15 @@ function runIntegratedOptionalScenario() {
 
   const report = readJson(reportJson);
   const state = readJson(statePath);
+  const lastDbRun = readJsonl(dbRuns).slice(-1)[0] || {};
   if (report?.novel?.title === "最小样例-E2E") ok("integrated report metadata looks correct");
   else fail("integrated report metadata title mismatch");
   if (report?.reader_policy?.preset === "community-default" && report?.decision_summary?.policy_label === "默认社区 preset") ok("integrated report keeps reader policy contract");
   else fail(`integrated report should keep reader policy contract: ${JSON.stringify(report?.reader_policy || {})}`);
+  if (report?.reader_policy?.customized === false) ok("integrated report marks default reader policy as non-customized");
+  else fail(`integrated report should mark default reader policy as non-customized: ${JSON.stringify(report?.reader_policy || {})}`);
+  if (String(lastDbRun?.has_reader_policy_customization || "") === "no") ok("db runs keep non-customized reader policy flag");
+  else fail(`db runs should keep non-customized reader policy flag: ${JSON.stringify(lastDbRun)}`);
   if (report?.novel?.harem_validity && report.novel.harem_validity !== "合法 / 不合法（原因）") ok("integrated report harem_validity is no longer a placeholder");
   else fail("integrated report harem_validity should not be a placeholder");
   if (report?.audit?.pipeline_state?.finished_at && report.audit.pipeline_state.finished_at !== "-") ok("integrated report audit finished_at is finalized");

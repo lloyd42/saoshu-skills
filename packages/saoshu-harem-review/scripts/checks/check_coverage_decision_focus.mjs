@@ -290,6 +290,18 @@ function assertChapterFullScenario({ report, markdown, html }) {
   expect(html.includes("建议动作：升级到 full-book"), "chapter-full: html renders full-book upgrade text", "chapter-full: html should render full-book upgrade text");
 }
 
+function assertChapterFullHoldScenario({ report, markdown, html }) {
+  const coverageDecision = report.scan?.coverage_decision || {};
+  const reasonCodes = Array.isArray(coverageDecision.reason_codes) ? coverageDecision.reason_codes : [];
+  expect(coverageDecision.action === "keep-current", "chapter-full-hold: action keeps current layer", `chapter-full-hold: expected keep-current, got ${JSON.stringify(coverageDecision)}`);
+  expect(coverageDecision.confidence === "insufficient", "chapter-full-hold: confidence is insufficient", `chapter-full-hold: expected insufficient confidence, got ${JSON.stringify(coverageDecision)}`);
+  expect(["too_many_unverified", "sensitive_defense_needs_more_evidence"].every((item) => reasonCodes.includes(item)), "chapter-full-hold: keeps unresolved and sensitive reasons", `chapter-full-hold: expected core reason codes in ${JSON.stringify(reasonCodes)}`);
+  expect(report.decision_summary?.next_action === "当前 chapter-full 已覆盖主要风险区，先回看关键未证实风险再决定。", "chapter-full-hold: next action keeps chapter-full review wording", `chapter-full-hold: unexpected next_action ${JSON.stringify(report.decision_summary?.next_action)}`);
+  expect(markdown.includes("建议动作：继续保持 chapter-full"), "chapter-full-hold: markdown renders keep-current wording", "chapter-full-hold: markdown should render keep-current chapter-full wording");
+  expect(html.includes("建议动作：继续保持 chapter-full"), "chapter-full-hold: html renders keep-current wording", "chapter-full-hold: html should render keep-current chapter-full wording");
+  expect(!markdown.includes("建议动作：升级到 full-book"), "chapter-full-hold: markdown avoids full-book upgrade wording", "chapter-full-hold: markdown should not upgrade to full-book");
+}
+
 function assertSampledKeepScenario({ report, markdown, html }) {
   const coverageDecision = report.scan?.coverage_decision || {};
   const reasonCodes = Array.isArray(coverageDecision.reason_codes) ? coverageDecision.reason_codes : [];
@@ -413,6 +425,21 @@ function main() {
     ],
     prepareBatches: prepareChapterFullScenario,
     assertReport: assertChapterFullScenario,
+  });
+
+  runScenario({
+    scenarioKey: "chapter-full-hold",
+    title: "升级建议聚焦：chapter-full-hold",
+    extraArgs: [
+      "--coverage-mode", "chapter-full",
+      "--coverage-unit", "chapter",
+      "--chapter-detect-used-mode", "script",
+      "--total-batches", "18",
+      "--selected-batches", "18",
+      "--sample-coverage-rate", "1",
+    ],
+    prepareBatches: prepareChapterFullScenario,
+    assertReport: assertChapterFullHoldScenario,
   });
 
   runScenario({

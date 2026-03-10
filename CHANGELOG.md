@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### 改进
+- `reader_policy` 默认骨架不再标记为自定义；默认摘要不再混入 `target_defense`。
+- `chapter-full` 仅在章节边界不稳时建议升级到 `full-book`，其余情况优先提示回看未证实风险。
+- 精简 `README.md`、`docs/roadmap.md`、`docs/development-workflow.md`、`docs/architecture.md` 与 `VERSIONING.md`，边界更清晰。
+
 ## [0.7.0] - 2026-03-10
 
 ### 改进
